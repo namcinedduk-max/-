@@ -336,8 +336,7 @@ setInterval(() => {
     new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
 }, 1000);
 
-// 30초 자동 새로고침
-setInterval(() => loadData(), 30000);
+// 자동 새로고침 제거 (수동 새로고침만 사용)
 document.getElementById('dateInput').addEventListener('change', () => loadData());
 
 setToday();
