@@ -61,6 +61,36 @@
   .summary-card .s-qty {
     font-size:24px; font-weight:900; color:#c2410c; line-height:1;
   }
+  .set-section {
+    grid-column: 1 / -1;
+    margin-bottom:4px; margin-top:4px;
+  }
+  .set-section-title {
+    font-size:12px; font-weight:700; color:#888;
+    margin-bottom:6px; padding-left:2px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .set-section-title::after {
+    content:''; flex:1; height:1px; background:#ddd;
+  }
+  .set-card {
+    background:#fff7ed; border-radius:14px;
+    padding:12px 14px;
+    border-left:5px solid #f59e0b;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06);
+    grid-column: 1 / -1;
+  }
+  .set-card .set-name {
+    font-size:13px; font-weight:800; color:#92400e; margin-bottom:2px;
+  }
+  .set-card .set-detail {
+    font-size:12px; color:#b45309; font-weight:500;
+  }
+  .divider-line {
+    grid-column: 1 / -1;
+    border:none; border-top:2px dashed #e5d5bb;
+    margin:4px 0;
+  }
 
   /* 주문 카드 */
   .order-cards { display:flex; flex-direction:column; gap:10px; }
@@ -220,7 +250,7 @@ function expandTteokItemsForSummary(items) {
   items.forEach(function(t) {
     const setMatch = t.name.match(/^(.+?)\(([^)]+)\)$/);
     if (setMatch) {
-      const subNames = setMatch[2].split(/[\/·,]+/).map(function(n){ return n.trim(); }).filter(Boolean);
+      const subNames = setMatch[2].split(/[\/·,.]+/).map(function(n){ return n.trim(); }).filter(Boolean);
       subNames.forEach(function(sub) {
         result.push({ name: sub, qty: t.qty });
       });
@@ -256,7 +286,15 @@ function render(date) {
 
   // 합계
   const totals = {};
+  const setItems = []; // 세트 목록 별도 수집
   filtered.forEach(function(o) {
+    parseTteokItems(o).forEach(function(t) {
+      // 세트 여부 확인
+      const setMatch = t.name.match(/^(.+?)\(([^)]+)\)$/);
+      if (setMatch) {
+        setItems.push({ setName: t.name, qty: t.qty });
+      }
+    });
     expandTteokItemsForSummary(parseTteokItems(o)).forEach(function(t) {
       if (!totals[t.name]) totals[t.name] = {};
       const { val, unit } = parseQty(t.qty);
@@ -266,16 +304,31 @@ function render(date) {
   const keys = Object.keys(totals);
   document.getElementById('summaryCount').textContent = keys.length + '종';
 
-  if (keys.length === 0) {
+  if (keys.length === 0 && setItems.length === 0) {
     document.getElementById('summaryGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#aaa;">해당 날짜 주문 없음</div>';
   } else {
-    document.getElementById('summaryGrid').innerHTML = keys.map(name => {
-      const qtyStr = Object.entries(totals[name]).map(([u,v]) => `${v}${u}`).join(' + ');
+    let html = '';
+    // 세트 섹션 (상단)
+    if (setItems.length > 0) {
+      html += '<div class="set-section-title">📦 세트 구성</div>';
+      html += setItems.map(function(s) {
+        return `<div class="set-card">
+          <div class="set-name">🎁 ${s.setName}</div>
+          <div class="set-detail">${s.qty}</div>
+        </div>`;
+      }).join('');
+      html += '<hr class="divider-line">';
+      html += '<div class="set-section-title">🍡 떡 합계</div>';
+    }
+    // 떡 합계 카드
+    html += keys.map(function(name) {
+      const qtyStr = Object.entries(totals[name]).map(function([u,v]){ return v+u; }).join(' + ');
       return `<div class="summary-card">
         <div class="s-name">${name}</div>
         <div class="s-qty">${qtyStr}</div>
       </div>`;
     }).join('');
+    document.getElementById('summaryGrid').innerHTML = html;
   }
 
   // 주문 카드
