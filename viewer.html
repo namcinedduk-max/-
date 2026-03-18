@@ -195,7 +195,7 @@ function normalizeTimeStr(val) {
   if (!val) return '';
   const s = String(val).trim();
   // ISO 날짜 형식(1899, 2026 등) 이면 빈값 반환
-  if (/^d{4}-d{2}-d{2}/.test(s)) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return '';
   return s;
 }
 
