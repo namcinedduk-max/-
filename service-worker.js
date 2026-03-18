@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tteok-app-v1';
+const CACHE_NAME = 'tteok-app-v2';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
