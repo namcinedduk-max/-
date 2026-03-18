@@ -193,9 +193,9 @@ function setToday() {
 
 function normalizeTimeStr(val) {
   if (!val) return '';
-  const s = String(val);
-  // 1899 또는 ISO 날짜 형식이면 빈값 반환
-  if (/^1899/.test(s) || /^d{4}-d{2}-d{2}T/.test(s)) return '';
+  const s = String(val).trim();
+  // ISO 날짜 형식(1899, 2026 등) 이면 빈값 반환
+  if (/^d{4}-d{2}-d{2}/.test(s)) return '';
   return s;
 }
 
