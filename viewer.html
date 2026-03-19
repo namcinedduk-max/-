@@ -202,7 +202,9 @@ function normalizeTimeStr(val) {
 function getOrderNo(order, allOrders) {
   const date = normDate(String(order.deliveryDate || ''));
   if (!date) return '-';
-  const sameDay = allOrders.filter(o => normDate(String(o.deliveryDate || '')) === date)
+  // 장부앱과 동일: 전체 주문(택배 포함) 기준, 오래된 순(reverse)
+  const sameDay = allOrders
+    .filter(o => normDate(String(o.deliveryDate || '')) === date)
     .slice().reverse();
   const idx = sameDay.findIndex(o => String(o.id) === String(order.id));
   return idx >= 0 ? idx + 1 : '-';
