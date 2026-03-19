@@ -199,6 +199,15 @@ function normalizeTimeStr(val) {
   return s;
 }
 
+function getOrderNo(order, allOrders) {
+  const date = normDate(String(order.deliveryDate || ''));
+  if (!date) return '-';
+  const sameDay = allOrders.filter(o => normDate(String(o.deliveryDate || '')) === date)
+    .slice().reverse();
+  const idx = sameDay.findIndex(o => String(o.id) === String(order.id));
+  return idx >= 0 ? idx + 1 : '-';
+}
+
 function normDate(str) {
   if (!str) return '';
   const m = str.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
@@ -325,7 +334,7 @@ function render(date) {
 
     return `<div class="order-card">
       <div class="order-card-header">
-        <span class="no">#${i+1}</span>
+        <span class="no">#${getOrderNo(o, allOrders)}</span>
         <span class="time">${normalizeTimeStr(o.deliveryTime) || '시간미정'}</span>
         <span class="method ${methodClass}">${methodLabel}</span>
       </div>
