@@ -4554,12 +4554,39 @@ let tteokItems = [];
 function onTteokSelectChange() {
   const sel = document.getElementById('tteokSelect');
   const custom = document.getElementById('tteokCustom');
-  if (sel.value === '직접입력') {
-    custom.style.display = 'block';
-    custom.focus();
+  const unitSel = document.getElementById('tteokUnitSel');
+  const pricePreview = document.getElementById('tteokPricePreview');
+  const noteEl = document.getElementById('tteokNote');
+
+  if (!sel) return;
+  const val = sel.value;
+
+  if (val === '직접입력') {
+    if (custom) { custom.style.display = 'block'; custom.focus(); }
+    if (noteEl) noteEl.style.display = 'none';
+    if (pricePreview) pricePreview.textContent = '';
+    return;
+  }
+  if (custom) { custom.style.display = 'none'; custom.value = ''; }
+
+  if (val && TTEOK_DB[val]) {
+    const db = TTEOK_DB[val];
+    const unit = unitSel ? unitSel.value : '개';
+    const p = unit === 'box' ? (db.boxPrice||0) : (db.unitPrice||0);
+    const unitLabel = unit === 'box' ? (db.boxUnit||'박스') : '개';
+    if (pricePreview) pricePreview.textContent = p ? p.toLocaleString() + '원/' + unitLabel : '';
+    // 참고사항 표시
+    if (noteEl) {
+      if (db.note) {
+        noteEl.textContent = '⚠️ ' + db.note;
+        noteEl.style.display = 'block';
+      } else {
+        noteEl.style.display = 'none';
+      }
+    }
   } else {
-    custom.style.display = 'none';
-    custom.value = '';
+    if (pricePreview) pricePreview.textContent = '';
+    if (noteEl) noteEl.style.display = 'none';
   }
 }
 
