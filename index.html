@@ -1827,19 +1827,24 @@ function _timePickerUpdate(id, onchangeFn) {
   if (type === 'range') {
     rangeEl.style.display = '';
     const sh = document.getElementById(id + '-sh').value;
-    const sm = document.getElementById(id + '-sm').value;
+    const sm = document.getElementById(id + '-sm').value || '시';
     const eh = document.getElementById(id + '-eh').value;
-    const em = document.getElementById(id + '-em').value;
+    const em = document.getElementById(id + '-em').value || '시';
     if (sh) {
       const start = sh + sm;
       const end = eh ? '~' + eh + em : '';
       hidden.value = start + end;
+    } else {
+      hidden.value = '';
     }
   } else {
     rangeEl.style.display = 'none';
     hidden.value = type;
   }
-  if (onchangeFn) { try { onchangeFn(); } catch(e){} }
+  if (onchangeFn) { try { 
+    if (typeof onchangeFn === 'function') onchangeFn();
+    else if (typeof onchangeFn === 'string' && window[onchangeFn]) window[onchangeFn]();
+  } catch(e){} }
 }
 
 function _timePickerSetValue(id, val) {
@@ -1872,10 +1877,10 @@ function _timePickerSetValue(id, val) {
   }
 }
 
-function g_deliveryTimeUpdate() { _timePickerUpdate('g_deliveryTime', updateGTotal); }
-function deliveryTimeCustomUpdate() { _timePickerUpdate('deliveryTimeCustom', calcTotal); }
+function g_deliveryTimeUpdate() { _timePickerUpdate('g_deliveryTime', function(){ updateGTotal(); }); }
+function deliveryTimeCustomUpdate() { _timePickerUpdate('deliveryTimeCustom', function(){ calcTotal(); }); }
 function f_deliveryTimeUpdate() { _timePickerUpdate('f_deliveryTime', null); }
-function e_deliveryTimeUpdate() { _timePickerUpdate('e_deliveryTime', calcEditTotal); }
+function e_deliveryTimeUpdate() { _timePickerUpdate('e_deliveryTime', function(){ calcEditTotal(); }); }
 function ef_deliveryTimeUpdate() { _timePickerUpdate('ef_deliveryTime', null); }
 
 // ============ 퀵비 요금표 (구별 구분) ============
