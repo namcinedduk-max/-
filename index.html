@@ -782,7 +782,75 @@
           </div>
           <div style="flex:1;min-width:140px;">
             <label style="font-size:13px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:6px;">배송 시간</label>
-            <select id="g_deliveryTime" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;background:#fff;" onchange="applyExtraFee('g_deliveryDate','g_deliveryTime','g_deliveryFee',updateGTotal)"><option value="">시간 선택</option><option value="오전중">오전중</option><option value="오후중">오후중</option><option value="오전7시">오전7시</option><option value="오전7시10분">오전7시10분</option><option value="오전7시20분">오전7시20분</option><option value="오전7시30분">오전7시30분</option><option value="오전7시40분">오전7시40분</option><option value="오전7시50분">오전7시50분</option><option value="오전8시">오전8시</option><option value="오전8시10분">오전8시10분</option><option value="오전8시20분">오전8시20분</option><option value="오전8시30분">오전8시30분</option><option value="오전8시40분">오전8시40분</option><option value="오전8시50분">오전8시50분</option><option value="오전9시">오전9시</option><option value="오전9시10분">오전9시10분</option><option value="오전9시20분">오전9시20분</option><option value="오전9시30분">오전9시30분</option><option value="오전9시40분">오전9시40분</option><option value="오전9시50분">오전9시50분</option><option value="오전10시">오전10시</option><option value="오전10시10분">오전10시10분</option><option value="오전10시20분">오전10시20분</option><option value="오전10시30분">오전10시30분</option><option value="오전10시40분">오전10시40분</option><option value="오전10시50분">오전10시50분</option><option value="오전11시">오전11시</option><option value="오전11시10분">오전11시10분</option><option value="오전11시20분">오전11시20분</option><option value="오전11시30분">오전11시30분</option><option value="오전11시40분">오전11시40분</option><option value="오전11시50분">오전11시50분</option><option value="오후12시">오후12시</option><option value="오후12시10분">오후12시10분</option><option value="오후12시20분">오후12시20분</option><option value="오후12시30분">오후12시30분</option><option value="오후12시40분">오후12시40분</option><option value="오후12시50분">오후12시50분</option><option value="오후1시">오후1시</option><option value="오후1시10분">오후1시10분</option><option value="오후1시20분">오후1시20분</option><option value="오후1시30분">오후1시30분</option><option value="오후1시40분">오후1시40분</option><option value="오후1시50분">오후1시50분</option><option value="오후2시">오후2시</option><option value="오후2시10분">오후2시10분</option><option value="오후2시20분">오후2시20분</option><option value="오후2시30분">오후2시30분</option><option value="오후2시40분">오후2시40분</option><option value="오후2시50분">오후2시50분</option><option value="오후3시">오후3시</option><option value="오후3시10분">오후3시10분</option><option value="오후3시20분">오후3시20분</option><option value="오후3시30분">오후3시30분</option><option value="오후3시40분">오후3시40분</option><option value="오후3시50분">오후3시50분</option><option value="오후4시">오후4시</option><option value="오후4시10분">오후4시10분</option><option value="오후4시20분">오후4시20분</option><option value="오후4시30분">오후4시30분</option><option value="오후4시40분">오후4시40분</option><option value="오후4시50분">오후4시50분</option><option value="오후5시">오후5시</option><option value="오후5시10분">오후5시10분</option><option value="오후5시20분">오후5시20분</option><option value="오후5시30분">오후5시30분</option><option value="오후5시40분">오후5시40분</option><option value="오후5시50분">오후5시50분</option><option value="오후6시">오후6시</option><option value="오후6시10분">오후6시10분</option><option value="오후6시20분">오후6시20분</option><option value="오후6시30분">오후6시30분</option><option value="오후6시40분">오후6시40분</option><option value="오후6시50분">오후6시50분</option><option value="오후7시">오후7시</option><option value="오후7시10분">오후7시10분</option><option value="오후7시20분">오후7시20분</option><option value="오후7시30분">오후7시30분</option><option value="오후7시40분">오후7시40분</option><option value="오후7시50분">오후7시50분</option><option value="오후8시">오후8시</option><option value="오후8시10분">오후8시10분</option><option value="오후8시20분">오후8시20분</option><option value="오후8시30분">오후8시30분</option><option value="오후8시40분">오후8시40분</option><option value="오후8시50분">오후8시50분</option></select>
+            <div id="g_deliveryTime-picker" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+    <select id="g_deliveryTime-type" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="g_deliveryTimeUpdate()">
+      <option value="">선택</option>
+      <option value="오전중">오전중</option>
+      <option value="오후중">오후중</option>
+      <option value="range">시간지정</option>
+    </select>
+    <div id="g_deliveryTime-range" style="display:none;align-items:center;gap:4px;flex-wrap:wrap;">
+      <select id="g_deliveryTime-sh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="g_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="g_deliveryTime-sm" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="g_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+      <span style="font-size:13px;color:#888;">~</span>
+      <select id="g_deliveryTime-eh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="g_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="g_deliveryTime-em" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="g_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+    </div>
+    <input type="hidden" id="g_deliveryTime" value="">
+  </div>
+  <script>
+  function g_deliveryTimeUpdate() {
+    const type = document.getElementById('g_deliveryTime-type').value;
+    const rangeDiv = document.getElementById('g_deliveryTime-range');
+    const hidden = document.getElementById('g_deliveryTime');
+    if (type === 'range') {
+      rangeDiv.style.display = 'flex';
+      const sh = document.getElementById('g_deliveryTime-sh').value;
+      const sm = document.getElementById('g_deliveryTime-sm').value;
+      const eh = document.getElementById('g_deliveryTime-eh').value;
+      const em = document.getElementById('g_deliveryTime-em').value;
+      if (sh) {
+        const start = sh + sm;
+        const end = eh ? '~' + eh + em : '';
+        hidden.value = start + end;
+      }
+    } else {
+      rangeDiv.style.display = 'none';
+      hidden.value = type;
+    }
+    updateGTotal();
+  }
+  function g_deliveryTimeSetValue(val) {
+    if (!val) return;
+    const typeEl = document.getElementById('g_deliveryTime-type');
+    const rangeDiv = document.getElementById('g_deliveryTime-range');
+    const hidden = document.getElementById('g_deliveryTime');
+    hidden.value = val;
+    if (val === '오전중' || val === '오후중') {
+      typeEl.value = val;
+      rangeDiv.style.display = 'none';
+    } else {
+      typeEl.value = 'range';
+      rangeDiv.style.display = 'flex';
+      const parts = val.split('~');
+      const parseTime = (s) => {
+        const m = s.match(/^(오전|오후)(d+)(시(d+)분)?$/);
+        if (!m) return { h: '', m: '시' };
+        return { h: (m[1]||'') + m[2], m: m[4] ? '시' + m[4] + '분' : '시' };
+      };
+      if (parts[0]) {
+        const t = parseTime(parts[0]);
+        document.getElementById('g_deliveryTime-sh').value = t.h;
+        document.getElementById('g_deliveryTime-sm').value = t.m;
+      }
+      if (parts[1]) {
+        const t = parseTime(parts[1]);
+        document.getElementById('g_deliveryTime-eh').value = t.h;
+        document.getElementById('g_deliveryTime-em').value = t.m;
+      }
+    }
+  }
+  </script>
           </div>
         </div>
         <div style="margin-top:8px;display:flex;justify-content:space-between;">
@@ -1068,7 +1136,75 @@
         </div>
         <div class="form-group">
           <label>배송 시간</label>
-          <select id="deliveryTimeCustom" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="applyExtraFee('deliveryDate','deliveryTimeCustom','priceDelivery',calcTotal)"><option value="">시간 선택</option><option value="오전중">오전중</option><option value="오후중">오후중</option><option value="오전7시">오전7시</option><option value="오전7시10분">오전7시10분</option><option value="오전7시20분">오전7시20분</option><option value="오전7시30분">오전7시30분</option><option value="오전7시40분">오전7시40분</option><option value="오전7시50분">오전7시50분</option><option value="오전8시">오전8시</option><option value="오전8시10분">오전8시10분</option><option value="오전8시20분">오전8시20분</option><option value="오전8시30분">오전8시30분</option><option value="오전8시40분">오전8시40분</option><option value="오전8시50분">오전8시50분</option><option value="오전9시">오전9시</option><option value="오전9시10분">오전9시10분</option><option value="오전9시20분">오전9시20분</option><option value="오전9시30분">오전9시30분</option><option value="오전9시40분">오전9시40분</option><option value="오전9시50분">오전9시50분</option><option value="오전10시">오전10시</option><option value="오전10시10분">오전10시10분</option><option value="오전10시20분">오전10시20분</option><option value="오전10시30분">오전10시30분</option><option value="오전10시40분">오전10시40분</option><option value="오전10시50분">오전10시50분</option><option value="오전11시">오전11시</option><option value="오전11시10분">오전11시10분</option><option value="오전11시20분">오전11시20분</option><option value="오전11시30분">오전11시30분</option><option value="오전11시40분">오전11시40분</option><option value="오전11시50분">오전11시50분</option><option value="오후12시">오후12시</option><option value="오후12시10분">오후12시10분</option><option value="오후12시20분">오후12시20분</option><option value="오후12시30분">오후12시30분</option><option value="오후12시40분">오후12시40분</option><option value="오후12시50분">오후12시50분</option><option value="오후1시">오후1시</option><option value="오후1시10분">오후1시10분</option><option value="오후1시20분">오후1시20분</option><option value="오후1시30분">오후1시30분</option><option value="오후1시40분">오후1시40분</option><option value="오후1시50분">오후1시50분</option><option value="오후2시">오후2시</option><option value="오후2시10분">오후2시10분</option><option value="오후2시20분">오후2시20분</option><option value="오후2시30분">오후2시30분</option><option value="오후2시40분">오후2시40분</option><option value="오후2시50분">오후2시50분</option><option value="오후3시">오후3시</option><option value="오후3시10분">오후3시10분</option><option value="오후3시20분">오후3시20분</option><option value="오후3시30분">오후3시30분</option><option value="오후3시40분">오후3시40분</option><option value="오후3시50분">오후3시50분</option><option value="오후4시">오후4시</option><option value="오후4시10분">오후4시10분</option><option value="오후4시20분">오후4시20분</option><option value="오후4시30분">오후4시30분</option><option value="오후4시40분">오후4시40분</option><option value="오후4시50분">오후4시50분</option><option value="오후5시">오후5시</option><option value="오후5시10분">오후5시10분</option><option value="오후5시20분">오후5시20분</option><option value="오후5시30분">오후5시30분</option><option value="오후5시40분">오후5시40분</option><option value="오후5시50분">오후5시50분</option><option value="오후6시">오후6시</option><option value="오후6시10분">오후6시10분</option><option value="오후6시20분">오후6시20분</option><option value="오후6시30분">오후6시30분</option><option value="오후6시40분">오후6시40분</option><option value="오후6시50분">오후6시50분</option><option value="오후7시">오후7시</option><option value="오후7시10분">오후7시10분</option><option value="오후7시20분">오후7시20분</option><option value="오후7시30분">오후7시30분</option><option value="오후7시40분">오후7시40분</option><option value="오후7시50분">오후7시50분</option><option value="오후8시">오후8시</option><option value="오후8시10분">오후8시10분</option><option value="오후8시20분">오후8시20분</option><option value="오후8시30분">오후8시30분</option><option value="오후8시40분">오후8시40분</option><option value="오후8시50분">오후8시50분</option></select>
+          <div id="deliveryTimeCustom-picker" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+    <select id="deliveryTimeCustom-type" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="deliveryTimeCustomUpdate()">
+      <option value="">선택</option>
+      <option value="오전중">오전중</option>
+      <option value="오후중">오후중</option>
+      <option value="range">시간지정</option>
+    </select>
+    <div id="deliveryTimeCustom-range" style="display:none;align-items:center;gap:4px;flex-wrap:wrap;">
+      <select id="deliveryTimeCustom-sh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="deliveryTimeCustomUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="deliveryTimeCustom-sm" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="deliveryTimeCustomUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+      <span style="font-size:13px;color:#888;">~</span>
+      <select id="deliveryTimeCustom-eh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="deliveryTimeCustomUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="deliveryTimeCustom-em" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="deliveryTimeCustomUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+    </div>
+    <input type="hidden" id="deliveryTimeCustom" value="">
+  </div>
+  <script>
+  function deliveryTimeCustomUpdate() {
+    const type = document.getElementById('deliveryTimeCustom-type').value;
+    const rangeDiv = document.getElementById('deliveryTimeCustom-range');
+    const hidden = document.getElementById('deliveryTimeCustom');
+    if (type === 'range') {
+      rangeDiv.style.display = 'flex';
+      const sh = document.getElementById('deliveryTimeCustom-sh').value;
+      const sm = document.getElementById('deliveryTimeCustom-sm').value;
+      const eh = document.getElementById('deliveryTimeCustom-eh').value;
+      const em = document.getElementById('deliveryTimeCustom-em').value;
+      if (sh) {
+        const start = sh + sm;
+        const end = eh ? '~' + eh + em : '';
+        hidden.value = start + end;
+      }
+    } else {
+      rangeDiv.style.display = 'none';
+      hidden.value = type;
+    }
+    calcTotal();
+  }
+  function deliveryTimeCustomSetValue(val) {
+    if (!val) return;
+    const typeEl = document.getElementById('deliveryTimeCustom-type');
+    const rangeDiv = document.getElementById('deliveryTimeCustom-range');
+    const hidden = document.getElementById('deliveryTimeCustom');
+    hidden.value = val;
+    if (val === '오전중' || val === '오후중') {
+      typeEl.value = val;
+      rangeDiv.style.display = 'none';
+    } else {
+      typeEl.value = 'range';
+      rangeDiv.style.display = 'flex';
+      const parts = val.split('~');
+      const parseTime = (s) => {
+        const m = s.match(/^(오전|오후)(d+)(시(d+)분)?$/);
+        if (!m) return { h: '', m: '시' };
+        return { h: (m[1]||'') + m[2], m: m[4] ? '시' + m[4] + '분' : '시' };
+      };
+      if (parts[0]) {
+        const t = parseTime(parts[0]);
+        document.getElementById('deliveryTimeCustom-sh').value = t.h;
+        document.getElementById('deliveryTimeCustom-sm').value = t.m;
+      }
+      if (parts[1]) {
+        const t = parseTime(parts[1]);
+        document.getElementById('deliveryTimeCustom-eh').value = t.h;
+        document.getElementById('deliveryTimeCustom-em').value = t.m;
+      }
+    }
+  }
+  </script>
           <div style="margin-top:6px;padding:8px 10px;background:#fff5f5;border-left:3px solid #C0392B;border-radius:6px;font-size:12px;color:#C0392B;line-height:1.8;font-weight:600;">
             ⚠️ 평일 8시 전 / 주말 9시 전 배송은 사장님께 확인<br>
             ⚠️ 최소 2시간 여유시간 필요<br>
@@ -1203,7 +1339,75 @@
         </div>
         <div class="form-group">
           <label>배송 시간</label>
-          <select id="f_deliveryTime" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;background:#fff;"><option value="">시간 선택</option><option value="오전중">오전중</option><option value="오후중">오후중</option><option value="오전7시">오전7시</option><option value="오전7시10분">오전7시10분</option><option value="오전7시20분">오전7시20분</option><option value="오전7시30분">오전7시30분</option><option value="오전7시40분">오전7시40분</option><option value="오전7시50분">오전7시50분</option><option value="오전8시">오전8시</option><option value="오전8시10분">오전8시10분</option><option value="오전8시20분">오전8시20분</option><option value="오전8시30분">오전8시30분</option><option value="오전8시40분">오전8시40분</option><option value="오전8시50분">오전8시50분</option><option value="오전9시">오전9시</option><option value="오전9시10분">오전9시10분</option><option value="오전9시20분">오전9시20분</option><option value="오전9시30분">오전9시30분</option><option value="오전9시40분">오전9시40분</option><option value="오전9시50분">오전9시50분</option><option value="오전10시">오전10시</option><option value="오전10시10분">오전10시10분</option><option value="오전10시20분">오전10시20분</option><option value="오전10시30분">오전10시30분</option><option value="오전10시40분">오전10시40분</option><option value="오전10시50분">오전10시50분</option><option value="오전11시">오전11시</option><option value="오전11시10분">오전11시10분</option><option value="오전11시20분">오전11시20분</option><option value="오전11시30분">오전11시30분</option><option value="오전11시40분">오전11시40분</option><option value="오전11시50분">오전11시50분</option><option value="오후12시">오후12시</option><option value="오후12시10분">오후12시10분</option><option value="오후12시20분">오후12시20분</option><option value="오후12시30분">오후12시30분</option><option value="오후12시40분">오후12시40분</option><option value="오후12시50분">오후12시50분</option><option value="오후1시">오후1시</option><option value="오후1시10분">오후1시10분</option><option value="오후1시20분">오후1시20분</option><option value="오후1시30분">오후1시30분</option><option value="오후1시40분">오후1시40분</option><option value="오후1시50분">오후1시50분</option><option value="오후2시">오후2시</option><option value="오후2시10분">오후2시10분</option><option value="오후2시20분">오후2시20분</option><option value="오후2시30분">오후2시30분</option><option value="오후2시40분">오후2시40분</option><option value="오후2시50분">오후2시50분</option><option value="오후3시">오후3시</option><option value="오후3시10분">오후3시10분</option><option value="오후3시20분">오후3시20분</option><option value="오후3시30분">오후3시30분</option><option value="오후3시40분">오후3시40분</option><option value="오후3시50분">오후3시50분</option><option value="오후4시">오후4시</option><option value="오후4시10분">오후4시10분</option><option value="오후4시20분">오후4시20분</option><option value="오후4시30분">오후4시30분</option><option value="오후4시40분">오후4시40분</option><option value="오후4시50분">오후4시50분</option><option value="오후5시">오후5시</option><option value="오후5시10분">오후5시10분</option><option value="오후5시20분">오후5시20분</option><option value="오후5시30분">오후5시30분</option><option value="오후5시40분">오후5시40분</option><option value="오후5시50분">오후5시50분</option><option value="오후6시">오후6시</option><option value="오후6시10분">오후6시10분</option><option value="오후6시20분">오후6시20분</option><option value="오후6시30분">오후6시30분</option><option value="오후6시40분">오후6시40분</option><option value="오후6시50분">오후6시50분</option><option value="오후7시">오후7시</option><option value="오후7시10분">오후7시10분</option><option value="오후7시20분">오후7시20분</option><option value="오후7시30분">오후7시30분</option><option value="오후7시40분">오후7시40분</option><option value="오후7시50분">오후7시50분</option><option value="오후8시">오후8시</option><option value="오후8시10분">오후8시10분</option><option value="오후8시20분">오후8시20분</option><option value="오후8시30분">오후8시30분</option><option value="오후8시40분">오후8시40분</option><option value="오후8시50분">오후8시50분</option></select>
+          <div id="f_deliveryTime-picker" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+    <select id="f_deliveryTime-type" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="f_deliveryTimeUpdate()">
+      <option value="">선택</option>
+      <option value="오전중">오전중</option>
+      <option value="오후중">오후중</option>
+      <option value="range">시간지정</option>
+    </select>
+    <div id="f_deliveryTime-range" style="display:none;align-items:center;gap:4px;flex-wrap:wrap;">
+      <select id="f_deliveryTime-sh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="f_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="f_deliveryTime-sm" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="f_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+      <span style="font-size:13px;color:#888;">~</span>
+      <select id="f_deliveryTime-eh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="f_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="f_deliveryTime-em" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="f_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+    </div>
+    <input type="hidden" id="f_deliveryTime" value="">
+  </div>
+  <script>
+  function f_deliveryTimeUpdate() {
+    const type = document.getElementById('f_deliveryTime-type').value;
+    const rangeDiv = document.getElementById('f_deliveryTime-range');
+    const hidden = document.getElementById('f_deliveryTime');
+    if (type === 'range') {
+      rangeDiv.style.display = 'flex';
+      const sh = document.getElementById('f_deliveryTime-sh').value;
+      const sm = document.getElementById('f_deliveryTime-sm').value;
+      const eh = document.getElementById('f_deliveryTime-eh').value;
+      const em = document.getElementById('f_deliveryTime-em').value;
+      if (sh) {
+        const start = sh + sm;
+        const end = eh ? '~' + eh + em : '';
+        hidden.value = start + end;
+      }
+    } else {
+      rangeDiv.style.display = 'none';
+      hidden.value = type;
+    }
+    
+  }
+  function f_deliveryTimeSetValue(val) {
+    if (!val) return;
+    const typeEl = document.getElementById('f_deliveryTime-type');
+    const rangeDiv = document.getElementById('f_deliveryTime-range');
+    const hidden = document.getElementById('f_deliveryTime');
+    hidden.value = val;
+    if (val === '오전중' || val === '오후중') {
+      typeEl.value = val;
+      rangeDiv.style.display = 'none';
+    } else {
+      typeEl.value = 'range';
+      rangeDiv.style.display = 'flex';
+      const parts = val.split('~');
+      const parseTime = (s) => {
+        const m = s.match(/^(오전|오후)(d+)(시(d+)분)?$/);
+        if (!m) return { h: '', m: '시' };
+        return { h: (m[1]||'') + m[2], m: m[4] ? '시' + m[4] + '분' : '시' };
+      };
+      if (parts[0]) {
+        const t = parseTime(parts[0]);
+        document.getElementById('f_deliveryTime-sh').value = t.h;
+        document.getElementById('f_deliveryTime-sm').value = t.m;
+      }
+      if (parts[1]) {
+        const t = parseTime(parts[1]);
+        document.getElementById('f_deliveryTime-eh').value = t.h;
+        document.getElementById('f_deliveryTime-em').value = t.m;
+      }
+    }
+  }
+  </script>
         </div>
 
         <!-- 가격 -->
@@ -3215,7 +3419,7 @@ function resetGuideForm() {
   gTteokItems = [];
   renderGTteokList();
   document.getElementById('g_deliveryDate').value = getLocalDateStr();
-  document.getElementById('g_deliveryTime').value = '';
+  document.getElementById('g_deliveryTime').value = ''; if(document.getElementById('g_deliveryTime-type')) document.getElementById('g_deliveryTime-type').value='';
   document.getElementById('g_addr1').value = '';
   document.getElementById('g_addr2').value = '';
   document.getElementById('g_deliveryFee').value = '';
@@ -3265,7 +3469,7 @@ function submitGuideOrder() {
     memo: document.getElementById('g_memo').value.trim(),
     labelText: document.getElementById('g_labelText').value.trim(),
     deliveryDate,
-    deliveryTime: document.getElementById('g_deliveryTime').value.trim(),
+    deliveryTime: document.getElementById('g_deliveryTime').value,
     deliveryMethod,
     priceProduct: product,
     priceDelivery: deliveryFee,
@@ -3487,7 +3691,7 @@ function submitOrder() {
       tteokType: tteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', '),
       memo: document.getElementById('memo') ? document.getElementById('memo').value.trim() : '',
       deliveryDate,
-      deliveryTime: document.getElementById('deliveryTimeCustom').value.trim(),
+      deliveryTime: document.getElementById('deliveryTimeCustom').value,
       priceProduct: p, priceDelivery: d, priceDiscount: dis, priceTotal: p + d - dis,
       payMethod, payStatus: document.getElementById('payStatus').value,
       staffName: document.getElementById('staffName').value,
@@ -3569,7 +3773,7 @@ function resetForm() {
   document.getElementById('tteokCustom').style.display = 'none';
   document.getElementById('tteokCustom').value = '';
   document.getElementById('tteokQty').value = '';
-  document.getElementById('deliveryTimeCustom').value = '';
+  document.getElementById('deliveryTimeCustom').value = ''; if(document.getElementById('deliveryTimeCustom-type')) document.getElementById('deliveryTimeCustom-type').value='';
   document.getElementById('payStatus').value = '결제완료';
   document.getElementById('payMethod').value = '';
   document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('selected'));
@@ -4066,7 +4270,75 @@ function renderModalEdit(o) {
         <input id="e_deliveryDate" type="date" value="${normalizeDateStr(String(o.deliveryDate||''))}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span>
-        <select id="e_deliveryTime" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:#fff;"><option value="">시간 선택</option><option value="오전중">오전중</option><option value="오후중">오후중</option><option value="오전7시">오전7시</option><option value="오전7시10분">오전7시10분</option><option value="오전7시20분">오전7시20분</option><option value="오전7시30분">오전7시30분</option><option value="오전7시40분">오전7시40분</option><option value="오전7시50분">오전7시50분</option><option value="오전8시">오전8시</option><option value="오전8시10분">오전8시10분</option><option value="오전8시20분">오전8시20분</option><option value="오전8시30분">오전8시30분</option><option value="오전8시40분">오전8시40분</option><option value="오전8시50분">오전8시50분</option><option value="오전9시">오전9시</option><option value="오전9시10분">오전9시10분</option><option value="오전9시20분">오전9시20분</option><option value="오전9시30분">오전9시30분</option><option value="오전9시40분">오전9시40분</option><option value="오전9시50분">오전9시50분</option><option value="오전10시">오전10시</option><option value="오전10시10분">오전10시10분</option><option value="오전10시20분">오전10시20분</option><option value="오전10시30분">오전10시30분</option><option value="오전10시40분">오전10시40분</option><option value="오전10시50분">오전10시50분</option><option value="오전11시">오전11시</option><option value="오전11시10분">오전11시10분</option><option value="오전11시20분">오전11시20분</option><option value="오전11시30분">오전11시30분</option><option value="오전11시40분">오전11시40분</option><option value="오전11시50분">오전11시50분</option><option value="오후12시">오후12시</option><option value="오후12시10분">오후12시10분</option><option value="오후12시20분">오후12시20분</option><option value="오후12시30분">오후12시30분</option><option value="오후12시40분">오후12시40분</option><option value="오후12시50분">오후12시50분</option><option value="오후1시">오후1시</option><option value="오후1시10분">오후1시10분</option><option value="오후1시20분">오후1시20분</option><option value="오후1시30분">오후1시30분</option><option value="오후1시40분">오후1시40분</option><option value="오후1시50분">오후1시50분</option><option value="오후2시">오후2시</option><option value="오후2시10분">오후2시10분</option><option value="오후2시20분">오후2시20분</option><option value="오후2시30분">오후2시30분</option><option value="오후2시40분">오후2시40분</option><option value="오후2시50분">오후2시50분</option><option value="오후3시">오후3시</option><option value="오후3시10분">오후3시10분</option><option value="오후3시20분">오후3시20분</option><option value="오후3시30분">오후3시30분</option><option value="오후3시40분">오후3시40분</option><option value="오후3시50분">오후3시50분</option><option value="오후4시">오후4시</option><option value="오후4시10분">오후4시10분</option><option value="오후4시20분">오후4시20분</option><option value="오후4시30분">오후4시30분</option><option value="오후4시40분">오후4시40분</option><option value="오후4시50분">오후4시50분</option><option value="오후5시">오후5시</option><option value="오후5시10분">오후5시10분</option><option value="오후5시20분">오후5시20분</option><option value="오후5시30분">오후5시30분</option><option value="오후5시40분">오후5시40분</option><option value="오후5시50분">오후5시50분</option><option value="오후6시">오후6시</option><option value="오후6시10분">오후6시10분</option><option value="오후6시20분">오후6시20분</option><option value="오후6시30분">오후6시30분</option><option value="오후6시40분">오후6시40분</option><option value="오후6시50분">오후6시50분</option><option value="오후7시">오후7시</option><option value="오후7시10분">오후7시10분</option><option value="오후7시20분">오후7시20분</option><option value="오후7시30분">오후7시30분</option><option value="오후7시40분">오후7시40분</option><option value="오후7시50분">오후7시50분</option><option value="오후8시">오후8시</option><option value="오후8시10분">오후8시10분</option><option value="오후8시20분">오후8시20분</option><option value="오후8시30분">오후8시30분</option><option value="오후8시40분">오후8시40분</option><option value="오후8시50분">오후8시50분</option></select>
+        <div id="e_deliveryTime-picker" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+    <select id="e_deliveryTime-type" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="e_deliveryTimeUpdate()">
+      <option value="">선택</option>
+      <option value="오전중">오전중</option>
+      <option value="오후중">오후중</option>
+      <option value="range">시간지정</option>
+    </select>
+    <div id="e_deliveryTime-range" style="display:none;align-items:center;gap:4px;flex-wrap:wrap;">
+      <select id="e_deliveryTime-sh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="e_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="e_deliveryTime-sm" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="e_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+      <span style="font-size:13px;color:#888;">~</span>
+      <select id="e_deliveryTime-eh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="e_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="e_deliveryTime-em" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="e_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+    </div>
+    <input type="hidden" id="e_deliveryTime" value="">
+  </div>
+  <script>
+  function e_deliveryTimeUpdate() {
+    const type = document.getElementById('e_deliveryTime-type').value;
+    const rangeDiv = document.getElementById('e_deliveryTime-range');
+    const hidden = document.getElementById('e_deliveryTime');
+    if (type === 'range') {
+      rangeDiv.style.display = 'flex';
+      const sh = document.getElementById('e_deliveryTime-sh').value;
+      const sm = document.getElementById('e_deliveryTime-sm').value;
+      const eh = document.getElementById('e_deliveryTime-eh').value;
+      const em = document.getElementById('e_deliveryTime-em').value;
+      if (sh) {
+        const start = sh + sm;
+        const end = eh ? '~' + eh + em : '';
+        hidden.value = start + end;
+      }
+    } else {
+      rangeDiv.style.display = 'none';
+      hidden.value = type;
+    }
+    calcEditTotal();
+  }
+  function e_deliveryTimeSetValue(val) {
+    if (!val) return;
+    const typeEl = document.getElementById('e_deliveryTime-type');
+    const rangeDiv = document.getElementById('e_deliveryTime-range');
+    const hidden = document.getElementById('e_deliveryTime');
+    hidden.value = val;
+    if (val === '오전중' || val === '오후중') {
+      typeEl.value = val;
+      rangeDiv.style.display = 'none';
+    } else {
+      typeEl.value = 'range';
+      rangeDiv.style.display = 'flex';
+      const parts = val.split('~');
+      const parseTime = (s) => {
+        const m = s.match(/^(오전|오후)(d+)(시(d+)분)?$/);
+        if (!m) return { h: '', m: '시' };
+        return { h: (m[1]||'') + m[2], m: m[4] ? '시' + m[4] + '분' : '시' };
+      };
+      if (parts[0]) {
+        const t = parseTime(parts[0]);
+        document.getElementById('e_deliveryTime-sh').value = t.h;
+        document.getElementById('e_deliveryTime-sm').value = t.m;
+      }
+      if (parts[1]) {
+        const t = parseTime(parts[1]);
+        document.getElementById('e_deliveryTime-eh').value = t.h;
+        document.getElementById('e_deliveryTime-em').value = t.m;
+      }
+    }
+  }
+  </script>
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">메모</span>
         <input id="e_memo" value="${o.memo||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
@@ -4951,7 +5223,75 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">빈소 위치</span><input id="ef_binsoLocation" value="${o.binsoLocation||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">떡 종류</span><input id="ef_tteokType" value="${o.tteokType||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><input id="ef_deliveryDate" type="date" value="${delivDate}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
-    <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><select id="ef_deliveryTime" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:#fff;"><option value="">시간 선택</option><option value="오전중">오전중</option><option value="오후중">오후중</option><option value="오전7시">오전7시</option><option value="오전7시10분">오전7시10분</option><option value="오전7시20분">오전7시20분</option><option value="오전7시30분">오전7시30분</option><option value="오전7시40분">오전7시40분</option><option value="오전7시50분">오전7시50분</option><option value="오전8시">오전8시</option><option value="오전8시10분">오전8시10분</option><option value="오전8시20분">오전8시20분</option><option value="오전8시30분">오전8시30분</option><option value="오전8시40분">오전8시40분</option><option value="오전8시50분">오전8시50분</option><option value="오전9시">오전9시</option><option value="오전9시10분">오전9시10분</option><option value="오전9시20분">오전9시20분</option><option value="오전9시30분">오전9시30분</option><option value="오전9시40분">오전9시40분</option><option value="오전9시50분">오전9시50분</option><option value="오전10시">오전10시</option><option value="오전10시10분">오전10시10분</option><option value="오전10시20분">오전10시20분</option><option value="오전10시30분">오전10시30분</option><option value="오전10시40분">오전10시40분</option><option value="오전10시50분">오전10시50분</option><option value="오전11시">오전11시</option><option value="오전11시10분">오전11시10분</option><option value="오전11시20분">오전11시20분</option><option value="오전11시30분">오전11시30분</option><option value="오전11시40분">오전11시40분</option><option value="오전11시50분">오전11시50분</option><option value="오후12시">오후12시</option><option value="오후12시10분">오후12시10분</option><option value="오후12시20분">오후12시20분</option><option value="오후12시30분">오후12시30분</option><option value="오후12시40분">오후12시40분</option><option value="오후12시50분">오후12시50분</option><option value="오후1시">오후1시</option><option value="오후1시10분">오후1시10분</option><option value="오후1시20분">오후1시20분</option><option value="오후1시30분">오후1시30분</option><option value="오후1시40분">오후1시40분</option><option value="오후1시50분">오후1시50분</option><option value="오후2시">오후2시</option><option value="오후2시10분">오후2시10분</option><option value="오후2시20분">오후2시20분</option><option value="오후2시30분">오후2시30분</option><option value="오후2시40분">오후2시40분</option><option value="오후2시50분">오후2시50분</option><option value="오후3시">오후3시</option><option value="오후3시10분">오후3시10분</option><option value="오후3시20분">오후3시20분</option><option value="오후3시30분">오후3시30분</option><option value="오후3시40분">오후3시40분</option><option value="오후3시50분">오후3시50분</option><option value="오후4시">오후4시</option><option value="오후4시10분">오후4시10분</option><option value="오후4시20분">오후4시20분</option><option value="오후4시30분">오후4시30분</option><option value="오후4시40분">오후4시40분</option><option value="오후4시50분">오후4시50분</option><option value="오후5시">오후5시</option><option value="오후5시10분">오후5시10분</option><option value="오후5시20분">오후5시20분</option><option value="오후5시30분">오후5시30분</option><option value="오후5시40분">오후5시40분</option><option value="오후5시50분">오후5시50분</option><option value="오후6시">오후6시</option><option value="오후6시10분">오후6시10분</option><option value="오후6시20분">오후6시20분</option><option value="오후6시30분">오후6시30분</option><option value="오후6시40분">오후6시40분</option><option value="오후6시50분">오후6시50분</option><option value="오후7시">오후7시</option><option value="오후7시10분">오후7시10분</option><option value="오후7시20분">오후7시20분</option><option value="오후7시30분">오후7시30분</option><option value="오후7시40분">오후7시40분</option><option value="오후7시50분">오후7시50분</option><option value="오후8시">오후8시</option><option value="오후8시10분">오후8시10분</option><option value="오후8시20분">오후8시20분</option><option value="오후8시30분">오후8시30분</option><option value="오후8시40분">오후8시40분</option><option value="오후8시50분">오후8시50분</option></select></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><div id="ef_deliveryTime-picker" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+    <select id="ef_deliveryTime-type" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="ef_deliveryTimeUpdate()">
+      <option value="">선택</option>
+      <option value="오전중">오전중</option>
+      <option value="오후중">오후중</option>
+      <option value="range">시간지정</option>
+    </select>
+    <div id="ef_deliveryTime-range" style="display:none;align-items:center;gap:4px;flex-wrap:wrap;">
+      <select id="ef_deliveryTime-sh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="ef_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="ef_deliveryTime-sm" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="ef_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+      <span style="font-size:13px;color:#888;">~</span>
+      <select id="ef_deliveryTime-eh" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="ef_deliveryTimeUpdate()"><option value="">시</option><option value="오전7">오전7시</option><option value="오전8">오전8시</option><option value="오전9">오전9시</option><option value="오전10">오전10시</option><option value="오전11">오전11시</option><option value="오후12">오후12시</option><option value="오후1">오후1시</option><option value="오후2">오후2시</option><option value="오후3">오후3시</option><option value="오후4">오후4시</option><option value="오후5">오후5시</option><option value="오후6">오후6시</option><option value="오후7">오후7시</option><option value="오후8">오후8시</option></select>
+      <select id="ef_deliveryTime-em" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" onchange="ef_deliveryTimeUpdate()"><option value="시">00분</option><option value="시10분">10분</option><option value="시20분">20분</option><option value="시30분">30분</option><option value="시40분">40분</option><option value="시50분">50분</option></select>
+    </div>
+    <input type="hidden" id="ef_deliveryTime" value="">
+  </div>
+  <script>
+  function ef_deliveryTimeUpdate() {
+    const type = document.getElementById('ef_deliveryTime-type').value;
+    const rangeDiv = document.getElementById('ef_deliveryTime-range');
+    const hidden = document.getElementById('ef_deliveryTime');
+    if (type === 'range') {
+      rangeDiv.style.display = 'flex';
+      const sh = document.getElementById('ef_deliveryTime-sh').value;
+      const sm = document.getElementById('ef_deliveryTime-sm').value;
+      const eh = document.getElementById('ef_deliveryTime-eh').value;
+      const em = document.getElementById('ef_deliveryTime-em').value;
+      if (sh) {
+        const start = sh + sm;
+        const end = eh ? '~' + eh + em : '';
+        hidden.value = start + end;
+      }
+    } else {
+      rangeDiv.style.display = 'none';
+      hidden.value = type;
+    }
+    
+  }
+  function ef_deliveryTimeSetValue(val) {
+    if (!val) return;
+    const typeEl = document.getElementById('ef_deliveryTime-type');
+    const rangeDiv = document.getElementById('ef_deliveryTime-range');
+    const hidden = document.getElementById('ef_deliveryTime');
+    hidden.value = val;
+    if (val === '오전중' || val === '오후중') {
+      typeEl.value = val;
+      rangeDiv.style.display = 'none';
+    } else {
+      typeEl.value = 'range';
+      rangeDiv.style.display = 'flex';
+      const parts = val.split('~');
+      const parseTime = (s) => {
+        const m = s.match(/^(오전|오후)(d+)(시(d+)분)?$/);
+        if (!m) return { h: '', m: '시' };
+        return { h: (m[1]||'') + m[2], m: m[4] ? '시' + m[4] + '분' : '시' };
+      };
+      if (parts[0]) {
+        const t = parseTime(parts[0]);
+        document.getElementById('ef_deliveryTime-sh').value = t.h;
+        document.getElementById('ef_deliveryTime-sm').value = t.m;
+      }
+      if (parts[1]) {
+        const t = parseTime(parts[1]);
+        document.getElementById('ef_deliveryTime-eh').value = t.h;
+        document.getElementById('ef_deliveryTime-em').value = t.m;
+      }
+    }
+  }
+  </script></div>
     <div class="modal-detail-row"><span class="modal-detail-label">상품금액</span><input id="ef_priceProduct" type="number" value="${o.priceProduct||0}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;" oninput="calcFuneralEditTotal()">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송비</span><input id="ef_priceDelivery" type="number" value="${o.priceDelivery||0}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;" oninput="calcFuneralEditTotal()">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">할인</span><input id="ef_priceDiscount" type="number" value="${o.priceDiscount||0}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;" oninput="calcFuneralEditTotal()">원</div>
