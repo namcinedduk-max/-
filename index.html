@@ -1629,8 +1629,16 @@
 
       <div id="settings-quickfee" style="display:none;margin-top:8px;">
         <p style="font-size:12px;color:var(--brown-light);margin-bottom:12px;">동 이름으로 주소 검색 시 배송비에 자동입력돼요.</p>
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-          <input id="quickfee-new-dong" placeholder="동 이름 (예: 갈마동)" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <select id="quickfee-new-gu" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <option value="">구 선택</option>
+            <option value="동구">동구</option>
+            <option value="중구">중구</option>
+            <option value="서구">서구</option>
+            <option value="유성구">유성구</option>
+            <option value="대덕구">대덕구</option>
+          </select>
+          <input id="quickfee-new-dong" placeholder="동 이름 (예: 갈마동)" style="flex:1;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <input id="quickfee-new-fee" type="number" placeholder="요금" style="width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <button onclick="addQuickFeeItem()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
@@ -1683,43 +1691,49 @@
 
 <script>
 
-// ============ 퀵비 요금표 ============
+// ============ 퀵비 요금표 (구별 구분) ============
 const QUICK_FEE_TABLE = {
-  '가양동':7000,'가오동':9000,'구도동':10000,'낭월동':9000,'내탑동':25000,
-  '대별동':9000,'대성동':7000,'마산동':25000,'비룡동':10000,'사성동':25000,
-  '산내동':9000,'삼괴동':10000,'삼성동':7000,'산정동':10000,'상소동':20000,
-  '성남동':8000,'세천동':10000,'소제동':7000,'소호동':15000,'신상동':20000,
-  '신안동':15000,'신촌동':20000,'신하동':15000,'신흥동':7000,'오동':25000,
-  '용계동':15000,'용운동':8000,'용전동':8000,'원동':7000,'이사동':10000,
-  '이동':7000,'자양동':7000,'장척동':15000,'정동':7000,'주산동':15000,
-  '주촌동':25000,'중동':7000,'직동':25000,'천동':7000,'추동':20000,
-  '판암동':7000,'하소동':20000,'홍도동':8000,'홍룡동':7000,'효평동':25000,
-  '구완동':20000,'금동':20000,'대사동':7000,'대흥동':7000,'목달동':15000,
-  '목동':7000,'문창동':8000,'문화동':7000,'부사동':7000,'사정동':8000,
-  '산성동':8000,'선교동':7000,'선화동':7000,'안영동':7000,'어남동':20000,
-  '오룡동':7000,'오류동':7000,'옥계동':7000,'올미동':7000,'우명동':7000,
-  '유천동':7000,'은행동':7000,'정생동':15000,'중추동':7000,'침산동':7000,
-  '태평동':7000,'호동':7000,
-  '가수원동':9000,'가장동':8000,'갈마동':10000,'관저동':10000,'괴곡동':15000,
-  '괴정동':8000,'도마동':8000,'도안동':10000,'둔산동':9000,'만년동':10000,
-  '매노동':25000,'변동':8000,'복수동':9000,'봉곡동':25000,'산직동':25000,
-  '용문동':8000,'월평동':8000,'유등동':25000,'원앙동':25000,'장안동':25000,
-  '정림동':8000,'탄방동':8000,'흑석동':20000,'기성동':20000,
-  '가정동':12000,'갑동':15000,'계산동':13000,'관평동':14000,'교촌동':12000,
-  '구룡동':25000,'구성동':12000,'구암동':12000,'금고동':25000,'금탄동':30000,
-  '노은동':13000,'덕명동':14000,'덕진동':11000,'도룡동':25000,'둔곡동':25000,
-  '문지동':12000,'반석동':15000,'방동':25000,'방현동':14000,'복용동':12000,
-  '봉명동':16000,'봉산동':16000,'상대동':12000,'성북동':30000,'세동':30000,
-  '소정동':15000,'송강동':15000,'송정동':25000,'수남동':16000,'신동':30000,
-  '신봉동':16000,'신성동':13000,'안산동':18000,'어은동':12000,'온천동':11000,
-  '외삼동':15000,'용산동':14000,'원내동':12000,'원신흥동':11000,'원촌동':10000,
-  '자운동':14000,'장대동':12000,'전민동':12000,'죽동':13000,'지족동':15000,
-  '탑립동':14000,'학하동':12000,'화암동':13000,
-  '갈전동':25000,'대화동':15000,'덕소동':15000,'문평동':16000,'미호동':25000,
-  '법동':10000,'부수동':25000,'비래동':8000,'삼정동':25000,'상서동':14000,
-  '석봉동':15000,'송촌동':11000,'신대동':15000,'신탄진동':16000,'여수동':11000,
-  '오정동':8000,'와동':12000,'읍내동':10000,'이현동':25000,'중리동':14000,
-  '집현동':9000,'평촌동':15000,'황호동':25000,
+  // 동구
+  '동구_가양동':7000,'동구_가오동':7000,'동구_구도동':10000,'동구_낭월동':9000,'동구_내탑동':25000,
+  '동구_대동':7000,'동구_대별동':9000,'동구_대성동':8000,'동구_마산동':25000,'동구_비룡동':10000,
+  '동구_사성동':25000,'동구_산내동':9000,'동구_삼괴동':10000,'동구_삼성동':7000,'동구_삼정동':10000,
+  '동구_상소동':20000,'동구_성남동':8000,'동구_세천동':10000,'동구_소제동':7000,'동구_소호동':15000,
+  '동구_신상동':20000,'동구_신안동':7000,'동구_신촌동':20000,'동구_신하동':20000,'동구_신흥동':7000,
+  '동구_오동':25000,'동구_용계동':15000,'동구_용운동':8000,'동구_용전동':8000,'동구_원동':7000,
+  '동구_이사동':10000,'동구_인동':7000,'동구_자양동':7000,'동구_장척동':15000,'동구_정동':7000,
+  '동구_주산동':15000,'동구_주촌동':25000,'동구_중동':7000,'동구_직동':25000,'동구_천동':7000,
+  '동구_추동':20000,'동구_판암동':7000,'동구_하소동':20000,'동구_홍도동':8000,'동구_효동':7000,'동구_효평동':25000,
+  // 중구
+  '중구_구완동':20000,'중구_금동':20000,'중구_대사동':7000,'중구_대흥동':7000,'중구_목달동':15000,
+  '중구_목동':7000,'중구_무수동':15000,'중구_문창동':7000,'중구_문화동':7000,'중구_부사동':7000,
+  '중구_사정동':9000,'중구_산성동':8000,'중구_석교동':7000,'중구_선화동':7000,'중구_안영동':10000,
+  '중구_어남동':20000,'중구_오류동':7000,'중구_옥계동':7000,'중구_용두동':7000,'중구_유천동':7000,
+  '중구_은행동':7000,'중구_정생동':15000,'중구_중촌동':7000,'중구_침산동':15000,'중구_태평동':7000,'중구_호동':7000,
+  // 서구
+  '서구_가수원동':9000,'서구_가장동':8000,'서구_갈마동':10000,'서구_관저동':10000,'서구_괴곡동':15000,
+  '서구_괴정동':8000,'서구_내동':8000,'서구_도마동':8000,'서구_도안동':10000,'서구_둔산동':9000,
+  '서구_만년동':10000,'서구_매노동':25000,'서구_변동':8000,'서구_복수동':9000,'서구_봉곡동':25000,
+  '서구_산직동':25000,'서구_오동':25000,'서구_용문동':8000,'서구_용촌동':25000,'서구_우명동':25000,
+  '서구_원정동':25000,'서구_월평동':10000,'서구_장안동':25000,'서구_정림동':8000,'서구_탄방동':8000,
+  '서구_평촌동':25000,'서구_흑석동':20000,'서구_기성동':20000,
+  // 유성구
+  '유성구_가정동':12000,'유성구_갑동':15000,'유성구_계산동':13000,'유성구_관평동':14000,'유성구_교촌동':12000,
+  '유성구_구룡동':25000,'유성구_구성동':12000,'유성구_구암동':12000,'유성구_궁동':12000,'유성구_금고동':25000,
+  '유성구_금탄동':30000,'유성구_노은동':13000,'유성구_대동':25000,'유성구_대정동':13000,'유성구_덕명동':14000,
+  '유성구_덕진동':14000,'유성구_도룡동':11000,'유성구_둔곡동':25000,'유성구_문지동':12000,'유성구_반석동':15000,
+  '유성구_방동':25000,'유성구_방현동':14000,'유성구_복용동':12000,'유성구_봉명동':12000,'유성구_봉산동':16000,
+  '유성구_상대동':12000,'유성구_성북동':30000,'유성구_세동':30000,'유성구_송강동':15000,'유성구_송정동':25000,
+  '유성구_수남동':16000,'유성구_신동':30000,'유성구_신봉동':16000,'유성구_신성동':13000,'유성구_안산동':18000,
+  '유성구_어은동':12000,'유성구_온천동':11000,'유성구_외삼동':15000,'유성구_용계동':12000,'유성구_용산동':14000,
+  '유성구_원내동':12000,'유성구_원신흥동':11000,'유성구_원촌동':10000,'유성구_자운동':14000,'유성구_장대동':12000,
+  '유성구_장동':14000,'유성구_전민동':12000,'유성구_죽동':13000,'유성구_지족동':15000,'유성구_추목동':16000,
+  '유성구_탑립동':14000,'유성구_하기동':14000,'유성구_학하동':12000,'유성구_화암동':13000,
+  // 대덕구
+  '대덕구_갈전동':25000,'대덕구_대화동':10000,'대덕구_덕암동':15000,'대덕구_목상동':16000,'대덕구_문평동':16000,
+  '대덕구_미호동':25000,'대덕구_법동':10000,'대덕구_부수동':25000,'대덕구_비래동':8000,'대덕구_삼정동':25000,
+  '대덕구_상서동':14000,'대덕구_석봉동':15000,'대덕구_송촌동':9000,'대덕구_신대동':11000,'대덕구_신일동':15000,
+  '대덕구_신탄진동':16000,'대덕구_연축동':11000,'대덕구_오정동':8000,'대덕구_와동':12000,'대덕구_용호동':25000,
+  '대덕구_읍내동':10000,'대덕구_이현동':25000,'대덕구_장동':14000,'대덕구_중리동':9000,'대덕구_평촌동':15000,
 };
 
 function loadQuickFeeTable() {
@@ -1740,31 +1754,45 @@ function saveQuickFeeSettings() {
 function renderQuickFeeList() {
   const list = document.getElementById('quickfee-list');
   if (!list) return;
-  const entries = Object.entries(QUICK_FEE_TABLE).sort((a,b) => a[0].localeCompare(b[0], 'ko'));
-  list.innerHTML = entries.map(([dong, fee]) => `
-    <div style="display:flex;align-items:center;gap:8px;background:var(--cream);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;">
-      <span style="flex:1;font-size:14px;font-weight:600;">${dong}</span>
-      <input type="number" value="${fee}" style="width:90px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:right;"
-        onchange="QUICK_FEE_TABLE['${dong}']=Number(this.value)">
-      <span style="font-size:13px;color:#888;">원</span>
-      <button onclick="deleteQuickFeeItem('${dong}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:700;">✕</button>
-    </div>
-  `).join('');
+  const guOrder = ['동구','중구','서구','유성구','대덕구'];
+  const grouped = {};
+  Object.entries(QUICK_FEE_TABLE).forEach(([key, fee]) => {
+    const [gu, dong] = key.split('_');
+    if (!grouped[gu]) grouped[gu] = [];
+    grouped[gu].push({ key, dong, fee });
+  });
+  const guColors = {'동구':'#e8f4fd','중구':'#fff3e0','서구':'#f3e8ff','유성구':'#e8f5e9','대덕구':'#fce4ec'};
+  const guBorder = {'동구':'#2196F3','중구':'#FF9800','서구':'#9C27B0','유성구':'#4CAF50','대덕구':'#E91E63'};
+  list.innerHTML = guOrder.filter(gu => grouped[gu]).map(gu => {
+    const items = grouped[gu].sort((a,b) => a.dong.localeCompare(b.dong, 'ko'));
+    return `<div style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:800;color:#fff;background:${guBorder[gu]};padding:6px 12px;border-radius:8px;margin-bottom:6px;">${gu}</div>
+      ${items.map(({key, dong, fee}) => `
+        <div style="display:flex;align-items:center;gap:8px;background:${guColors[gu]};border:1.5px solid ${guBorder[gu]}33;border-radius:8px;padding:7px 10px;margin-bottom:4px;">
+          <span style="flex:1;font-size:14px;font-weight:600;">${dong}</span>
+          <input type="number" value="${fee}" style="width:90px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:right;"
+            onchange="QUICK_FEE_TABLE['${key}']=Number(this.value)">
+          <span style="font-size:13px;color:#888;">원</span>
+          <button onclick="deleteQuickFeeItem('${key}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:700;">✕</button>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
 }
 
 function addQuickFeeItem() {
+  const gu = document.getElementById('quickfee-new-gu').value;
   const dong = document.getElementById('quickfee-new-dong').value.trim();
   const fee = parseInt(document.getElementById('quickfee-new-fee').value) || 0;
+  if (!gu) { showToast('구를 선택해주세요.', 'error'); return; }
   if (!dong) { showToast('동 이름을 입력해주세요.', 'error'); return; }
   if (!fee) { showToast('요금을 입력해주세요.', 'error'); return; }
-  if (!dong.endsWith('동') && !dong.endsWith('읍') && !dong.endsWith('면')) {
-    showToast('동 이름은 "동"으로 끝나야 해요. (예: 갈마동)', 'error'); return;
-  }
-  QUICK_FEE_TABLE[dong] = fee;
+  const key = gu + '_' + dong;
+  QUICK_FEE_TABLE[key] = fee;
   document.getElementById('quickfee-new-dong').value = '';
   document.getElementById('quickfee-new-fee').value = '';
   renderQuickFeeList();
-  showToast('✅ ' + dong + ' ' + fee.toLocaleString() + '원 추가됐어요!', 'success');
+  showToast('✅ ' + gu + ' ' + dong + ' ' + fee.toLocaleString() + '원 추가됐어요!', 'success');
 }
 
 function deleteQuickFeeItem(dong) {
@@ -1772,14 +1800,20 @@ function deleteQuickFeeItem(dong) {
   renderQuickFeeList();
 }
 
-function getQuickFee(dong) {
+function getQuickFee(dong, gu) {
   if (!dong) return null;
-  const key = dong.replace(/^.*?([가-힣]+동).*$/, '$1');
-  return QUICK_FEE_TABLE[key] || null;
+  // 구+동 조합으로 먼저 검색
+  if (gu) {
+    const key = gu + '_' + dong;
+    if (QUICK_FEE_TABLE[key] !== undefined) return QUICK_FEE_TABLE[key];
+  }
+  // 구 없으면 동 이름만으로 검색 (첫 번째 매칭)
+  const matched = Object.entries(QUICK_FEE_TABLE).find(([k]) => k.endsWith('_' + dong));
+  return matched ? matched[1] : null;
 }
 
-function applyQuickFee(dong, feeFieldId, updateFn) {
-  const fee = getQuickFee(dong);
+function applyQuickFee(dong, feeFieldId, updateFn, gu) {
+  const fee = getQuickFee(dong, gu);
   if (fee !== null) {
     const feeEl = document.getElementById(feeFieldId);
     if (feeEl) {
@@ -1850,14 +1884,15 @@ function openAddrSearch(addrFieldId, detailFieldId) {
       if (detailEl) { detailEl.value = ''; detailEl.focus(); }
       // 퀵비 자동입력
       if (dong) {
+        const gu = data.sigunguCode ? '' : (data.address || '').match(/(동구|중구|서구|유성구|대덕구)/)?.[1] || '';
         if (_addrTargetField === 'g_addr1') {
-          applyQuickFee(dong, 'g_deliveryFee', updateGTotal);
+          applyQuickFee(dong, 'g_deliveryFee', updateGTotal, gu);
         } else if (_addrTargetField === 'deliveryAddr1') {
-          applyQuickFee(dong, 'priceDelivery', calcTotal);
+          applyQuickFee(dong, 'priceDelivery', calcTotal, gu);
         } else if (_addrTargetField === 'multiAddr') {
-          applyQuickFee(dong, 'multiDeliveryFee', null);
+          applyQuickFee(dong, 'multiDeliveryFee', null, gu);
         } else if (_addrTargetField === 'e_addr1') {
-          applyQuickFee(dong, 'e_priceDelivery', calcEditTotal);
+          applyQuickFee(dong, 'e_priceDelivery', calcEditTotal, gu);
         }
       }
     },
