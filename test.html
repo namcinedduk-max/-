@@ -2797,7 +2797,7 @@ function renderOrderCatSettings() {
         'onchange="updateOrderCatName(\'' + cat.id + '\',this.value)">' +
         '<button onclick="deleteOrderCat(\'' + cat.id + '\')" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:6px 8px;cursor:pointer;font-size:11px;">✕</button>' +
         '</div>' +
-        '<div style="padding:8px;min-height:80px;" data-cat-id=\'" + cat.id + "\' ondragover="onCatDragOver(event)" ondrop="onCatDrop(event)">' +
+        '<div style="padding:8px;min-height:80px;" data-cat-id="' + cat.id + '" ondragover="onCatDragOver(event)" ondrop="onCatDrop(event)">' +
         cat.items.map(function(name) {
           const label = name === '__분홍세트__' ? '🎁 분홍세트' : name === '__은혜세트__' ? '🎁 은혜세트' : '🍡 ' + name;
           return '<div draggable="true" data-item="' + name.replace(/"/g,'&quot;') + '" data-from-cat="' + cat.id + '" ' +
