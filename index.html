@@ -4626,9 +4626,15 @@ function renderFuneralList() {
 
   tbody.innerHTML = filtered.map((o, i) => {
     const payBadge = getPayBadge(o.payStatus);
-    return `<tr onclick="openFuneralModal(${o.id})" style="cursor:pointer;">
+    const funeralColor = o.funeralName === '대청장례식장'
+      ? 'background:#e8f4fd;border-left:4px solid #2196F3;'
+      : o.funeralName === '충대장례식장'
+      ? 'background:#fdf3e8;border-left:4px solid #FF9800;'
+      : '';
+    const nameColor = o.funeralName === '대청장례식장' ? 'color:#1565C0;' : o.funeralName === '충대장례식장' ? 'color:#E65100;' : '';
+    return `<tr onclick="openFuneralModal(${o.id})" style="cursor:pointer;${funeralColor}">
       <td style="color:var(--brown-light);font-size:12px;">#${i+1}</td>
-      <td><strong>${o.funeralName||o.receiverName}</strong></td>
+      <td><strong style="${nameColor}">${o.funeralName||o.receiverName}</strong></td>
       <td>${o.binsoLocation||'-'}</td>
       <td>${o.memo ? `<span style="color:var(--accent-red);font-weight:700;font-size:12px;">⚠️ ${o.memo}</span>` : '-'}</td>
       <td><span style="font-weight:600;">${o.tteokItems ? o.tteokItems.map(t => t.name + (t.qty ? ' '+t.qty : '')).join('<br>') : String(o.tteokType||'').split(', ').join('<br>')}</span></td>
