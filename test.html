@@ -1753,6 +1753,17 @@
         <div style="margin-bottom:16px;">
           <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🍡 전체 떡 목록 & 단가</div>
           <p style="font-size:12px;color:var(--brown-light);margin-bottom:8px;">단가를 수정하고 💾 저장하세요.</p>
+
+          <!-- 떡 추가 폼 -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#f0f7ff;border:1.5px solid #90CAF9;border-radius:10px;padding:10px;margin-bottom:10px;">
+            <input id="newTteok-global-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="newTteok-global-unit" type="number" placeholder="개당단가" style="width:85px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="newTteok-global-box" type="number" placeholder="박스단가" style="width:85px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="newTteok-global-boxunit" type="text" placeholder="박스단위(예:5kg)" style="width:90px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="newTteok-global-note" type="text" placeholder="참고사항" style="flex:2;min-width:100px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addTteokToGlobalList()" style="padding:7px 16px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+
           <div id="tteok-all-list" style="display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto;"></div>
         </div>
 
@@ -2201,6 +2212,7 @@ function renderTteokAllList() {
       '<span style="font-size:11px;color:#888;">원/</span>' +
       '<input type="text" value="' + (db.boxUnit||'') + '" style="width:50px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="TTEOK_DB[' + key + '].boxUnit=this.value">' +
       (db.note ? '<span style="font-size:11px;color:#856404;font-weight:600;">⚠️ ' + db.note + '</span>' : '') +
+      '<button onclick="deleteTteokFromGlobalList(' + key + ')" style="margin-left:auto;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
       '</div>';
   }).join('');
 
@@ -2921,6 +2933,44 @@ function saveOrderCatAndApply() {
   } else {
     showToast('✅ 이 기기에 저장됐어요!', 'success');
   }
+}
+
+
+function addTteokToGlobalList() {
+  const name = document.getElementById('newTteok-global-name').value.trim();
+  const unitPrice = parseInt(document.getElementById('newTteok-global-unit').value) || 0;
+  const boxPrice = parseInt(document.getElementById('newTteok-global-box').value) || 0;
+  const boxUnit = document.getElementById('newTteok-global-boxunit').value.trim();
+  const note = document.getElementById('newTteok-global-note').value.trim();
+
+  if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
+  if (TTEOK_DB[name]) { showToast('이미 있는 떡이에요!', 'error'); return; }
+
+  TTEOK_DB[name] = { unit: '개', unitPrice: unitPrice, boxPrice: boxPrice, boxUnit: boxUnit, note: note };
+
+  // 입력 초기화
+  document.getElementById('newTteok-global-name').value = '';
+  document.getElementById('newTteok-global-unit').value = '';
+  document.getElementById('newTteok-global-box').value = '';
+  document.getElementById('newTteok-global-boxunit').value = '';
+  document.getElementById('newTteok-global-note').value = '';
+
+  renderTteokAllList();
+  renderOrderCatSettings(); // 미배정에도 반영
+  showToast('✅ ' + name + ' 추가됐어요!', 'success');
+}
+
+
+function deleteTteokFromGlobalList(name) {
+  if (!confirm(name + '을(를) 삭제할까요?')) return;
+  delete TTEOK_DB[name];
+  // 카테고리에서도 제거
+  window.ORDER_CATEGORIES.forEach(function(cat) {
+    cat.items = cat.items.filter(function(n){ return n !== name; });
+  });
+  renderTteokAllList();
+  renderOrderCatSettings();
+  showToast('🗑 ' + name + ' 삭제됐어요.', 'error');
 }
 
 // ============ 퀵비 요금표 (구별 구분) ============
