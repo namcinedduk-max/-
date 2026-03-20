@@ -2212,7 +2212,7 @@ function renderTteokAllList() {
       '<span style="font-size:11px;color:#888;">원/</span>' +
       '<input type="text" value="' + (db.boxUnit||'') + '" style="width:50px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="TTEOK_DB[' + key + '].boxUnit=this.value">' +
       (db.note ? '<span style="font-size:11px;color:#856404;font-weight:600;">⚠️ ' + db.note + '</span>' : '') +
-      '<button onclick="deleteTteokFromGlobalList(' + key + ')" style="margin-left:auto;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
+      '<button onclick="deleteTteokFromGlobalList(\'' + name + '\')" style="margin-left:auto;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
       '</div>';
   }).join('');
 
@@ -4680,9 +4680,11 @@ function addTteokItem() {
   const qty = parseFloat(document.getElementById('tteokQty').value) || 0;
   const db = TTEOK_DB[name];
   const unitPrice = db ? (unit === 'box' ? (db.boxPrice||0) : (db.unitPrice||0)) : 0;
-  const unitLabel = unit === 'box' ? (db ? db.boxUnit||'박스' : '박스') : '개';
+  const boxUnitLabel = db ? db.boxUnit||'박스' : '박스';
+  const unitLabel = unit === 'box' ? '박스' : '개';
   const price = Math.round(unitPrice * qty);
-  const qtyStr = qty ? String(qty) + unitLabel : '';
+  // 박스면 "1박스(50개)" 형식, 개당이면 "20개" 형식
+  const qtyStr = qty ? (unit === 'box' ? String(qty) + '박스(' + boxUnitLabel + ')' : String(qty) + '개') : '';
   tteokItems.push({ name: name, qty: qtyStr, price: price });
   renderTteokList();
   if (price > 0) {
