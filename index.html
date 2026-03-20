@@ -1691,6 +1691,15 @@
 
 <script>
 
+
+// ============ 배송비 자동 할인 계산 ============
+function calcDeliveryDiscount(productPrice, deliveryFee) {
+  if (productPrice < 60000) return 0;
+  const maxDiscount = Math.floor(productPrice / 60000) * 5000;
+  const cappedDiscount = Math.min(maxDiscount, 30000); // 최대 3만원
+  return Math.min(cappedDiscount, deliveryFee); // 배송비 초과 불가
+}
+
 // ============ 퀵비 요금표 (구별 구분) ============
 const QUICK_FEE_TABLE = {
   // 동구
@@ -3124,13 +3133,15 @@ function updateGTotal() { updateGSummary(); }
 
 function updateGSummary() {
   const product = gTteokItems.reduce((s,t) => s+(t.price||0), 0);
-  const delivery = document.getElementById('g_deliveryMethod') ? 0 : (parseInt(document.getElementById('g_deliveryFee')?.value)||0);
   const deliveryFee = parseInt(document.getElementById('g_deliveryFee')?.value)||0;
-  const total = product + deliveryFee;
+  const autoDiscount = calcDeliveryDiscount(product, deliveryFee);
+  const total = product + deliveryFee - autoDiscount;
   const fmt = n => n.toLocaleString() + '원';
   if (document.getElementById('g_summary_product')) {
     document.getElementById('g_summary_product').textContent = fmt(product);
-    document.getElementById('g_summary_delivery').textContent = fmt(deliveryFee);
+    document.getElementById('g_summary_delivery').textContent = autoDiscount > 0
+      ? fmt(deliveryFee) + ' <span style="color:#2E7D32;font-size:11px;font-weight:700;">(-' + fmt(autoDiscount) + ' 할인)</span>'
+      : fmt(deliveryFee);
     document.getElementById('g_summary_total').textContent = fmt(total);
   }
 }
@@ -3369,7 +3380,18 @@ function selectPay(btn, method) {
 function calcTotal() {
   const p = parseInt(document.getElementById('priceProduct').value) || 0;
   const d = parseInt(document.getElementById('priceDelivery').value) || 0;
-  const dis = parseInt(document.getElementById('priceDiscount').value) || 0;
+  // 배송비 자동 할인 계산
+  const autoDiscount = calcDeliveryDiscount(p, d);
+  const discountEl = document.getElementById('priceDiscount');
+  if (discountEl && autoDiscount > 0) {
+    discountEl.value = autoDiscount;
+    discountEl.style.background = '#e8f5e9';
+    discountEl.title = '배송비 자동 할인 적용됨';
+  } else if (discountEl && autoDiscount === 0) {
+    discountEl.value = 0;
+    discountEl.style.background = '';
+  }
+  const dis = autoDiscount || (parseInt(discountEl?.value) || 0);
   const total = p + d - dis;
   document.getElementById('priceTotal').textContent = total.toLocaleString('ko-KR') + ' 원';
 }
@@ -4060,7 +4082,16 @@ function removeEditTteok(idx) {
 function calcEditTotal() {
   const p = parseInt(document.getElementById('e_priceProduct').value) || 0;
   const d = parseInt(document.getElementById('e_priceDelivery').value) || 0;
-  const dis = parseInt(document.getElementById('e_priceDiscount').value) || 0;
+  const autoDiscount = calcDeliveryDiscount(p, d);
+  const discountEl = document.getElementById('e_priceDiscount');
+  if (discountEl && autoDiscount > 0) {
+    discountEl.value = autoDiscount;
+    discountEl.style.background = '#e8f5e9';
+  } else if (discountEl && autoDiscount === 0) {
+    discountEl.value = 0;
+    discountEl.style.background = '';
+  }
+  const dis = autoDiscount || (parseInt(discountEl?.value) || 0);
   document.getElementById('e_priceTotal').textContent = (p + d - dis).toLocaleString() + '원';
 }
 
