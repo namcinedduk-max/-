@@ -1789,7 +1789,7 @@ function openAddrSearch(addrFieldId, detailFieldId) {
         if (_addrTargetField === 'g_addr1') {
           applyQuickFee(dong, 'g_deliveryFee', updateGTotal);
         } else if (_addrTargetField === 'deliveryAddr1') {
-          applyQuickFee(dong, 'priceDelivery', updateTotal);
+          applyQuickFee(dong, 'priceDelivery', calcTotal);
         } else if (_addrTargetField === 'multiAddr') {
           applyQuickFee(dong, 'multiDeliveryFee', null);
         } else if (_addrTargetField === 'e_addr1') {
