@@ -854,6 +854,7 @@
             <input type="number" id="g_deliveryFee" placeholder="0" min="0" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="updateGTotal()">
             <span style="font-size:13px;color:var(--brown-mid);">원</span>
           </div>
+          <div id="g_deliveryFee_note" style="margin-top:5px;font-size:11px;color:#2E7D32;font-weight:600;display:none;"></div>
         </div>
         <div style="margin-top:8px;display:flex;justify-content:space-between;">
           <button onclick="switchGuideStep(2)" style="padding:11px 28px;background:#e5e7eb;color:#555;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">← 이전</button>
@@ -1122,6 +1123,7 @@
             <div class="price-row">
               <span>배송비</span>
               <input type="number" id="priceDelivery" placeholder="0" style="width:140px;text-align:right;" oninput="calcTotal()">
+              <div id="priceDelivery_note" style="font-size:11px;color:#2E7D32;font-weight:600;margin-top:3px;display:none;"></div>
               <span>원</span>
             </div>
             <div class="price-row">
@@ -1797,14 +1799,47 @@ async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
   const timeEl = document.getElementById(timeFieldId);
   const feeEl = document.getElementById(feeFieldId);
   if (!feeEl || !dateEl || !dateEl.value) return;
-  const extra = await calcExtraDeliveryFee(dateEl.value, timeEl ? timeEl.value : '');
+
+  const deliveryTime = timeEl ? timeEl.value : '';
+  const deliveryDate = dateEl.value;
+
+  // 추가요금 항목별 계산
+  const date = new Date(deliveryDate);
+  const dow = date.getDay();
+  const year = date.getFullYear();
+  const holidays = await fetchHolidays(year);
+  const notes = [];
+  let extra = 0;
+
+  if (dow === 0 || dow === 6) { extra += 1000; notes.push('주말 +1,000원'); }
+  if (holidays.includes(deliveryDate)) { extra += 1000; notes.push('공휴일 +1,000원'); }
+  if (deliveryTime) {
+    const isPm = deliveryTime.includes('오후');
+    const numMatch = deliveryTime.match(/(\d+)시/);
+    if (numMatch) {
+      let h = parseInt(numMatch[1]);
+      if (isPm && h !== 12) h += 12;
+      if (!isPm && h === 12) h = 0;
+      if (h >= 15) { extra += 1000; notes.push('오후3시이후 +1,000원'); }
+    }
+    if (deliveryTime === '오후중') { extra += 1000; notes.push('오후중 +1,000원'); }
+  }
+
   const baseFee = parseInt(feeEl.dataset.baseFee !== undefined ? feeEl.dataset.baseFee : feeEl.value) || 0;
   feeEl.dataset.baseFee = baseFee;
-  const newFee = baseFee + extra;
-  if (newFee !== parseInt(feeEl.value)) {
-    feeEl.value = newFee;
-    if (extra > 0) showToast('⏰ 추가요금 ' + extra.toLocaleString() + '원 자동 적용!', '');
+  feeEl.value = baseFee + extra;
+
+  // 설명 표시
+  const noteEl = document.getElementById(feeFieldId + '_note');
+  if (noteEl) {
+    if (extra > 0) {
+      noteEl.textContent = '기본 ' + baseFee.toLocaleString() + '원 + ' + notes.join(', ');
+      noteEl.style.display = 'block';
+    } else {
+      noteEl.style.display = 'none';
+    }
   }
+
   if (updateFn) updateFn();
 }
 
@@ -1877,10 +1912,10 @@ function _timePickerSetValue(id, val) {
   }
 }
 
-function g_deliveryTimeUpdate() { _timePickerUpdate('g_deliveryTime', function(){ updateGTotal(); }); }
-function deliveryTimeCustomUpdate() { _timePickerUpdate('deliveryTimeCustom', function(){ calcTotal(); }); }
+function g_deliveryTimeUpdate() { _timePickerUpdate('g_deliveryTime', function(){ applyExtraFee('g_deliveryDate','g_deliveryTime','g_deliveryFee',updateGTotal); }); }
+function deliveryTimeCustomUpdate() { _timePickerUpdate('deliveryTimeCustom', function(){ applyExtraFee('deliveryDate','deliveryTimeCustom','priceDelivery',calcTotal); }); }
 function f_deliveryTimeUpdate() { _timePickerUpdate('f_deliveryTime', null); }
-function e_deliveryTimeUpdate() { _timePickerUpdate('e_deliveryTime', function(){ calcEditTotal(); }); }
+function e_deliveryTimeUpdate() { _timePickerUpdate('e_deliveryTime', function(){ applyExtraFee('e_deliveryDate','e_deliveryTime','e_priceDelivery',calcEditTotal); }); }
 function ef_deliveryTimeUpdate() { _timePickerUpdate('ef_deliveryTime', null); }
 
 // ============ 퀵비 요금표 (구별 구분) ============
@@ -2010,6 +2045,9 @@ function applyQuickFee(dong, feeFieldId, updateFn, gu) {
     const feeEl = document.getElementById(feeFieldId);
     if (feeEl) {
       feeEl.value = fee;
+      feeEl.dataset.baseFee = fee; // 기본 퀵비로 설정
+      const noteEl = document.getElementById(feeFieldId + '_note');
+      if (noteEl) noteEl.style.display = 'none';
       showToast('📦 ' + dong + ' 퀵비 ' + fee.toLocaleString() + '원 자동입력!', 'success');
       if (updateFn) updateFn();
     }
