@@ -2973,6 +2973,229 @@ function deleteTteokFromGlobalList(name) {
   showToast('🗑 ' + name + ' 삭제됐어요.', 'error');
 }
 
+
+// ============ 수정 모달 떡 선택 ============
+window._editCurrentCatId = '';
+window._editCurrentSetType = '';
+window._editCurrentSetItems = [];
+
+function initEditCatButtons() {
+  const container = document.getElementById('edit-cat-buttons');
+  if (!container) return;
+  container.innerHTML = window.ORDER_CATEGORIES.map(function(cat) {
+    return '<button type="button" onclick="selectEditCategory(\'' + cat.id + '\')" ' +
+      'id="edit-ocbtn-' + cat.id + '" ' +
+      'style="padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">' +
+      cat.icon + ' ' + cat.name + '</button>';
+  }).join('');
+  // 되 select 초기화
+  const doeSel = document.getElementById('edit-doeTteokSel');
+  if (doeSel) {
+    const doeItems = Object.keys(TTEOK_DB).filter(function(n){ return TTEOK_DB[n].unit === '되'; });
+    doeSel.innerHTML = '<option value="">-- 떡 선택 --</option>' +
+      doeItems.map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('');
+  }
+}
+
+function selectEditCategory(catId) {
+  window._editCurrentCatId = catId;
+  const cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
+  if (!cat) return;
+  window.ORDER_CATEGORIES.forEach(function(c) {
+    const btn = document.getElementById('edit-ocbtn-' + c.id);
+    if (btn) {
+      btn.style.background = c.id === catId ? 'var(--brown-deep)' : '#fff';
+      btn.style.color = c.id === catId ? '#fff' : 'var(--brown-mid)';
+      btn.style.borderColor = c.id === catId ? 'var(--brown-deep)' : 'var(--border)';
+    }
+  });
+  const setArea = document.getElementById('edit-tarea-set');
+  const eachArea = document.getElementById('edit-tarea-each');
+  const doeArea = document.getElementById('edit-tarea-doe');
+  const hasSet = cat.items.some(function(i){ return i.startsWith('__'); });
+  const hasDoe = cat.items.some(function(i){ return TTEOK_DB[i] && TTEOK_DB[i].unit === '되'; });
+  const hasEach = cat.items.some(function(i){ return !i.startsWith('__') && TTEOK_DB[i] && TTEOK_DB[i].unit !== '되'; });
+  if (setArea) setArea.style.display = hasSet ? 'block' : 'none';
+  if (eachArea) eachArea.style.display = (!hasSet && (hasEach || (!hasDoe))) ? 'block' : 'none';
+  if (doeArea) doeArea.style.display = (!hasSet && hasDoe && !hasEach) ? 'block' : 'none';
+}
+
+function filterEditTteok(kw) {
+  const dropdown = document.getElementById('edit-tteokDropdown');
+  if (!dropdown) return;
+  const catId = window._editCurrentCatId;
+  const cat = catId ? window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; }) : null;
+  const baseList = cat ? cat.items.filter(function(n){ return !n.startsWith('__'); }).concat(['직접입력'])
+    : Object.keys(TTEOK_DB).concat(['직접입력']);
+  const filtered = kw ? baseList.filter(function(n){ return n.includes(kw); }) : baseList;
+  dropdown.innerHTML = filtered.map(function(name) {
+    const db = TTEOK_DB[name];
+    const price = db ? (db.unitPrice||0) : 0;
+    const priceStr = price && name !== '직접입력' ? ' <span style="color:#888;font-size:10px;">' + price.toLocaleString() + '원</span>' : '';
+    return '<div onclick="selectEditTteokFromDropdown(\'' + name + '\')" ' +
+      'style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;" ' +
+      'onmouseenter="this.style.background=\'#f5f0eb\'" onmouseleave="this.style.background=\'#fff\'">' +
+      '<span>' + (name === '직접입력' ? '✏️ 직접입력' : '🍡 ' + name) + '</span>' + priceStr + '</div>';
+  }).join('');
+  dropdown.style.display = filtered.length > 0 ? 'block' : 'none';
+}
+
+function selectEditTteokFromDropdown(name) {
+  const searchInput = document.getElementById('edit-tteokSearchInput');
+  const hidden = document.getElementById('e_tteokSel');
+  const dropdown = document.getElementById('edit-tteokDropdown');
+  const custom = document.getElementById('e_tteokCustom');
+  const noteEl = document.getElementById('edit-tteokNote');
+  const preview = document.getElementById('edit-tteokPricePreview');
+  if (searchInput) searchInput.value = name === '직접입력' ? '' : name;
+  if (hidden) hidden.value = name;
+  if (custom) custom.style.display = name === '직접입력' ? 'block' : 'none';
+  if (dropdown) dropdown.style.display = 'none';
+  // 참고사항/단가 표시
+  if (TTEOK_DB[name]) {
+    const db = TTEOK_DB[name];
+    if (noteEl) { noteEl.textContent = db.note ? '⚠️ ' + db.note : ''; noteEl.style.display = db.note ? 'block' : 'none'; }
+    if (preview) { const p = db.unitPrice||0; preview.textContent = p ? p.toLocaleString() + '원/개' : ''; }
+  } else {
+    if (noteEl) noteEl.style.display = 'none';
+    if (preview) preview.textContent = '';
+  }
+}
+
+function updateEditTteokPrice() {
+  const hidden = document.getElementById('e_tteokSel');
+  const unitSel = document.getElementById('e_tteokUnitSel');
+  const qty = parseFloat(document.getElementById('e_tteokQty').value) || 0;
+  const preview = document.getElementById('edit-tteokPricePreview');
+  if (!hidden || !hidden.value || !TTEOK_DB[hidden.value]) { if(preview) preview.textContent=''; return; }
+  const db = TTEOK_DB[hidden.value];
+  const unit = unitSel ? unitSel.value : '개';
+  const p = unit === 'box' ? (db.boxPrice||0) : (db.unitPrice||0);
+  if(preview) preview.textContent = (p && qty) ? '= ' + (p*qty).toLocaleString() + '원' : '';
+}
+
+function editChooseSetType(setType) {
+  window._editCurrentSetType = setType;
+  ['분홍세트','은혜세트'].forEach(function(s) {
+    const b = document.getElementById('edit-setbtn-' + s);
+    if (b) { b.style.background = s===setType?'var(--brown-deep)':'#fff'; b.style.color = s===setType?'#fff':'var(--brown-mid)'; b.style.borderColor = s===setType?'var(--brown-deep)':'var(--border)'; }
+  });
+  document.getElementById('edit-setCompose').style.display = 'block';
+  document.getElementById('edit-setTypeName').textContent = '🎁 ' + setType;
+  window._editCurrentSetItems = [];
+  document.getElementById('edit-setTteokList').innerHTML = '';
+  document.getElementById('edit-setTotalQty').value = '';
+  document.getElementById('edit-setPricePreview').textContent = '';
+}
+
+function filterEditSetTteok(kw) {
+  const dropdown = document.getElementById('edit-setTteokDropdown');
+  if (!dropdown) return;
+  const list = getSetTteokList();
+  const filtered = kw ? list.filter(function(n){ return n.includes(kw); }) : list;
+  dropdown.innerHTML = filtered.map(function(name) {
+    const price = getTteokUnitPrice(name, window._editCurrentSetType, 'unit');
+    const priceStr = price ? ' <span style="color:#888;font-size:10px;">' + price.toLocaleString() + '원</span>' : '';
+    return '<div onclick="selectEditSetTteok(\'' + name + '\')" ' +
+      'style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;" ' +
+      'onmouseenter="this.style.background=\'#f5f0eb\'" onmouseleave="this.style.background=\'#fff\'">' +
+      '<span>🍡 ' + name + '</span>' + priceStr + '</div>';
+  }).join('');
+  dropdown.style.display = filtered.length > 0 ? 'block' : 'none';
+}
+
+function selectEditSetTteok(name) {
+  const si = document.getElementById('edit-setTteokSearchInput');
+  const hd = document.getElementById('edit-setTteokSel');
+  const dd = document.getElementById('edit-setTteokDropdown');
+  if (si) si.value = name;
+  if (hd) hd.value = name;
+  if (dd) dd.style.display = 'none';
+}
+
+function addEditSetTteok() {
+  const name = document.getElementById('edit-setTteokSel').value;
+  if (!name) { showToast('떡을 선택해주세요.', 'error'); return; }
+  window._editCurrentSetItems.push(name);
+  renderEditSetTteokList();
+  updateEditSetPrice();
+  document.getElementById('edit-setTteokSearchInput').value = '';
+  document.getElementById('edit-setTteokSel').value = '';
+}
+
+function renderEditSetTteokList() {
+  const list = document.getElementById('edit-setTteokList');
+  if (!list) return;
+  list.innerHTML = window._editCurrentSetItems.map(function(name, i) {
+    const price = getTteokUnitPrice(name, window._editCurrentSetType, 'unit');
+    return '<div style="display:flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 8px;margin-bottom:3px;font-size:12px;">' +
+      '<span style="flex:1;">🍡 ' + name + '</span>' +
+      '<span style="color:#888;">' + price.toLocaleString() + '원</span>' +
+      '<button type="button" onclick="window._editCurrentSetItems.splice(' + i + ',1);renderEditSetTteokList();updateEditSetPrice();" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:4px;padding:1px 5px;cursor:pointer;font-size:11px;">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+function updateEditSetPrice() {
+  const qty = parseFloat(document.getElementById('edit-setTotalQty').value) || 0;
+  const setType = window._editCurrentSetType;
+  const items = window._editCurrentSetItems;
+  const preview = document.getElementById('edit-setPricePreview');
+  if (!preview) return;
+  if (!qty || !items.length) { preview.textContent = ''; return; }
+  const unitSum = items.reduce(function(s,n){ return s + getTteokUnitPrice(n,setType,'unit'); }, 0);
+  const boxFee = setType==='분홍세트' ? (SET_DB['분홍세트'].boxFee||0) : 0;
+  preview.textContent = '총 ' + (Math.round(unitSum*qty)+boxFee).toLocaleString() + '원';
+}
+
+function addEditTteokFromSet() {
+  const setType = window._editCurrentSetType;
+  const items = window._editCurrentSetItems;
+  const qty = parseFloat(document.getElementById('edit-setTotalQty').value) || 0;
+  if (!setType) { showToast('세트를 선택해주세요.', 'error'); return; }
+  if (!items.length) { showToast('구성 떡을 추가해주세요.', 'error'); return; }
+  if (!qty) { showToast('총 수량을 입력해주세요.', 'error'); return; }
+  const setName = setType + '(' + items.join('/') + ')';
+  const unitSum = items.reduce(function(s,n){ return s + getTteokUnitPrice(n,setType,'unit'); }, 0);
+  const boxFee = setType==='분홍세트' ? (SET_DB['분홍세트'].boxFee||0) : 0;
+  const price = Math.round(unitSum*qty) + boxFee;
+  editTteokItems.push({ name: setName, qty: String(qty)+'개', price: price });
+  renderEditTteokList();
+  calcEditTotal();
+  // 초기화
+  window._editCurrentSetItems = [];
+  window._editCurrentSetType = '';
+  document.getElementById('edit-setCompose').style.display = 'none';
+  document.getElementById('edit-setTteokList').innerHTML = '';
+  document.getElementById('edit-setTotalQty').value = '';
+  document.getElementById('edit-setPricePreview').textContent = '';
+  ['분홍세트','은혜세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
+}
+
+function updateEditDoePrice() {
+  const name = document.getElementById('edit-doeTteokSel').value;
+  const doeQty = parseInt(document.getElementById('edit-doeQtySel').value) || 5;
+  const preview = document.getElementById('edit-doePricePreview');
+  if (!name || !TTEOK_DB[name]) { if(preview) preview.textContent=''; return; }
+  const total = Math.round((TTEOK_DB[name].doePrice||0)/5*doeQty);
+  if(preview) preview.textContent = total ? '= ' + total.toLocaleString() + '원' : '';
+}
+
+function addEditDoeTteok() {
+  const name = document.getElementById('edit-doeTteokSel').value;
+  const doeQtySel = document.getElementById('edit-doeQtySel');
+  const doeQty = parseInt(doeQtySel.value) || 5;
+  const doeLabel = doeQtySel.options[doeQtySel.selectedIndex].text;
+  if (!name) { showToast('떡을 선택해주세요.', 'error'); return; }
+  const db = TTEOK_DB[name];
+  const total = db ? Math.round((db.doePrice||0)/5*doeQty) : 0;
+  editTteokItems.push({ name: name, qty: doeLabel, price: total });
+  renderEditTteokList();
+  calcEditTotal();
+  document.getElementById('edit-doeTteokSel').value = '';
+  document.getElementById('edit-doePricePreview').textContent = '';
+}
+
 // ============ 퀵비 요금표 (구별 구분) ============
 const QUICK_FEE_TABLE = {
   // 동구
@@ -4683,8 +4906,23 @@ function addTteokItem() {
   const boxUnitLabel = db ? db.boxUnit||'박스' : '박스';
   const unitLabel = unit === 'box' ? '박스' : '개';
   const price = Math.round(unitPrice * qty);
-  // 박스면 "1박스(50개)" 형식, 개당이면 "20개" 형식
-  const qtyStr = qty ? (unit === 'box' ? String(qty) + '박스(' + boxUnitLabel + ')' : String(qty) + '개') : '';
+  // 박스면 "2박스(100개)" 형식으로 계산해서 표시
+  let qtyStr = '';
+  if (qty) {
+    if (unit === 'box') {
+      // boxUnit에서 숫자 추출 (예: "50개" → 50, "5kg" → 5)
+      const boxUnitNum = parseFloat(boxUnitLabel);
+      if (boxUnitNum && !isNaN(boxUnitNum)) {
+        const totalUnit = boxUnitNum * qty;
+        const suffix = boxUnitLabel.replace(/[0-9.]/g, '').trim(); // 단위(개/kg)
+        qtyStr = String(qty) + '박스(' + totalUnit + suffix + ')';
+      } else {
+        qtyStr = String(qty) + '박스(' + boxUnitLabel + ')';
+      }
+    } else {
+      qtyStr = String(qty) + '개';
+    }
+  }
   tteokItems.push({ name: name, qty: qtyStr, price: price });
   renderTteokList();
   if (price > 0) {
@@ -5313,6 +5551,7 @@ function renderModalEdit(o) {
   editTteokItems = o.tteokItems ? JSON.parse(JSON.stringify(o.tteokItems)) : [{name: o.tteokType, qty:''}];
   document.getElementById('modalContent').style.display = 'none';
   document.getElementById('modalEditContent').style.display = 'block';
+  // 카테고리 버튼 초기화는 innerHTML 세팅 후에
   document.getElementById('modalEditContent').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div class="modal-detail-row"><span class="modal-detail-label">보내는 분</span>
@@ -5330,18 +5569,74 @@ function renderModalEdit(o) {
       <div style="border-bottom:1px solid var(--brown-pale);padding-bottom:8px;">
         <div style="font-size:13px;font-weight:700;color:var(--brown-light);margin-bottom:6px;">떡 종류</div>
         <div id="editTteokList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <select id="e_tteokSel" onchange="onEditTteokChange(this)" style="flex:1;min-width:110px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-            <option value="">-- 선택 --</option>
-            <option>백설기</option><option>인절미</option><option>시루떡</option>
-            <option>송편</option><option>절편</option><option>찰떡</option>
-            <option>영양떡</option><option>콩떡</option><option>팥떡</option>
-            <option>무지개떡</option><option>두텁떡</option>
-            <option value="직접입력">✏️ 직접입력</option>
-          </select>
-          <input id="e_tteokCustom" placeholder="직접입력" style="display:none;flex:1;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-          <input id="e_tteokQty" placeholder="수량" style="width:80px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-          <button onclick="addEditTteok()" style="padding:6px 12px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">+ 추가</button>
+        <!-- 카테고리 버튼 -->
+        <div id="edit-cat-buttons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"></div>
+        <!-- 선물세트 영역 -->
+        <div id="edit-tarea-set" style="display:none;background:#fff9f0;border:1.5px solid var(--brown-pale);border-radius:10px;padding:10px;margin-bottom:6px;">
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button type="button" onclick="editChooseSetType('분홍세트')" id="edit-setbtn-분홍세트" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 분홍세트</button>
+            <button type="button" onclick="editChooseSetType('은혜세트')" id="edit-setbtn-은혜세트" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 은혜세트</button>
+          </div>
+          <div id="edit-setCompose" style="display:none;">
+            <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;"><span id="edit-setTypeName"></span> 구성 떡</div>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+              <div style="position:relative;flex:1;">
+                <input id="edit-setTteokSearchInput" type="text" placeholder="🔍 떡 검색..." autocomplete="off"
+                  style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;"
+                  oninput="filterEditSetTteok(this.value)" onfocus="filterEditSetTteok(this.value)" onblur="setTimeout(function(){var d=document.getElementById('edit-setTteokDropdown');if(d)d.style.display='none'},200)">
+                <div id="edit-setTteokDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:160px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                <input type="hidden" id="edit-setTteokSel">
+              </div>
+              <button type="button" onclick="addEditSetTteok()" style="padding:6px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">+ 추가</button>
+            </div>
+            <div id="edit-setTteokList" style="margin-bottom:6px;"></div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:12px;font-weight:700;color:var(--brown-mid);">총수량:</span>
+              <input type="number" id="edit-setTotalQty" placeholder="개수" min="1" style="width:70px;padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;" oninput="updateEditSetPrice()">
+              <span id="edit-setPricePreview" style="font-size:12px;font-weight:700;color:var(--accent-red);"></span>
+              <button type="button" onclick="addEditTteokFromSet()" style="margin-left:auto;padding:6px 12px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">+ 추가</button>
+            </div>
+          </div>
+        </div>
+        <!-- 개당/kg 영역 -->
+        <div id="edit-tarea-each" style="display:none;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
+            <div style="position:relative;flex:2;min-width:120px;">
+              <input id="edit-tteokSearchInput" type="text" placeholder="🔍 떡 검색..." autocomplete="off"
+                style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;"
+                oninput="filterEditTteok(this.value)" onfocus="filterEditTteok(this.value)" onblur="setTimeout(function(){var d=document.getElementById('edit-tteokDropdown');if(d)d.style.display='none'},200)">
+              <div id="edit-tteokDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:160px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+              <input type="hidden" id="e_tteokSel">
+            </div>
+            <select id="e_tteokUnitSel" style="width:65px;padding:6px 4px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:#fff;" onchange="updateEditTteokPrice()">
+              <option value="개">개</option>
+              <option value="box">박스</option>
+            </select>
+            <input id="e_tteokQty" placeholder="수량" style="width:70px;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;" oninput="updateEditTteokPrice()">
+          </div>
+          <input id="e_tteokCustom" placeholder="직접입력" style="display:none;width:100%;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:4px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span id="edit-tteokPricePreview" style="font-size:11px;color:var(--accent-red);font-weight:700;"></span>
+            <div id="edit-tteokNote" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:4px 8px;font-size:11px;color:#856404;font-weight:600;"></div>
+            <button onclick="addEditTteok()" style="margin-left:auto;padding:6px 12px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+        <!-- 되 영역 -->
+        <div id="edit-tarea-doe" style="display:none;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
+            <select id="edit-doeTteokSel" style="flex:2;min-width:120px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;" onchange="updateEditDoePrice()">
+              <option value="">-- 떡 선택 --</option>
+            </select>
+            <select id="edit-doeQtySel" style="width:100px;padding:6px 4px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:#fff;" onchange="updateEditDoePrice()">
+              <option value="5">5되</option><option value="10">1말</option>
+              <option value="15">1말5되</option><option value="20">2말</option>
+              <option value="25">2말5되</option><option value="30">3말</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span id="edit-doePricePreview" style="font-size:11px;color:var(--accent-red);font-weight:700;"></span>
+            <button onclick="addEditDoeTteok()" style="margin-left:auto;padding:6px 12px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 추가</button>
+          </div>
         </div>
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">배송지</span>
@@ -5428,15 +5723,17 @@ function renderModalEdit(o) {
 function renderEditTteokList() {
   const list = document.getElementById('editTteokList');
   if (!list) return;
-  list.innerHTML = editTteokItems.map((item, i) =>
-    '<div style="display:flex;align-items:center;gap:6px;background:var(--cream);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;">' +
-    '<span style="flex:1;font-size:13px;font-weight:600;">🍡 ' + item.name + '</span>' +
-    '<input type="text" value="' + (item.qty||'') + '" placeholder="수량" ' +
-    'oninput="editTteokItems['+i+'].qty=this.value" ' +
-    'style="width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
-    '<button onclick="removeEditTteok('+i+')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:700;">✕</button>' +
-    '</div>'
-  ).join('');
+  if (editTteokItems.length === 0) { list.innerHTML = ''; return; }
+  list.innerHTML = editTteokItems.map(function(item, i) {
+    const priceStr = item.price ? ' <span style="color:var(--accent-red);font-size:11px;font-weight:700;">' + item.price.toLocaleString() + '원</span>' : '';
+    return '<div class="tteok-item">' +
+      '<span class="tteok-item-name">🍡 ' + item.name + '</span>' +
+      '<input class="tteok-item-qty" type="text" value="' + (item.qty||'') + '" placeholder="수량" ' +
+      'oninput="editTteokItems[' + i + '].qty=this.value">' +
+      priceStr +
+      '<button class="tteok-item-del" onclick="removeEditTteok(' + i + ')">✕</button>' +
+      '</div>';
+  }).join('');
 }
 
 function onEditTteokChange(sel) {
@@ -5445,15 +5742,37 @@ function onEditTteokChange(sel) {
 }
 
 function addEditTteok() {
-  const sel = document.getElementById('e_tteokSel');
+  const hidden = document.getElementById('e_tteokSel');
   const custom = document.getElementById('e_tteokCustom');
-  const qty = document.getElementById('e_tteokQty').value.trim();
-  const name = sel.value === '직접입력' ? custom.value.trim() : sel.value;
+  const unitSel = document.getElementById('e_tteokUnitSel');
+  const unit = unitSel ? unitSel.value : '개';
+  const name = hidden && hidden.value === '직접입력' ? (custom ? custom.value.trim() : '') : (hidden ? hidden.value : '');
   if (!name) { showToast('떡 종류를 선택해주세요.', 'error'); return; }
-  editTteokItems.push({ name, qty });
+  const qty = parseFloat(document.getElementById('e_tteokQty').value) || 0;
+  const db = TTEOK_DB[name];
+  const unitPrice = db ? (unit==='box' ? (db.boxPrice||0) : (db.unitPrice||0)) : 0;
+  const boxUnitLabel = db ? db.boxUnit||'박스' : '박스';
+  let qtyStr = '';
+  if (qty) {
+    if (unit === 'box') {
+      const boxUnitNum = parseFloat(boxUnitLabel);
+      const suffix = boxUnitLabel.replace(/[0-9.]/g,'').trim();
+      qtyStr = !isNaN(boxUnitNum) ? String(qty)+'박스('+(boxUnitNum*qty)+suffix+')' : String(qty)+'박스('+boxUnitLabel+')';
+    } else { qtyStr = String(qty)+'개'; }
+  }
+  const price = Math.round(unitPrice * qty);
+  editTteokItems.push({ name: name, qty: qtyStr, price: price });
   renderEditTteokList();
-  sel.value = ''; custom.style.display = 'none'; custom.value = '';
+  calcEditTotal();
+  if (hidden) hidden.value = '';
+  if (custom) { custom.style.display='none'; custom.value=''; }
   document.getElementById('e_tteokQty').value = '';
+  const si = document.getElementById('edit-tteokSearchInput');
+  if (si) si.value = '';
+  const preview = document.getElementById('edit-tteokPricePreview');
+  if (preview) preview.textContent = '';
+  const noteEl = document.getElementById('edit-tteokNote');
+  if (noteEl) noteEl.style.display = 'none';
 }
 
 function removeEditTteok(idx) {
@@ -6258,6 +6577,7 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span><span class="modal-detail-value">${o.payStatus}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span><span class="modal-detail-value">${o.staffName}</span></div>
   `;
+  // 카테고리 버튼 초기화는 innerHTML 세팅 후에
   document.getElementById('modalEditContent').innerHTML = `
     <div class="modal-detail-row"><span class="modal-detail-label">장례식장</span>
       <select id="ef_funeralName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
