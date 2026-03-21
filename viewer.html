@@ -195,10 +195,11 @@ function setToday() {
 function timeToMinutes(timeStr) {
   if (!timeStr) return 9999;
   if (timeStr === '오전중') return 0;
-  if (timeStr === '오후중') return 780; // 오후 1시
-  // "오전9시30분~오후2시" 형식에서 시작 시간만 파싱
+  if (timeStr === '오후중') return 780;
+  // ~ 앞부분만 사용
   const start = timeStr.split('~')[0];
-  const m = start.match(/(오전|오후)(\d+)시(\d+)?분?/);
+  // "오전9시30분", "오전9시", "오전9" 등 다양한 형식 파싱
+  const m = start.match(/(오전|오후)\s*(\d+)\s*시?\s*(\d+)?\s*분?/);
   if (!m) return 9999;
   let h = parseInt(m[2]);
   const min = parseInt(m[3] || 0);
