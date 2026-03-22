@@ -2279,7 +2279,15 @@ function loadTteokPriceSettings() {
       if (d.ibajiSetConfigs) { d.ibajiSetConfigs.forEach(function(saved){ var cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customLabel) cfg.customLabel = saved.customLabel; } }); }
       if (d.deokSetConfigs) { d.deokSetConfigs.forEach(function(saved){ var cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customName) cfg.customName = saved.customName; if(saved.customLabel) cfg.customLabel = saved.customLabel; } }); }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
-      if (d.orderCategories) { try { window.ORDER_CATEGORIES = d.orderCategories; renderOrderCategoryButtons(); } catch(e){} }
+      if (d.orderCategories) { 
+        try { 
+          window.ORDER_CATEGORIES = d.orderCategories;
+          if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
+            window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
+          }
+          renderOrderCategoryButtons(); 
+        } catch(e){} 
+      }
     }).catch(function(){});
   }
 }
@@ -3003,7 +3011,15 @@ window._dragTteok = null; // 드래그 중인 떡 정보
 function loadOrderCategories() {
   // localStorage 기본값 먼저 적용
   const saved = localStorage.getItem('orderCategories');
-  if (saved) { try { window.ORDER_CATEGORIES = JSON.parse(saved); } catch(e){} }
+  if (saved) { 
+    try { 
+      window.ORDER_CATEGORIES = JSON.parse(saved);
+      // 이바지 카테고리 없으면 자동 추가
+      if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
+        window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
+      }
+    } catch(e){} 
+  }
   renderOrderCategoryButtons(); // 항상 먼저 렌더링
 
   // 구글 시트에서 최신값 불러오기
@@ -3849,22 +3865,8 @@ function selectIbajiConfig(configId) {
     }
   });
 
-  if (cfg.hasChalTteok) {
-    document.getElementById('deokChalArea').style.display = 'block';
-    document.getElementById('deokFixedAddRow').style.display = 'none';
-    renderIbajiChalSlots(cfg);
-  } else {
-    document.getElementById('deokChalArea').style.display = 'none';
-    document.getElementById('deokFixedAddRow').style.display = 'block';
-    const preview = document.getElementById('deokFixedPreview');
-    if (preview) {
-      const itemStr = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); }).join(', ');
-      preview.textContent = cfg.basePrice.toLocaleString() + '원 (' + itemStr + ')';
-    }
-    // 수량 input 초기화
-    const qtyEl = document.getElementById('deokQtyFixed');
-    if (qtyEl) qtyEl.value = 1;
-  }
+  // 이바지 카테고리 경로는 selectIbajiOrderType 사용
+  selectIbajiOrderType(cfg.setType);
 }
 
 function renderIbajiChalSlots(cfg) {
