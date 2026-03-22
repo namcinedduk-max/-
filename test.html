@@ -2536,11 +2536,11 @@ function onTteokQtyInput() {
   const qty = parseFloat(document.getElementById('tteokQty').value) || 0;
   const unitSel = document.getElementById('tteokUnitSel');
   const unit = unitSel ? unitSel.value : '개';
-  const name = sel ? sel.value : '';
+  const val = (sel ? sel.value : '') || (document.getElementById('tteokSearchInput') ? document.getElementById('tteokSearchInput').value : '');
   const preview = document.getElementById('tteokPricePreview');
-  if (!name || !qty || !TTEOK_DB[name]) { if(preview) preview.textContent = ''; return; }
-  const db = TTEOK_DB[name];
-  const unitPrice = unit === 'box' ? (db.boxPrice||0) : (db.unitPrice||0);
+  if (!val || !qty || !TTEOK_DB[val]) { if(preview) preview.textContent = ''; return; }
+  const db = TTEOK_DB[val];
+  const unitPrice = unit === 'box' ? (db.boxPrice || 0) : (db.unitPrice || 0);
   const unitLabel = unit === 'box' ? (db.boxUnit||'박스') : '개';
   const total = unitPrice * qty;
   if(preview) preview.textContent = total > 0 ? '= ' + total.toLocaleString() + '원' : '';
@@ -5004,32 +5004,22 @@ function formatPhone(input) {
 let tteokItems = [];
 
 function onTteokSelectChange() {
-  const sel = document.getElementById('tteokSelect');
-  const custom = document.getElementById('tteokCustom');
+  const sel = document.getElementById('tteokSelect'); // hidden input
   const unitSel = document.getElementById('tteokUnitSel');
   const pricePreview = document.getElementById('tteokPricePreview');
   const noteEl = document.getElementById('tteokNote');
 
   if (!sel) return;
-  const val = sel.value;
+  // hidden input 값 우선, 없으면 검색창 값 사용
+  const val = sel.value || (document.getElementById('tteokSearchInput') ? document.getElementById('tteokSearchInput').value : '');
 
-  if (val === '직접입력') {
-    const customArea = document.getElementById('tteokCustomArea');
-    if (customArea) customArea.style.display = 'block';
-    if (unitSel) unitSel.style.display = 'none';
-    const qtyEl = document.getElementById('tteokQty');
-    if (qtyEl) qtyEl.style.display = 'none';
-    if (noteEl) noteEl.style.display = 'none';
+  if (!val || val === '직접입력') {
     if (pricePreview) pricePreview.textContent = '';
+    if (noteEl) noteEl.style.display = 'none';
     return;
   }
-  const customArea = document.getElementById('tteokCustomArea');
-  if (customArea) customArea.style.display = 'none';
-  if (unitSel) unitSel.style.display = '';
-  const qtyEl = document.getElementById('tteokQty');
-  if (qtyEl) qtyEl.style.display = '';
 
-  if (val && TTEOK_DB[val]) {
+  if (TTEOK_DB[val]) {
     const db = TTEOK_DB[val];
     const unit = unitSel ? unitSel.value : '개';
     const p = unit === 'box' ? (db.boxPrice||0) : (db.unitPrice||0);
