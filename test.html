@@ -2175,7 +2175,7 @@ const IBAJI_SET_CONFIGS = [
     basePrice: 260000,
     items: [
       {name:'흰모찌',qty:20},{name:'쑥모찌',qty:20},{name:'꽃경단',qty:14},
-      {name:'깨끼떡',qty:1,unit:'3kg'},{name:'완두배기',qty:1,unit:'3kg'},{name:'약식',qty:1,unit:'3kg'}
+      {name:'깨끼떡',qty:'3kg'},{name:'완두배기',qty:'3kg'},{name:'약식',qty:'3kg'}
     ],
     hasChalTteok: false,
   },
@@ -3754,7 +3754,7 @@ function addDeokSetItem() {
   const qtyElId = cfg.hasChalTteok ? 'deokQtyChal' : 'deokQtyFixed';
   const qty = parseInt(document.getElementById(qtyElId) ? document.getElementById(qtyElId).value : 1) || 1;
   const price = (cfg.basePrice + extra) * qty;
-  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + '개'; });
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + '개'); });
   const allDesc = fixedDesc.concat(chalDesc);
   // 주문접수 표시용 (라벨 포함)
   const useLabel = cfg.customLabel || cfg.label;
@@ -3837,7 +3837,7 @@ function renderIbajiConfigs(setType) {
   if (!list) return;
   const configs = IBAJI_SET_CONFIGS.filter(function(c){ return c.setType === setType; });
   list.innerHTML = configs.map(function(cfg) {
-    const itemStr = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); }).join(', ');
+    const itemStr = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + (i.unit||'개')); }).join(', ');
     return '<div onclick="selectIbajiConfig(\'' + cfg.id + '\')" id="ibajicfg-' + cfg.id + '" ' +
       'style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:#fff;">' +
       '<div style="font-size:13px;font-weight:700;color:var(--brown-mid);">' + cfg.label + '</div>' +
@@ -3908,7 +3908,7 @@ function addIbajiSetItem() {
   const qty = parseInt(document.getElementById(qtyElId) ? document.getElementById(qtyElId).value : 1) || 1;
   const price = cfg.basePrice * qty; // 고정금액 × 수량
 
-  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); });
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + (i.unit||'개')); });
   const allDesc = fixedDesc.concat(chalDesc);
   const useLabel = cfg.customLabel || cfg.label;
   const displayName = cfg.setType + '(' + useLabel + ' / ' + allDesc.join(', ') + ')';
@@ -4072,7 +4072,7 @@ function addIbajiOrderItem() {
   const qty = parseInt(qtyEl ? qtyEl.value : 1) || 1;
   const price = cfg.basePrice * qty;
 
-  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); });
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + (i.unit||'개')); });
   const allDesc = fixedDesc.concat(chalDesc);
   const useLabel = cfg.customLabel || cfg.label;
   const displayName = cfg.setType + '(' + useLabel + ' / ' + allDesc.join(', ') + ')';
