@@ -2276,7 +2276,8 @@ function loadTteokPriceSettings() {
       if (d.koreaLargeBoxFee !== undefined && SET_DB['코리아(대)']) SET_DB['코리아(대)'].boxFee = d.koreaLargeBoxFee;
       if (d.koreaSmallBoxFee !== undefined && SET_DB['코리아(소)']) SET_DB['코리아(소)'].boxFee = d.koreaSmallBoxFee;
       if (d.deokBaseMocciPrice !== undefined) { SET_DB['덕세트'].baseMocciPrice = d.deokBaseMocciPrice; SET_DB['덕6구세트'].baseMocciPrice = d.deokBaseMocciPrice; }
-      if (d.deokSetConfigs) { d.deokSetConfigs.forEach(function(saved){ var cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customName) cfg.customName = saved.customName; } }); }
+      if (d.ibajiSetConfigs) { d.ibajiSetConfigs.forEach(function(saved){ var cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customLabel) cfg.customLabel = saved.customLabel; } }); }
+      if (d.deokSetConfigs) { d.deokSetConfigs.forEach(function(saved){ var cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customName) cfg.customName = saved.customName; if(saved.customLabel) cfg.customLabel = saved.customLabel; } }); }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
       if (d.orderCategories) { try { window.ORDER_CATEGORIES = d.orderCategories; renderOrderCategoryButtons(); } catch(e){} }
     }).catch(function(){});
@@ -2424,9 +2425,12 @@ function renderTteokAllList() {
   const ibajiList = document.getElementById('ibaji-price-list');
   if (ibajiList) {
     ibajiList.innerHTML = IBAJI_SET_CONFIGS.map(function(cfg, idx) {
-      return '<div style="display:flex;align-items:center;gap:6px;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
-        '<span style="flex:1;font-size:12px;font-weight:600;">🎀 ' + cfg.label + '</span>' +
-        '<input type="number" value="' + cfg.basePrice + '" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="IBAJI_SET_CONFIGS[' + idx + '].basePrice=Number(this.value)">' +
+      return '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
+        '<div style="width:100%;font-size:11px;color:#888;margin-bottom:3px;">🎀 ' + cfg.setType + ' - ' + cfg.label + '</div>' +
+        '<span style="font-size:11px;color:#888;">라벨</span>' +
+        '<input type="text" value="' + (cfg.customLabel || cfg.label) + '" placeholder="라벨 수정" style="flex:2;min-width:100px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="IBAJI_SET_CONFIGS[' + idx + '].customLabel=this.value">' +
+        '<span style="font-size:11px;color:#888;">기본가</span>' +
+        '<input type="number" value="' + cfg.basePrice + '" style="width:75px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="IBAJI_SET_CONFIGS[' + idx + '].basePrice=Number(this.value)">' +
         '<span style="font-size:11px;color:#888;">원</span>' +
         '</div>';
     }).join('');
@@ -2436,10 +2440,12 @@ function renderTteokAllList() {
     deokList.innerHTML = DEOK_SET_CONFIGS.map(function(cfg, idx) {
       return '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
         '<div style="width:100%;font-size:11px;color:#888;margin-bottom:3px;">' + cfg.setType + ' - ' + cfg.label + '</div>' +
+        '<span style="font-size:11px;color:#888;">라벨</span>' +
+        '<input type="text" value="' + (cfg.customLabel || cfg.label) + '" placeholder="라벨 수정" style="flex:2;min-width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="DEOK_SET_CONFIGS[' + idx + '].customLabel=this.value">' +
         '<span style="font-size:11px;color:#888;">표시이름</span>' +
-        '<input type="text" value="' + (cfg.customName || cfg.setType) + '" placeholder="세트 표시 이름" style="flex:2;min-width:100px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="DEOK_SET_CONFIGS[' + idx + '].customName=this.value">' +
+        '<input type="text" value="' + (cfg.customName || cfg.setType) + '" placeholder="표시이름" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="DEOK_SET_CONFIGS[' + idx + '].customName=this.value">' +
         '<span style="font-size:11px;color:#888;">기본가</span>' +
-        '<input type="number" value="' + cfg.basePrice + '" style="width:75px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="DEOK_SET_CONFIGS[' + idx + '].basePrice=Number(this.value)">' +
+        '<input type="number" value="' + cfg.basePrice + '" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="DEOK_SET_CONFIGS[' + idx + '].basePrice=Number(this.value)">' +
         '<span style="font-size:11px;color:#888;">원</span>' +
         '</div>';
     }).join('');
@@ -2532,8 +2538,9 @@ function saveTteokPriceSettings() {
       pinkBoxFee: SET_DB['분홍세트'].boxFee,
       koreaLargeBoxFee: SET_DB['코리아(대)'] ? SET_DB['코리아(대)'].boxFee : 2000,
       koreaSmallBoxFee: SET_DB['코리아(소)'] ? SET_DB['코리아(소)'].boxFee : 1500,
+      ibajiSetConfigs: IBAJI_SET_CONFIGS.map(function(c){ return {id:c.id, basePrice:c.basePrice, customLabel:c.customLabel||''}; }),
       deokBaseMocciPrice: SET_DB['덕세트'] ? SET_DB['덕세트'].baseMocciPrice : 1800,
-      deokSetConfigs: DEOK_SET_CONFIGS.map(function(c){ return {id:c.id, basePrice:c.basePrice, customName:c.customName||''}; }),
+      deokSetConfigs: DEOK_SET_CONFIGS.map(function(c){ return {id:c.id, basePrice:c.basePrice, customName:c.customName||'', customLabel:c.customLabel||''}; }),
       catLabels: window.CAT_LABELS,
       orderCategories: window.ORDER_CATEGORIES,
     };
@@ -3734,7 +3741,8 @@ function addDeokSetItem() {
   const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + '개'; });
   const allDesc = fixedDesc.concat(chalDesc);
   // 주문접수 표시용 (라벨 포함)
-  const displayName = (cfg.customName || cfg.setType) + '(' + cfg.label + ' / ' + allDesc.join(', ') + ')';
+  const useLabel = cfg.customLabel || cfg.label;
+  const displayName = (cfg.customName || cfg.setType) + '(' + useLabel + ' / ' + allDesc.join(', ') + ')';
   // 저장용 (라벨 제거, 세트명+구성만)
   const saveName = (cfg.customName || cfg.setType) + '(' + allDesc.join(', ') + ')';
 
@@ -3900,7 +3908,8 @@ function addIbajiSetItem() {
 
   const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); });
   const allDesc = fixedDesc.concat(chalDesc);
-  const displayName = cfg.setType + '(' + cfg.label + ' / ' + allDesc.join(', ') + ')';
+  const useLabel = cfg.customLabel || cfg.label;
+  const displayName = cfg.setType + '(' + useLabel + ' / ' + allDesc.join(', ') + ')';
   const saveName = cfg.setType + '(' + allDesc.join(', ') + ')';
 
   tteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
@@ -4063,7 +4072,8 @@ function addIbajiOrderItem() {
 
   const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); });
   const allDesc = fixedDesc.concat(chalDesc);
-  const displayName = cfg.setType + '(' + cfg.label + ' / ' + allDesc.join(', ') + ')';
+  const useLabel = cfg.customLabel || cfg.label;
+  const displayName = cfg.setType + '(' + useLabel + ' / ' + allDesc.join(', ') + ')';
   const saveName = cfg.setType + '(' + allDesc.join(', ') + ')';
 
   tteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
