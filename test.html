@@ -1029,8 +1029,7 @@
                     <button type="button" onclick="chooseSetType('코리아(소)')" id="setbtn-코리아(소)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(소)</button>
                     <button type="button" onclick="chooseSetType('덕세트')" id="setbtn-덕세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕세트</button>
                     <button type="button" onclick="chooseSetType('덕6구세트')" id="setbtn-덕6구세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕6구세트</button>
-                    <button type="button" onclick="chooseSetType('이바지大')" id="setbtn-이바지大" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎀 이바지大</button>
-                    <button type="button" onclick="chooseSetType('이바지小')" id="setbtn-이바지小" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎀 이바지小</button>
+
                   </div>
                   <div id="setCompose" style="display:none;">
                     <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;"><span id="setTypeName"></span> 구성 떡 선택</div>
@@ -1089,6 +1088,15 @@
                     </div>
                   </div>
                 </div>
+                <!-- 이바지 세트 -->
+                <div id="tarea-ibaji" style="display:none;background:#fff9f0;border:1.5px solid var(--brown-pale);border-radius:10px;padding:10px;margin-bottom:6px;">
+                  <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;">🎀 이바지 세트 선택</div>
+                  <div id="ibaji-order-buttons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
+                  <div id="ibaji-order-compose" style="display:none;">
+                    <div id="ibaji-order-config-area"></div>
+                  </div>
+                </div>
+
                 <!-- 개당/kg -->
                 <div id="tarea-each" style="display:none;">
                   <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
@@ -3048,10 +3056,20 @@ function selectOrderCategory(catId) {
   // 해당 카테고리 떡들로 검색 드롭다운 필터링
   window._currentCatItems = cat.items;
 
-  if (hasSet) {
+  // 이바지 세트 감지
+  const hasIbaji = cat.items.some(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
+  const ibajiArea = document.getElementById('tarea-ibaji');
+
+  if (hasIbaji) {
+    if (setArea) setArea.style.display = 'none';
+    if (eachArea) eachArea.style.display = 'none';
+    if (doeArea) doeArea.style.display = 'none';
+    if (ibajiArea) { ibajiArea.style.display = 'block'; renderIbajiOrderButtons(cat.items); }
+  } else if (hasSet) {
     if (setArea) setArea.style.display = 'block';
     if (eachArea) eachArea.style.display = 'none';
     if (doeArea) doeArea.style.display = 'none';
+    if (ibajiArea) ibajiArea.style.display = 'none';
   } else if (hasDoe && !hasEach) {
     if (setArea) setArea.style.display = 'none';
     if (eachArea) eachArea.style.display = 'none';
@@ -3916,6 +3934,158 @@ function selectDeokChal(idx, name) {
   if (val) val.value = name;
   if (dd) dd.style.display = 'none';
   updateDeokPrice();
+}
+
+
+function renderIbajiOrderButtons(catItems) {
+  const container = document.getElementById('ibaji-order-buttons');
+  if (!container) return;
+  // catItems에서 이바지 항목만
+  const ibajiItems = catItems.filter(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
+  container.innerHTML = ibajiItems.map(function(item) {
+    const setType = item === '__이바지大__' ? '이바지大' : '이바지小';
+    return '<button type="button" onclick="selectIbajiOrderType(\'' + setType + '\')" ' +
+      'id="ibaji-obtn-' + setType + '" ' +
+      'style="flex:1;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">' +
+      '🎀 ' + setType + '</button>';
+  }).join('');
+  document.getElementById('ibaji-order-compose').style.display = 'none';
+  window._ibajiConfigId = null;
+  window._ibajiChalSelections = {};
+}
+
+function selectIbajiOrderType(setType) {
+  // 버튼 활성화
+  ['이바지大','이바지小'].forEach(function(s) {
+    const b = document.getElementById('ibaji-obtn-' + s);
+    if (b) {
+      b.style.background = s === setType ? 'var(--brown-deep)' : '#fff';
+      b.style.color = s === setType ? '#fff' : 'var(--brown-mid)';
+      b.style.borderColor = s === setType ? 'var(--brown-deep)' : 'var(--border)';
+    }
+  });
+
+  const cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.setType === setType; });
+  if (!cfg) return;
+  window._ibajiConfigId = cfg.id;
+  window._ibajiChalSelections = {};
+
+  const compose = document.getElementById('ibaji-order-compose');
+  const configArea = document.getElementById('ibaji-order-config-area');
+  if (!compose || !configArea) return;
+  compose.style.display = 'block';
+
+  const itemStr = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); }).join(', ');
+
+  if (cfg.hasChalTteok) {
+    // 찰떡류 선택 필요
+    let slotsHtml = cfg.chalTteokSlots.map(function(slot, idx) {
+      return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
+        '<span style="font-size:12px;color:var(--brown-mid);min-width:60px;">' + slot.label + '(' + slot.qty + '개)</span>' +
+        '<div style="position:relative;flex:1;">' +
+        '<input id="ibaji-chal-' + idx + '-input" type="text" placeholder="떡 검색..." autocomplete="off" ' +
+        'style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;" ' +
+        'oninput="filterIbajiChalList(' + idx + ',this.value)" onfocus="filterIbajiChalList(' + idx + ',this.value)" onblur="setTimeout(function(){hideIbajiChalDd(' + idx + ')},200)">' +
+        '<div id="ibaji-chal-' + idx + '-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>' +
+        '<input type="hidden" id="ibaji-chal-' + idx + '-val">' +
+        '</div></div>';
+    }).join('');
+
+    configArea.innerHTML = '<div style="background:#fff9f0;border:1px solid var(--brown-pale);border-radius:8px;padding:10px;">' +
+      '<div style="font-size:12px;color:#888;margin-bottom:8px;">고정구성: ' + itemStr + '</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🍡 찰떡류 선택</div>' +
+      slotsHtml +
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">' +
+      '<span style="font-size:13px;color:var(--brown-mid);font-weight:700;">수량:</span>' +
+      '<input type="number" id="ibaji-qty" value="1" min="1" style="width:70px;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">' +
+      '<span style="font-size:13px;color:var(--brown-mid);">세트</span>' +
+      '<span style="font-size:13px;font-weight:700;color:var(--accent-red);">' + cfg.basePrice.toLocaleString() + '원 (고정)</span>' +
+      '</div>' +
+      '<button type="button" onclick="addIbajiOrderItem()" style="width:100%;margin-top:10px;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>' +
+      '</div>';
+  } else {
+    // 고정 구성
+    configArea.innerHTML = '<div style="background:#fff9f0;border:1px solid var(--brown-pale);border-radius:8px;padding:10px;">' +
+      '<div style="font-size:12px;color:#888;margin-bottom:8px;">구성: ' + itemStr + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' +
+      '<span style="font-size:13px;color:var(--brown-mid);font-weight:700;">수량:</span>' +
+      '<input type="number" id="ibaji-qty" value="1" min="1" style="width:70px;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">' +
+      '<span style="font-size:13px;color:var(--brown-mid);">세트</span>' +
+      '<span style="font-size:13px;font-weight:700;color:var(--accent-red);">' + cfg.basePrice.toLocaleString() + '원 (고정)</span>' +
+      '</div>' +
+      '<button type="button" onclick="addIbajiOrderItem()" style="width:100%;margin-top:10px;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>' +
+      '</div>';
+  }
+}
+
+function filterIbajiChalList(idx, kw) {
+  const dd = document.getElementById('ibaji-chal-' + idx + '-dd');
+  if (!dd) return;
+  const allTteok = Object.keys(TTEOK_DB).filter(function(n){ return TTEOK_DB[n].unitPrice > 0; });
+  const filtered = kw ? allTteok.filter(function(n){ return n.includes(kw); }) : allTteok;
+  dd.innerHTML = filtered.map(function(name) {
+    return '<div onclick="selectIbajiChal(' + idx + ',\'' + name + '\')" ' +
+      'style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;" ' +
+      'onmouseenter="this.style.background=\'#f5f0eb\'" onmouseleave="this.style.background=\'#fff\'">' +
+      '🍡 ' + name + '</div>';
+  }).join('');
+  dd.style.display = filtered.length > 0 ? 'block' : 'none';
+}
+
+function selectIbajiChal(idx, name) {
+  window._ibajiChalSelections[idx] = name;
+  const inp = document.getElementById('ibaji-chal-' + idx + '-input');
+  const val = document.getElementById('ibaji-chal-' + idx + '-val');
+  const dd = document.getElementById('ibaji-chal-' + idx + '-dd');
+  if (inp) inp.value = name;
+  if (val) val.value = name;
+  if (dd) dd.style.display = 'none';
+}
+
+function addIbajiOrderItem() {
+  const cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.id === window._ibajiConfigId; });
+  if (!cfg) { showToast('세트를 선택해주세요.', 'error'); return; }
+
+  let chalDesc = [];
+  if (cfg.hasChalTteok) {
+    for (let i = 0; i < cfg.chalTteokSlots.length; i++) {
+      const name = window._ibajiChalSelections[i] || '';
+      if (!name) { showToast('찰떡류를 모두 선택해주세요.', 'error'); return; }
+      chalDesc.push(name + ' ' + cfg.chalTteokSlots[i].qty + '개');
+    }
+  }
+
+  const qtyEl = document.getElementById('ibaji-qty');
+  const qty = parseInt(qtyEl ? qtyEl.value : 1) || 1;
+  const price = cfg.basePrice * qty;
+
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + (i.unit||'개'); });
+  const allDesc = fixedDesc.concat(chalDesc);
+  const displayName = cfg.setType + '(' + cfg.label + ' / ' + allDesc.join(', ') + ')';
+  const saveName = cfg.setType + '(' + allDesc.join(', ') + ')';
+
+  tteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
+  renderTteokList();
+  if (price > 0) {
+    const pp = document.getElementById('priceProduct');
+    if (pp) { pp.value = (parseInt(pp.value)||0) + price; calcTotal(); }
+  }
+
+  // 초기화
+  window._ibajiConfigId = null;
+  window._ibajiChalSelections = {};
+  document.getElementById('ibaji-order-compose').style.display = 'none';
+  ['이바지大','이바지小'].forEach(function(s) {
+    const b = document.getElementById('ibaji-obtn-' + s);
+    if (b) { b.style.background='#fff'; b.style.color='var(--brown-mid)'; b.style.borderColor='var(--border)'; }
+  });
+  showToast('✅ ' + cfg.setType + ' 추가됐어요!', 'success');
+}
+
+
+function hideIbajiChalDd(idx) {
+  var d = document.getElementById('ibaji-chal-' + idx + '-dd');
+  if (d) d.style.display = 'none';
 }
 
 // ============ 퀵비 요금표 (구별 구분) ============
