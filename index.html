@@ -1998,7 +1998,6 @@ async function calcExtraDeliveryFee(deliveryDate, deliveryTime) {
       if (!isPm && h === 12) h = 0;
       if (h >= 15) extra += 1000;
     }
-    if (deliveryTime === '오후중') extra += 1000;
   }
   return extra;
 }
@@ -2031,7 +2030,6 @@ async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
       if (!isPm && h === 12) h = 0;
       if (h >= 15) { extra += 1000; notes.push('오후3시이후 +1,000원'); }
     }
-    if (deliveryTime === '오후중') { extra += 1000; notes.push('오후중 +1,000원'); }
   }
 
   const baseFee = parseInt(feeEl.dataset.baseFee !== undefined ? feeEl.dataset.baseFee : feeEl.value) || 0;
