@@ -2008,6 +2008,27 @@ async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
   const feeEl = document.getElementById(feeFieldId);
   if (!feeEl || !dateEl || !dateEl.value) return;
 
+  // 픽업/택배는 추가요금 없음
+  const methodEls = document.querySelectorAll('input[name="deliveryMethod"]:checked, input[name="e_deliveryMethod"]:checked');
+  let currentMethod = '';
+  methodEls.forEach(function(el){ if(el.closest('#panel-order, .modal-edit-content, #modalEditContent')) currentMethod = el.value; });
+  if (!currentMethod) {
+    // name으로 찾기
+    const m1 = document.querySelector('input[name="deliveryMethod"]:checked');
+    const m2 = document.querySelector('input[name="e_deliveryMethod"]:checked');
+    currentMethod = (m1 && m1.value) || (m2 && m2.value) || '';
+  }
+  if (currentMethod === '픽업' || currentMethod === '택배') {
+    // 추가요금 0으로 초기화
+    const baseFee0 = parseInt(feeEl.dataset.baseFee !== undefined ? feeEl.dataset.baseFee : feeEl.value) || 0;
+    feeEl.dataset.baseFee = baseFee0;
+    feeEl.value = baseFee0;
+    const noteEl0 = document.getElementById(feeFieldId + '_note');
+    if (noteEl0) noteEl0.style.display = 'none';
+    if (updateFn) updateFn();
+    return;
+  }
+
   const deliveryTime = timeEl ? timeEl.value : '';
   const deliveryDate = dateEl.value;
 
@@ -6521,6 +6542,12 @@ function toggleEditDeliveryMethod(val) {
   if (val === '픽업') {
     document.getElementById('e_addr1').value = '';
     document.getElementById('e_addr2').value = '';
+  }
+  // 픽업/택배는 배송비 0원
+  if (val === '픽업' || val === '택배') {
+    const feeEl = document.getElementById('e_priceDelivery');
+    if (feeEl) { feeEl.dataset.baseFee = 0; feeEl.value = 0; }
+    calcEditTotal();
   }
 }
 
