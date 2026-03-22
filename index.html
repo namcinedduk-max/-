@@ -5661,6 +5661,21 @@ function sortFuneralOrders(key) {
   renderFuneralList();
 }
 
+
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 9999;
+  if (timeStr === '오전중') return 719;  // 오전 11시59분 = 오전 중 제일 뒤
+  if (timeStr === '오후중') return 1439; // 오후 11시59분 = 오후 중 제일 뒤
+  const start = String(timeStr).split('~')[0];
+  const m = start.match(/(오전|오후)\s*(\d+)\s*시?\s*(\d+)?\s*분?/);
+  if (!m) return 9999;
+  let h = parseInt(m[2]);
+  const min = parseInt(m[3] || 0);
+  if (m[1] === '오후' && h !== 12) h += 12;
+  if (m[1] === '오전' && h === 12) h = 0;
+  return h * 60 + min;
+}
+
 function applySort(list, key, dir) {
   return [...list].sort((a, b) => {
     let av = a[key] || '';
@@ -5669,6 +5684,10 @@ function applySort(list, key, dir) {
     if (key === 'deliveryDate') {
       av = normalizeDateStr(String(av));
       bv = normalizeDateStr(String(bv));
+    }
+    // 시간 비교 (숫자로 변환)
+    if (key === 'deliveryTime') {
+      return (timeToMinutes(String(av)) - timeToMinutes(String(bv))) * dir;
     }
     // 숫자 비교
     if (key === 'priceTotal') return (Number(av) - Number(bv)) * dir;

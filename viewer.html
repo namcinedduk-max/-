@@ -194,11 +194,10 @@ function setToday() {
 
 function timeToMinutes(timeStr) {
   if (!timeStr) return 9999;
-  if (timeStr === '오전중') return 0;
-  if (timeStr === '오후중') return 780;
+  if (timeStr === '오전중') return 719;  // 오전 중 제일 뒤
+  if (timeStr === '오후중') return 1439; // 오후 중 제일 뒤
   // ~ 앞부분만 사용
   const start = timeStr.split('~')[0];
-  // "오전9시30분", "오전9시", "오전9" 등 다양한 형식 파싱
   const m = start.match(/(오전|오후)\s*(\d+)\s*시?\s*(\d+)?\s*분?/);
   if (!m) return 9999;
   let h = parseInt(m[2]);
@@ -279,7 +278,7 @@ function parseQty(qty) {
 
 function render(date) {
   const filtered = allOrders.filter(o =>
-    o.deliveryMethod !== '택배' && normDate(String(o.deliveryDate||'')) === date
+    o.deliveryMethod !== '택배' && o.deliveryMethod !== '픽업' && normDate(String(o.deliveryDate||'')) === date
   ).sort((a,b) => {
     if (currentSort === 'tteok') {
       return String(a.tteokType||'').localeCompare(String(b.tteokType||''), 'ko');
