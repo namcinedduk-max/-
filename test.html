@@ -1840,10 +1840,18 @@
             <input type="number" id="koreaSmallBoxFee" style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="SET_DB['코리아(소)'].boxFee=Number(this.value)">
             <span style="font-size:13px;color:#888;">원</span>
           </div>
-          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;margin-top:16px;">덕세트 기준모찌단가 (흰모찌 기준)</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <input type="number" id="deokBaseMocciPrice" style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="SET_DB['덕세트'].baseMocciPrice=Number(this.value);SET_DB['덕6구세트'].baseMocciPrice=Number(this.value)">
-            <span style="font-size:13px;color:#888;">원/개</span>
+          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;margin-top:16px;">덕세트 기준단가 설정</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:#888;">찹쌀떡(모찌) 기준</span>
+              <input type="number" id="deokBaseMocciPrice" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="SET_DB['덕세트'].baseMocciPrice=Number(this.value);SET_DB['덕6구세트'].baseMocciPrice=Number(this.value)">
+              <span style="font-size:13px;color:#888;">원/개</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:#888;">찰떡류 기준</span>
+              <input type="number" id="deokBaseChalPrice" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="SET_DB['덕세트'].baseChalPrice=Number(this.value);SET_DB['덕6구세트'].baseChalPrice=Number(this.value);DEOK_SET_CONFIGS.forEach(function(c){if(c.chalBasePrice!==undefined)c.chalBasePrice=Number(document.getElementById('deokBaseChalPrice').value)})">
+              <span style="font-size:13px;color:#888;">원/개</span>
+            </div>
           </div>
           <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">덕세트 구성별 기본가</div>
           <div id="deok-price-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
@@ -2133,8 +2141,8 @@ const SET_DB = {
   }},
   '코리아(대)': { boxFee: 2000 },
   '코리아(소)': { boxFee: 1500 },
-  '덕세트': { baseMocciPrice: 1800 }, // 흰모찌 기준단가
-  '덕6구세트': { baseMocciPrice: 1800 },
+  '덕세트': { baseMocciPrice: 1800, baseChalPrice: 1000 }, // 모찌 기준단가 1800원, 찰떡류 기준단가 1000원
+  '덕6구세트': { baseMocciPrice: 1800, baseChalPrice: 1000 },
 };
 
 // 덕세트 구성 정의
@@ -2173,13 +2181,15 @@ const DEOK_SET_CONFIGS = [
     id: 'deok4', setType: '덕세트', label: '찹쌀떡8+찰떡18 (찰떡류 2종×9개)',
     basePrice: 42000,
     items: [{name:'흰모찌',qty:4},{name:'쑥모찌',qty:4}],
-    hasChalTteok: true, chalTteokSlots: [{qty:9,label:'찰떡 1종'},{qty:9,label:'찰떡 2종'}],
+    hasChalTteok: true, chalBasePrice: 1000,
+    chalTteokSlots: [{qty:9,label:'찰떡 1종'},{qty:9,label:'찰떡 2종'}],
   },
   {
     id: 'deok5', setType: '덕6구세트', label: '찰떡36개 (찰떡류 4종×9개)',
     basePrice: 41000,
     items: [],
-    hasChalTteok: true, chalTteokSlots: [{qty:9,label:'찰떡 1종'},{qty:9,label:'찰떡 2종'},{qty:9,label:'찰떡 3종'},{qty:9,label:'찰떡 4종'}],
+    hasChalTteok: true, chalBasePrice: 1000,
+    chalTteokSlots: [{qty:9,label:'찰떡 1종'},{qty:9,label:'찰떡 2종'},{qty:9,label:'찰떡 3종'},{qty:9,label:'찰떡 4종'}],
   },
   {
     id: 'deok6', setType: '덕6구세트', label: '앙금절편40개',
@@ -2364,6 +2374,8 @@ function renderTteokAllList() {
   // 덕세트 기준모찌단가
   const deokBase = document.getElementById('deokBaseMocciPrice');
   if (deokBase && SET_DB['덕세트']) deokBase.value = SET_DB['덕세트'].baseMocciPrice || 1800;
+  const deokChalBase = document.getElementById('deokBaseChalPrice');
+  if (deokChalBase && SET_DB['덕세트']) deokChalBase.value = SET_DB['덕세트'].baseChalPrice || 1000;
   // 덕세트 구성별 기본가
   const deokList = document.getElementById('deok-price-list');
   if (deokList) {
@@ -3577,7 +3589,7 @@ function filterDeokChalList(idx, kw) {
   dd.innerHTML = filtered.map(function(name) {
     const price = TTEOK_DB[name] ? TTEOK_DB[name].unitPrice : 0;
     const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._deokConfigId; });
-    const basePrice = SET_DB['덕세트'].baseMocciPrice || 1800;
+    const basePrice = cfg ? (cfg.chalBasePrice || SET_DB['덕세트'].baseMocciPrice || 1000) : 1000;
     const extra = Math.max(0, price - basePrice);
     const extraStr = extra > 0 ? ' <span style="color:var(--accent-red);">+' + extra + '원/개</span>' : '';
     return '<div onclick="selectDeokChal(' + idx + ',\'' + name + '\')" ' +
@@ -3604,7 +3616,7 @@ function selectDeokChal(idx, name) {
 function updateDeokPrice() {
   const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._deokConfigId; });
   if (!cfg) return;
-  const basePrice = SET_DB['덕세트'].baseMocciPrice || 1800;
+  const basePrice = cfg.chalBasePrice || SET_DB['덕세트'].baseMocciPrice || 1000;
   let extra = 0;
   if (cfg.hasChalTteok) {
     cfg.chalTteokSlots.forEach(function(slot, idx) {
@@ -3626,7 +3638,7 @@ function addDeokSetItem() {
   const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._deokConfigId; });
   if (!cfg) { showToast('구성을 선택해주세요.', 'error'); return; }
 
-  const basePrice = SET_DB['덕세트'].baseMocciPrice || 1800;
+  const basePrice = cfg.chalBasePrice || SET_DB['덕세트'].baseMocciPrice || 1000;
   let extra = 0;
   let chalDesc = [];
 
