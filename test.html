@@ -2311,6 +2311,7 @@ function saveTteokPriceSettings() {
       tteokCategories: window.TTEOK_CATEGORIES,
       pinkBoxFee: SET_DB['분홍세트'].boxFee,
       catLabels: window.CAT_LABELS,
+      orderCategories: window.ORDER_CATEGORIES,
     };
     gasPost({ action: 'saveTteokSettings', data: settingsData })
       .then(function(res) {
