@@ -3672,9 +3672,12 @@ function addDeokSetItem() {
   const price = (cfg.basePrice + extra) * qty;
   const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + '개'; });
   const allDesc = fixedDesc.concat(chalDesc);
-  const setName = (cfg.customName || cfg.setType) + '(' + cfg.label + ' / ' + allDesc.join(', ') + ')';
+  // 주문접수 표시용 (라벨 포함)
+  const displayName = (cfg.customName || cfg.setType) + '(' + cfg.label + ' / ' + allDesc.join(', ') + ')';
+  // 저장용 (라벨 제거, 세트명+구성만)
+  const saveName = (cfg.customName || cfg.setType) + '(' + allDesc.join(', ') + ')';
 
-  tteokItems.push({ name: setName, qty: String(qty) + '세트', price: price });
+  tteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
   renderTteokList();
   if (price > 0) {
     const pp = document.getElementById('priceProduct');
@@ -3711,6 +3714,31 @@ function updateDeokFixedPreview() {
   if (preview) {
     const itemStr = cfg.items.map(function(i){ return i.name + ' ' + i.qty + '개'; }).join(', ');
     preview.textContent = total.toLocaleString() + '원 (' + itemStr + ')' + (qty > 1 ? ' × ' + qty + '세트' : '');
+  }
+}
+
+
+function updateDeokItemQty(idx, newQtyStr) {
+  const item = tteokItems[idx];
+  if (!item) return;
+  const newQty = parseInt(newQtyStr) || 1;
+  // 세트당 단가 = 기존price / 기존qty
+  const oldQty = parseInt(item.qty) || 1;
+  const unitPrice = Math.round(item.price / oldQty);
+  item.qty = String(newQty) + '세트';
+  item.price = unitPrice * newQty;
+  // 상품금액 재계산
+  const pp = document.getElementById('priceProduct');
+  if (pp) {
+    const total = tteokItems.reduce(function(s, t){ return s + (t.price||0); }, 0);
+    pp.value = total;
+    calcTotal();
+  }
+  // 금액 표시 업데이트 (리렌더 없이)
+  const priceEls = document.querySelectorAll('.tteok-item');
+  if (priceEls[idx]) {
+    const span = priceEls[idx].querySelector('span[style*="accent-red"]');
+    if (span) span.textContent = item.price.toLocaleString() + '원';
   }
 }
 
@@ -5518,12 +5546,13 @@ function renderTteokList() {
   if (!list) return;
   if (tteokItems.length === 0) { list.innerHTML = ''; return; }
   list.innerHTML = tteokItems.map(function(item, i) {
-    const priceStr = item.price ? ' <span style="color:var(--accent-red);font-size:11px;font-weight:700;">' + item.price.toLocaleString() + '원</span>' : '';
+    const displayName = item.displayName || item.name;
+    const isDeok = item.price > 0 && item.qty && item.qty.indexOf('세트') !== -1;
     return '<div class="tteok-item">' +
-      '<span class="tteok-item-name">🍡 ' + item.name + '</span>' +
-      '<input class="tteok-item-qty" type="text" value="' + (item.qty||'') + '" placeholder="수량" ' +
-      'oninput="tteokItems[' + i + '].qty=this.value">' +
-      priceStr +
+      '<span class="tteok-item-name">🍡 ' + displayName + '</span>' +
+      '<input class="tteok-item-qty" type="' + (isDeok ? 'number' : 'text') + '" value="' + (isDeok ? (parseInt(item.qty)||1) : (item.qty||'')) + '" placeholder="수량" ' +
+      (isDeok ? 'min="1" oninput="updateDeokItemQty(' + i + ',this.value)"' : 'oninput="tteokItems[' + i + '].qty=this.value"') + '>' +
+      (item.price ? ' <span style="color:var(--accent-red);font-size:11px;font-weight:700;">' + item.price.toLocaleString() + '원</span>' : '') +
       '<button class="tteok-item-del" onclick="removeTteokItem(' + i + ')">✕</button>' +
       '</div>';
   }).join('');
