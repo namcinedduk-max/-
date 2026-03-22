@@ -2541,9 +2541,15 @@ function onTteokQtyInput() {
     ? searchInput.value.trim()
     : (hiddenSel ? hiddenSel.value : '');
   const preview = document.getElementById('tteokPricePreview');
-  if (!val || !qty || !TTEOK_DB[val]) { if(preview) preview.textContent = ''; return; }
+  if (!val || !TTEOK_DB[val]) { if(preview) preview.textContent = ''; return; }
   const db = TTEOK_DB[val];
   const unitPrice = unit === 'box' ? (db.boxPrice||0) : (db.unitPrice||0);
+  const unitLabel = unit === 'box' ? (db.boxUnit||'박스') : '개';
+  if (!qty) {
+    // 수량 없으면 단가만 표시
+    if(preview) preview.textContent = unitPrice ? unitPrice.toLocaleString() + '원/' + unitLabel : '';
+    return;
+  }
   const total = unitPrice * qty;
   if(preview) preview.textContent = total > 0 ? '= ' + total.toLocaleString() + '원' : '';
 }
