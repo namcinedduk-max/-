@@ -3560,8 +3560,7 @@ function renderDeokChalSlots(cfg) {
       '<div style="position:relative;flex:1;">' +
       '<input id="deokChal-' + idx + '-input" type="text" placeholder="떡 검색..." autocomplete="off" ' +
       'style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;" ' +
-      'oninput="filterDeokChalList(' + idx + ',this.value)" onfocus="filterDeokChalList(' + idx + ',this.value)" ' +
-      'oninput="filterDeokChalList(' + idx + ',this.value)" onfocus="filterDeokChalList(' + idx + ',this.value)" ' +
+      'oninput="filterDeokChalList(' + idx + ',this.value)" onfocus="filterDeokChalList(' + idx + ',this.value)" onblur="setTimeout(function(){hideDeokChalDd(' + idx + ')},200)">' +
       '<div id="deokChal-' + idx + '-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>' +
       '<input type="hidden" id="deokChal-' + idx + '-val">' +
       '</div>' +
