@@ -6087,6 +6087,27 @@ function resetForm() {
   document.getElementById('tteokCustom').style.display = 'none';
   document.getElementById('tteokCustom').value = '';
   document.getElementById('tteokQty').value = '';
+  // 직접입력 영역 초기화
+  const customArea = document.getElementById('tteokCustomArea');
+  if (customArea) customArea.style.display = 'none';
+  const customQtyEl = document.getElementById('tteokCustomQty');
+  if (customQtyEl) customQtyEl.value = '';
+  const customPriceEl = document.getElementById('tteokCustomPrice');
+  if (customPriceEl) customPriceEl.value = '';
+  // 단위/수량 다시 표시
+  const unitSelEl = document.getElementById('tteokUnitSel');
+  if (unitSelEl) unitSelEl.style.display = '';
+  const qtyEl = document.getElementById('tteokQty');
+  if (qtyEl) qtyEl.style.display = '';
+  // 검색창 초기화
+  const searchInput = document.getElementById('tteokSearchInput');
+  if (searchInput) searchInput.value = '';
+  const hiddenSel = document.getElementById('tteokSelect');
+  if (hiddenSel) hiddenSel.value = '';
+  const preview = document.getElementById('tteokPricePreview');
+  if (preview) preview.textContent = '';
+  const noteEl = document.getElementById('tteokNote');
+  if (noteEl) noteEl.style.display = 'none';
   document.getElementById('deliveryTimeCustom').value = ''; if(document.getElementById('deliveryTimeCustom-type')) document.getElementById('deliveryTimeCustom-type').value='';
   document.getElementById('payStatus').value = '결제완료';
   document.getElementById('payMethod').value = '';
