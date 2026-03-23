@@ -279,7 +279,7 @@ function parseQty(qty) {
 
 function render(date) {
   const filtered = allOrders.filter(o =>
-    normDate(String(o.deliveryDate||'')) === date
+    o.deliveryMethod !== '택배' && normDate(String(o.deliveryDate||'')) === date
   ).sort((a,b) => {
     if (currentSort === 'tteok') {
       return String(a.tteokType||'').localeCompare(String(b.tteokType||''), 'ko');
