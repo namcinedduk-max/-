@@ -2820,7 +2820,8 @@ function selectTteokFromDropdown(name) {
     if (hiddenSel) hiddenSel.value = '직접입력';
     const customArea = document.getElementById('tteokCustomArea');
     if (customArea) customArea.style.display = 'block';
-    if (custom) custom.focus();
+    // tteokCustom 이름 입력칸도 확실히 표시
+    if (custom) { custom.style.display = 'block'; custom.value = ''; setTimeout(function(){ custom.focus(); }, 50); }
     // 단위/수량 숨기기
     const unitSel = document.getElementById('tteokUnitSel');
     const qtyEl = document.getElementById('tteokQty');
