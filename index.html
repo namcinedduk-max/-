@@ -2125,7 +2125,7 @@ function _timePickerSetValue(id, val) {
     rangeEl.style.display = '';
     const parts = val.split('~');
     const parseT = function(s) {
-      const m = s.match(/^(오전|오후)(d+)(시(d+)분)?$/);
+      const m = s.match(/^(오전|오후)(\d+)(시(\d+)분)?$/);
       if (!m) return null;
       return { h: m[1]+m[2], m: m[4] ? '시'+m[4]+'분' : '시' };
     };
