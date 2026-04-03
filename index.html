@@ -2417,7 +2417,7 @@ function renderTteokAllList() {
   }
   list.innerHTML = keys.map(function(name) {
     const db = TTEOK_DB[name];
-    const key = JSON.stringify(name);
+    const safeN = name.replace(/'/g, "\\'");
     const noteColor = db.note ? '#fff3cd' : '#fafafa';
     const noteBorder = db.note ? '#ffc107' : 'var(--border)';
     return '<div draggable="true" data-tteok-name="' + name.replace(/"/g,'&quot;') + '" ' +
@@ -2426,13 +2426,13 @@ function renderTteokAllList() {
       '<span style="color:#aaa;cursor:grab;font-size:16px;">⠿</span>' +
       '<span style="font-size:13px;font-weight:600;min-width:100px;">' + name + '</span>' +
       '<span style="font-size:11px;color:#888;">개당</span>' +
-      '<input type="number" value="' + (db.unitPrice||0) + '" style="width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="TTEOK_DB[' + key + '].unitPrice=Number(this.value)">' +
+      '<input type="number" value="' + (db.unitPrice||0) + '" style="width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'unitPrice\',Number(this.value))">' +
       '<span style="font-size:11px;color:#888;">원 박스</span>' +
-      '<input type="number" value="' + (db.boxPrice||0) + '" style="width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="TTEOK_DB[' + key + '].boxPrice=Number(this.value)">' +
+      '<input type="number" value="' + (db.boxPrice||0) + '" style="width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'boxPrice\',Number(this.value))">' +
       '<span style="font-size:11px;color:#888;">원/</span>' +
-      '<input type="text" value="' + (db.boxUnit||'') + '" style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="TTEOK_DB[' + key + '].boxUnit=this.value">' +
-      '<input type="text" value="' + (db.note||'') + '" placeholder="참고사항" style="width:130px;padding:4px 6px;border:1px solid ' + (db.note ? '#ffc107' : 'var(--border)') + ';border-radius:6px;font-size:11px;background:' + (db.note ? '#fff3cd' : '#fff') + ';" onchange="TTEOK_DB[' + key + '].note=this.value;renderTteokAllList()">' +
-      '<button onclick="deleteTteokFromGlobalList(\'' + name + '\')" style="margin-left:auto;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
+      '<input type="text" value="' + (db.boxUnit||'') + '" style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'boxUnit\',this.value)">' +
+      '<input type="text" value="' + (db.note||'') + '" placeholder="참고사항" style="width:130px;padding:4px 6px;border:1px solid ' + (db.note ? '#ffc107' : 'var(--border)') + ';border-radius:6px;font-size:11px;background:' + (db.note ? '#fff3cd' : '#fff') + ';" onchange="updateTteokDB(\'' + safeN + '\',\'note\',this.value);renderTteokAllList()">' +
+      '<button onclick="deleteTteokFromGlobalList(\'' + safeN + '\')" style="margin-left:auto;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
       '</div>';
   }).join('');
 
@@ -4120,6 +4120,13 @@ function addIbajiOrderItem() {
 function hideIbajiChalDd(idx) {
   var d = document.getElementById('ibaji-chal-' + idx + '-dd');
   if (d) d.style.display = 'none';
+}
+
+
+function updateTteokDB(name, field, value) {
+  if (TTEOK_DB[name] !== undefined) {
+    TTEOK_DB[name][field] = value;
+  }
 }
 
 // ============ 퀵비 요금표 (구별 구분) ============
@@ -6257,12 +6264,14 @@ function updateStats() {
 // 배송시간 정규화 - 날짜객체로 변환된 경우 처리
 function normalizeTimeStr(val) {
   if (!val) return '';
-  const s = String(val).trim();
-  // 1899 또는 ISO 날짜 형식 → 시간만 추출해서 한국어로 변환
+  let s = String(val).trim();
+  // 앞에 ' 문자 제거 (구글시트 텍스트 강제 저장 시 남는 경우)
+  s = s.replace(/^'+/, '');
+  if (!s) return '';
+  // ISO 날짜 형식 (2026-03-26T...) → 한국어 시간으로 변환
   if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
     try {
       const d = new Date(s);
-      // UTC 시간 기준으로 시/분 추출 (구글시트가 UTC로 저장)
       const h = d.getUTCHours();
       const m = d.getUTCMinutes();
       const ampm = h < 12 ? '오전' : '오후';
@@ -6270,6 +6279,19 @@ function normalizeTimeStr(val) {
       return m > 0 ? ampm + hh + '시' + m + '분' : ampm + hh + '시';
     } catch(e) { return ''; }
   }
+  // 숫자만 있는 경우 (엑셀 시간 직렬값) → 변환
+  if (/^0\.\d+$/.test(s) || /^\d+\.\d+$/.test(s)) {
+    try {
+      const frac = parseFloat(s) % 1;
+      const totalMin = Math.round(frac * 24 * 60);
+      const h = Math.floor(totalMin / 60) % 24;
+      const m = totalMin % 60;
+      const ampm = h < 12 ? '오전' : '오후';
+      const hh = h % 12 === 0 ? 12 : h % 12;
+      return m > 0 ? ampm + hh + '시' + m + '분' : ampm + hh + '시';
+    } catch(e) { return ''; }
+  }
+  // 이미 한국어 시간 형식이면 그대로
   return s;
 }
 
@@ -6745,12 +6767,18 @@ function renderModalEdit(o) {
   `;
   renderEditTteokList();
   // 카테고리 버튼 초기화 + 시간 피커 값 설정
-  setTimeout(function() {
+  const _setEditTime = function() {
     initEditCatButtons();
-    // 배송시간 피커 설정
     const tval = normalizeTimeStr(o.deliveryTime) || String(o.deliveryTime||'');
-    if (tval) _timePickerSetValue('e_deliveryTime', tval);
-  }, 50);
+    if (tval) {
+      _timePickerSetValue('e_deliveryTime', tval);
+      // 피커 요소가 없으면 재시도
+      if (!document.getElementById('e_deliveryTime-type')) {
+        setTimeout(function(){ _timePickerSetValue('e_deliveryTime', tval); }, 200);
+      }
+    }
+  };
+  setTimeout(_setEditTime, 80);
 }
 
 function renderEditTteokList() {
