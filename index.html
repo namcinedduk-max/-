@@ -5247,32 +5247,44 @@ function downloadDeliveryExcel() {
 
   if (list.length === 0) { showToast('다운로드할 택배 주문이 없어요.', 'error'); return; }
 
-  const headers = ['순번','받는분','전화번호','주소','상품명','수량','보내는분','보내는분전화','메모','배송일'];
-  const rows = list.map((o, i) => [
-    i+1,
-    o.receiverName||'',
-    o.receiverPhone||'',
-    [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' '),
-    o.tteokType||'',
-    o.tteokItems ? o.tteokItems.map(t=>t.qty||'').filter(Boolean).join('/') : '',
-    o.senderName||'',
-    o.senderPhone||'',
-    o.memo||'',
-    normalizeDateStr(String(o.deliveryDate||''))
-  ]);
+  // 롯데택배 양식: 주문자/주문자전화번호/상품명/수량/수취인/수취인연락처1/수취인연락처2/주소/택배/쇼핑몰명/협력사명/비고
+  const headers = ['주문자','주문자전화번호','상품명','수량','수취인','수취인연락처1','수취인연락처2','주소','택배','쇼핑몰명','협력사명','비고'];
+  const rows = list.map(function(o) {
+    const tteokName = o.tteokItems && o.tteokItems.length > 0
+      ? o.tteokItems.map(function(t){ return t.name + (t.qty ? ' ' + t.qty : ''); }).join(', ')
+      : (o.tteokType || '');
+    const totalQty = o.tteokItems && o.tteokItems.length > 0
+      ? o.tteokItems.map(function(t){ return t.qty||''; }).filter(Boolean).join('/')
+      : '';
+    const addr = [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ');
+    return [
+      o.senderName || '',
+      o.senderPhone || '',
+      tteokName,
+      totalQty,
+      o.receiverName || '',
+      o.receiverPhone || '',
+      '',
+      addr,
+      '롯데택배',
+      '남씨네떡집',
+      '',
+      o.memo || ''
+    ];
+  });
 
-  const csvContent = '\uFEFF' + [headers, ...rows]
-    .map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(','))
-    .join('');
+  const csvContent = '\uFEFF' + [headers].concat(rows)
+    .map(function(r){ return r.map(function(c){ return '"' + String(c).replace(/"/g,'""') + '"'; }).join(','); })
+    .join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `택배발송_${date||'전체'}.csv`;
+  a.download = '롯데택배_' + (date||'전체') + '.csv';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✅ 엑셀 다운로드 완료!', 'success');
+  showToast('✅ 롯데택배 양식 다운로드 완료!', 'success');
 }
 
 // ============ 생산계획 ============
