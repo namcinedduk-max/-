@@ -7403,12 +7403,33 @@ function gasGet(params) {
   });
 }
 
-function gasPost(body) {
+function gasPost(body, retry) {
   return fetch(gasUrl, {
     method: 'POST',
     headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify(body)
-  }).then(r => r.json());
+  }).then(r => r.json())
+  .then(function(res) {
+    // 실패 시 1회 자동 재시도
+    if (!res.success && !retry) {
+      return new Promise(function(resolve) {
+        setTimeout(function() {
+          resolve(gasPost(body, true));
+        }, 1000);
+      });
+    }
+    return res;
+  })
+  .catch(function(err) {
+    if (!retry) {
+      return new Promise(function(resolve) {
+        setTimeout(function() {
+          resolve(gasPost(body, true));
+        }, 1000);
+      });
+    }
+    throw err;
+  });
 }
 
 let _prevPendingIds = null; // null = 아직 초기화 전
