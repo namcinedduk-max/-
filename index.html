@@ -3626,6 +3626,166 @@ function editChooseSetType(setType) {
   document.getElementById('edit-setTteokList').innerHTML = '';
   document.getElementById('edit-setTotalQty').value = '';
   document.getElementById('edit-setPricePreview').textContent = '';
+
+  const isKorea = setType === '코리아(대)' || setType === '코리아(소)';
+  const isDeok = setType === '덕세트' || setType === '덕6구세트';
+
+  // 코리아/덕세트는 총수량 숨기고 전용 영역 표시
+  const totalQtyRow = document.getElementById('edit-setTotalQtyRow');
+  if (totalQtyRow) totalQtyRow.style.display = (isKorea || isDeok) ? 'none' : 'flex';
+
+  // 코리아: 개별수량 추가 버튼 표시
+  const korRow = document.getElementById('edit-koreanSetAddRow');
+  if (korRow) korRow.style.display = isKorea ? 'flex' : 'none';
+
+  // 덕세트: 구성 선택 영역 표시
+  const deokArea = document.getElementById('edit-deokConfigArea');
+  if (deokArea) {
+    if (isDeok) {
+      deokArea.style.display = 'block';
+      renderEditDeokConfigs(setType);
+    } else {
+      deokArea.style.display = 'none';
+    }
+  }
+
+  // 코리아 프리셋 버튼
+  const presetArea = document.getElementById('edit-korea-preset-area');
+  if (presetArea) {
+    if (isKorea) {
+      const presets = window.KOREA_PRESETS[setType] || [];
+      if (presets.length > 0) {
+        presetArea.style.display = 'block';
+        presetArea.innerHTML = '<div style="font-size:11px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">📋 저장된 구성</div>' +
+          presets.map(function(p) {
+            return '<button type="button" onclick="applyEditKoreaPreset(\'' + setType + '\',\'' + p.id + '\')" ' +
+              'style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
+              p.label + '</button>';
+          }).join('');
+      } else { presetArea.style.display = 'none'; }
+    } else { presetArea.style.display = 'none'; }
+  }
+}
+
+function applyEditKoreaPreset(setType, presetId) {
+  const preset = (window.KOREA_PRESETS[setType] || []).find(function(p){ return p.id === presetId; });
+  if (!preset) return;
+  window._editCurrentSetItems = preset.items.map(function(i){ return { name: i.name, qty: i.qty }; });
+  renderEditSetTteokList();
+  updateEditSetPrice();
+  showToast('✅ ' + preset.label + ' 구성 적용!', 'success');
+}
+
+function renderEditDeokConfigs(setType) {
+  const list = document.getElementById('edit-deokConfigList');
+  if (!list) return;
+  const configs = DEOK_SET_CONFIGS.filter(function(c){ return c.setType === setType; });
+  list.innerHTML = configs.map(function(cfg) {
+    return '<div onclick="selectEditDeokConfig(\'' + cfg.id + '\')" id="edit-deokcfg-' + cfg.id + '" ' +
+      'style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:#fff;margin-bottom:4px;">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--brown-mid);">' + (cfg.customLabel||cfg.label) + '</div>' +
+      '<div style="font-size:11px;color:var(--accent-red);">' + cfg.basePrice.toLocaleString() + '원~</div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('edit-deokChalArea').style.display = 'none';
+  document.getElementById('edit-deokFixedAddRow').style.display = 'none';
+  window._editDeokConfigId = null;
+}
+
+window._editDeokConfigId = null;
+
+function selectEditDeokConfig(configId) {
+  window._editDeokConfigId = configId;
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === configId; });
+  if (!cfg) return;
+  DEOK_SET_CONFIGS.filter(function(c){ return c.setType === cfg.setType; }).forEach(function(c) {
+    const btn = document.getElementById('edit-deokcfg-' + c.id);
+    if (btn) { btn.style.borderColor = c.id === configId ? 'var(--brown-deep)' : 'var(--border)'; btn.style.background = c.id === configId ? '#fff9f0' : '#fff'; }
+  });
+  if (cfg.hasChalTteok) {
+    document.getElementById('edit-deokChalArea').style.display = 'block';
+    document.getElementById('edit-deokFixedAddRow').style.display = 'none';
+    renderEditDeokChalSlots(cfg);
+  } else {
+    document.getElementById('edit-deokChalArea').style.display = 'none';
+    document.getElementById('edit-deokFixedAddRow').style.display = 'block';
+    const prev = document.getElementById('edit-deokFixedPreview');
+    if (prev) prev.textContent = cfg.basePrice.toLocaleString() + '원';
+    const qtyEl = document.getElementById('edit-deokQtyFixed');
+    if (qtyEl) qtyEl.value = 1;
+  }
+}
+
+function renderEditDeokChalSlots(cfg) {
+  const slots = document.getElementById('edit-deokChalSlots');
+  if (!slots) return;
+  slots.innerHTML = cfg.chalTteokSlots.map(function(slot, idx) {
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
+      '<span style="font-size:11px;color:var(--brown-mid);min-width:55px;">' + slot.label + '(' + slot.qty + '개)</span>' +
+      '<div style="position:relative;flex:1;">' +
+      '<input id="edit-deokChal-' + idx + '-input" type="text" placeholder="떡 검색..." autocomplete="off" ' +
+      'style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:11px;box-sizing:border-box;" ' +
+      'oninput="filterEditDeokChal(\'' + idx + '\',this.value)" onfocus="filterEditDeokChal(\'' + idx + '\',this.value)" onblur="setTimeout(function(){var d=document.getElementById(\'edit-deokChal-\'+idx+\'-dd\');if(d)d.style.display=\'none\'},200)">' +
+      '<div id="edit-deokChal-' + idx + '-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:120px;overflow-y:auto;z-index:999;"></div>' +
+      '<input type="hidden" id="edit-deokChal-' + idx + '-val">' +
+      '</div></div>';
+  }).join('');
+  const prev = document.getElementById('edit-deokChalPreview');
+  if (prev) prev.textContent = cfg.basePrice.toLocaleString() + '원~';
+  const qtyEl = document.getElementById('edit-deokQtyChal');
+  if (qtyEl) qtyEl.value = 1;
+}
+
+function filterEditDeokChal(idx, kw) {
+  const dd = document.getElementById('edit-deokChal-' + idx + '-dd');
+  if (!dd) return;
+  const all = Object.keys(TTEOK_DB).filter(function(n){ return TTEOK_DB[n].unitPrice > 0; });
+  const filtered = kw ? all.filter(function(n){ return n.includes(kw); }) : all;
+  dd.innerHTML = filtered.map(function(name) {
+    return '<div onclick="selectEditDeokChal(' + idx + ',\'' + name + '\')" style="padding:6px 10px;cursor:pointer;font-size:11px;" onmouseenter="this.style.background=\'#f5f0eb\'" onmouseleave="this.style.background=\'#fff\'">🍡 ' + name + '</div>';
+  }).join('');
+  dd.style.display = filtered.length ? 'block' : 'none';
+}
+
+window._editDeokChalSels = {};
+function selectEditDeokChal(idx, name) {
+  window._editDeokChalSels[idx] = name;
+  const inp = document.getElementById('edit-deokChal-' + idx + '-input');
+  const val = document.getElementById('edit-deokChal-' + idx + '-val');
+  const dd = document.getElementById('edit-deokChal-' + idx + '-dd');
+  if (inp) inp.value = name; if (val) val.value = name; if (dd) dd.style.display = 'none';
+}
+
+function addEditDeokItem() {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._editDeokConfigId; });
+  if (!cfg) { showToast('구성을 선택해주세요.', 'error'); return; }
+  const basePrice = cfg.chalBasePrice || 1000;
+  let extra = 0, chalDesc = [];
+  if (cfg.hasChalTteok) {
+    for (let i = 0; i < cfg.chalTteokSlots.length; i++) {
+      const name = window._editDeokChalSels[i] || '';
+      if (!name) { showToast('찰떡류를 모두 선택해주세요.', 'error'); return; }
+      const diff = Math.max(0, (TTEOK_DB[name]?TTEOK_DB[name].unitPrice:0) - basePrice);
+      extra += diff * cfg.chalTteokSlots[i].qty;
+      chalDesc.push(name + ' ' + cfg.chalTteokSlots[i].qty + '개');
+    }
+  }
+  const qtyElId = cfg.hasChalTteok ? 'edit-deokQtyChal' : 'edit-deokQtyFixed';
+  const qty = parseInt(document.getElementById(qtyElId)?document.getElementById(qtyElId).value:1) || 1;
+  const price = (cfg.basePrice + extra) * qty;
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + '개'; });
+  const allDesc = fixedDesc.concat(chalDesc);
+  const useLabel = cfg.customLabel || cfg.label;
+  const displayName = (cfg.customName||cfg.setType) + '(' + useLabel + ' / ' + allDesc.join(', ') + ')';
+  const saveName = (cfg.customName||cfg.setType) + '(' + allDesc.join(', ') + ')';
+  editTteokItems.push({ name: saveName, displayName: displayName, qty: String(qty)+'세트', price: price });
+  renderEditTteokList(); calcEditTotal();
+  window._editDeokConfigId = null; window._editDeokChalSels = {};
+  document.getElementById('edit-deokConfigArea').style.display = 'none';
+  document.getElementById('edit-deokChalArea').style.display = 'none';
+  document.getElementById('edit-deokFixedAddRow').style.display = 'none';
+  ['덕세트','덕6구세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
+  showToast('✅ 추가됐어요!', 'success');
 }
 
 function filterEditSetTteok(kw) {
@@ -7061,6 +7221,36 @@ function renderModalEdit(o) {
           </div>
           <div id="edit-setCompose" style="display:none;">
             <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;"><span id="edit-setTypeName"></span> 구성 떡</div>
+            <!-- 코리아 프리셋 -->
+            <div id="edit-korea-preset-area" style="display:none;margin-bottom:8px;padding:6px;background:#f5f0eb;border-radius:8px;"></div>
+            <!-- 덕세트 구성 선택 -->
+            <div id="edit-deokConfigArea" style="display:none;margin-bottom:8px;">
+              <div style="font-size:11px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">구성 선택</div>
+              <div id="edit-deokConfigList" style="display:flex;flex-direction:column;gap:4px;"></div>
+              <div id="edit-deokChalArea" style="display:none;background:#fff9f0;border:1px solid var(--brown-pale);border-radius:8px;padding:8px;margin-top:6px;">
+                <div style="font-size:11px;font-weight:700;color:var(--brown-mid);margin-bottom:4px;">🍡 찰떡류 선택</div>
+                <div id="edit-deokChalSlots"></div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+                  <span style="font-size:11px;color:var(--brown-mid);">수량:</span>
+                  <input type="number" id="edit-deokQtyChal" value="1" min="1" style="width:60px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;">
+                  <span id="edit-deokChalPreview" style="font-size:11px;color:var(--accent-red);font-weight:700;"></span>
+                  <button type="button" onclick="addEditDeokItem()" style="margin-left:auto;padding:5px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>
+                </div>
+              </div>
+              <div id="edit-deokFixedAddRow" style="display:none;margin-top:6px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:11px;color:var(--brown-mid);">수량:</span>
+                  <input type="number" id="edit-deokQtyFixed" value="1" min="1" style="width:60px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;">
+                  <span id="edit-deokFixedPreview" style="font-size:11px;color:var(--accent-red);font-weight:700;"></span>
+                  <button type="button" onclick="addEditDeokItem()" style="margin-left:auto;padding:5px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>
+                </div>
+              </div>
+            </div>
+            <!-- 코리아 세트 추가 버튼 -->
+            <div id="edit-koreanSetAddRow" style="display:none;justify-content:flex-end;margin-top:6px;">
+              <span id="edit-setPricePreview2" style="font-size:12px;font-weight:700;color:var(--accent-red);margin-right:8px;"></span>
+              <button type="button" onclick="addEditTteokFromSet()" style="padding:6px 12px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">+ 추가</button>
+            </div>
             <div style="display:flex;gap:6px;margin-bottom:6px;">
               <div style="position:relative;flex:1;">
                 <input id="edit-setTteokSearchInput" type="text" placeholder="🔍 떡 검색..." autocomplete="off"
