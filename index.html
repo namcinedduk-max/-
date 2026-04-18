@@ -3395,12 +3395,23 @@ function selectEditCategory(catId) {
   const setArea = document.getElementById('edit-tarea-set');
   const eachArea = document.getElementById('edit-tarea-each');
   const doeArea = document.getElementById('edit-tarea-doe');
-  const hasSet = cat.items.some(function(i){ return i.startsWith('__'); });
+  const ibajiArea = document.getElementById('edit-tarea-ibaji');
+  // 이바지 감지 (선물세트와 분리)
+  const hasIbaji = cat.items.some(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
+  const hasSet = !hasIbaji && cat.items.some(function(i){ return i.startsWith('__'); });
   const hasDoe = cat.items.some(function(i){ return TTEOK_DB[i] && TTEOK_DB[i].unit === '되'; });
   const hasEach = cat.items.some(function(i){ return !i.startsWith('__') && TTEOK_DB[i] && TTEOK_DB[i].unit !== '되'; });
-  if (setArea) setArea.style.display = hasSet ? 'block' : 'none';
-  if (eachArea) eachArea.style.display = (!hasSet && (hasEach || (!hasDoe))) ? 'block' : 'none';
-  if (doeArea) doeArea.style.display = (!hasSet && hasDoe && !hasEach) ? 'block' : 'none';
+  if (hasIbaji) {
+    if (setArea) setArea.style.display = 'none';
+    if (eachArea) eachArea.style.display = 'none';
+    if (doeArea) doeArea.style.display = 'none';
+    if (ibajiArea) { ibajiArea.style.display = 'block'; renderEditIbajiButtons(cat.items); }
+  } else {
+    if (ibajiArea) ibajiArea.style.display = 'none';
+    if (setArea) setArea.style.display = hasSet ? 'block' : 'none';
+    if (eachArea) eachArea.style.display = (!hasSet && (hasEach || (!hasDoe))) ? 'block' : 'none';
+    if (doeArea) doeArea.style.display = (!hasSet && hasDoe && !hasEach) ? 'block' : 'none';
+  }
 }
 
 function filterEditTteok(kw) {
@@ -4127,6 +4138,143 @@ function updateTteokDB(name, field, value) {
   if (TTEOK_DB[name] !== undefined) {
     TTEOK_DB[name][field] = value;
   }
+}
+
+
+function renderEditIbajiButtons(catItems) {
+  const container = document.getElementById('edit-ibaji-buttons');
+  if (!container) return;
+  const ibajiItems = catItems.filter(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
+  container.innerHTML = ibajiItems.map(function(item) {
+    const setType = item === '__이바지大__' ? '이바지大' : '이바지小';
+    return '<button type="button" onclick="selectEditIbajiType(\'' + setType + '\')" ' +
+      'id="edit-ibaji-obtn-' + setType + '" ' +
+      'style="flex:1;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">' +
+      '🎀 ' + setType + '</button>';
+  }).join('');
+  document.getElementById('edit-ibaji-compose').style.display = 'none';
+  window._editIbajiConfigId = null;
+  window._editIbajiChalSelections = {};
+}
+
+window._editIbajiConfigId = null;
+window._editIbajiChalSelections = {};
+
+function selectEditIbajiType(setType) {
+  ['이바지大','이바지小'].forEach(function(s) {
+    const b = document.getElementById('edit-ibaji-obtn-' + s);
+    if (b) {
+      b.style.background = s === setType ? 'var(--brown-deep)' : '#fff';
+      b.style.color = s === setType ? '#fff' : 'var(--brown-mid)';
+      b.style.borderColor = s === setType ? 'var(--brown-deep)' : 'var(--border)';
+    }
+  });
+  const cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.setType === setType; });
+  if (!cfg) return;
+  window._editIbajiConfigId = cfg.id;
+  window._editIbajiChalSelections = {};
+
+  const compose = document.getElementById('edit-ibaji-compose');
+  const configArea = document.getElementById('edit-ibaji-config-area');
+  if (!compose || !configArea) return;
+  compose.style.display = 'block';
+
+  const itemStr = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + (i.unit||'개')); }).join(', ');
+
+  if (cfg.hasChalTteok) {
+    let slotsHtml = cfg.chalTteokSlots.map(function(slot, idx) {
+      return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
+        '<span style="font-size:12px;color:var(--brown-mid);min-width:60px;">' + slot.label + '(' + slot.qty + '개)</span>' +
+        '<div style="position:relative;flex:1;">' +
+        '<input id="edit-ibaji-chal-' + idx + '-input" type="text" placeholder="떡 검색..." autocomplete="off" ' +
+        'style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;" ' +
+        'oninput="filterEditIbajiChal(\'' + idx + '\',this.value)" onfocus="filterEditIbajiChal(\'' + idx + '\',this.value)" onblur="setTimeout(function(){hideEditIbajiDd(\'' + idx + '\')},200)">' +
+        '<div id="edit-ibaji-chal-' + idx + '-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>' +
+        '<input type="hidden" id="edit-ibaji-chal-' + idx + '-val">' +
+        '</div></div>';
+    }).join('');
+    configArea.innerHTML = '<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;">' +
+      '<div style="font-size:12px;color:#888;margin-bottom:8px;">고정구성: ' + itemStr + '</div>' +
+      slotsHtml +
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">' +
+      '<span style="font-size:12px;font-weight:700;color:var(--brown-mid);">수량:</span>' +
+      '<input type="number" id="edit-ibaji-qty" value="1" min="1" style="width:70px;padding:6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">' +
+      '<span style="font-size:12px;font-weight:700;color:var(--accent-red);">' + cfg.basePrice.toLocaleString() + '원 (고정)</span>' +
+      '</div>' +
+      '<button type="button" onclick="addEditIbajiItem()" style="width:100%;margin-top:8px;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">+ 추가</button>' +
+      '</div>';
+  } else {
+    configArea.innerHTML = '<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;">' +
+      '<div style="font-size:12px;color:#888;margin-bottom:8px;">구성: ' + itemStr + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' +
+      '<span style="font-size:12px;font-weight:700;color:var(--brown-mid);">수량:</span>' +
+      '<input type="number" id="edit-ibaji-qty" value="1" min="1" style="width:70px;padding:6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">' +
+      '<span style="font-size:12px;font-weight:700;color:var(--accent-red);">' + cfg.basePrice.toLocaleString() + '원 (고정)</span>' +
+      '</div>' +
+      '<button type="button" onclick="addEditIbajiItem()" style="width:100%;margin-top:8px;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">+ 추가</button>' +
+      '</div>';
+  }
+}
+
+function filterEditIbajiChal(idx, kw) {
+  const dd = document.getElementById('edit-ibaji-chal-' + idx + '-dd');
+  if (!dd) return;
+  const allTteok = Object.keys(TTEOK_DB).filter(function(n){ return TTEOK_DB[n].unitPrice > 0; });
+  const filtered = kw ? allTteok.filter(function(n){ return n.includes(kw); }) : allTteok;
+  dd.innerHTML = filtered.map(function(name) {
+    return '<div onclick="selectEditIbajiChal(' + idx + ',\'' + name + '\')" ' +
+      'style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;" ' +
+      'onmouseenter="this.style.background=\'#f5f0eb\'" onmouseleave="this.style.background=\'#fff\'">' +
+      '🍡 ' + name + '</div>';
+  }).join('');
+  dd.style.display = filtered.length > 0 ? 'block' : 'none';
+}
+
+function selectEditIbajiChal(idx, name) {
+  window._editIbajiChalSelections[idx] = name;
+  const inp = document.getElementById('edit-ibaji-chal-' + idx + '-input');
+  const val = document.getElementById('edit-ibaji-chal-' + idx + '-val');
+  const dd = document.getElementById('edit-ibaji-chal-' + idx + '-dd');
+  if (inp) inp.value = name;
+  if (val) val.value = name;
+  if (dd) dd.style.display = 'none';
+}
+
+function addEditIbajiItem() {
+  const cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.id === window._editIbajiConfigId; });
+  if (!cfg) { showToast('세트를 선택해주세요.', 'error'); return; }
+  let chalDesc = [];
+  if (cfg.hasChalTteok) {
+    for (let i = 0; i < cfg.chalTteokSlots.length; i++) {
+      const name = window._editIbajiChalSelections[i] || '';
+      if (!name) { showToast('찰떡류를 모두 선택해주세요.', 'error'); return; }
+      chalDesc.push(name + ' ' + cfg.chalTteokSlots[i].qty + '개');
+    }
+  }
+  const qtyEl = document.getElementById('edit-ibaji-qty');
+  const qty = parseInt(qtyEl ? qtyEl.value : 1) || 1;
+  const price = cfg.basePrice * qty;
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + (i.unit||'개')); });
+  const allDesc = fixedDesc.concat(chalDesc);
+  const displayName = cfg.setType + '(' + (cfg.customLabel||cfg.label) + ' / ' + allDesc.join(', ') + ')';
+  const saveName = cfg.setType + '(' + allDesc.join(', ') + ')';
+  editTteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
+  renderEditTteokList();
+  calcEditTotal();
+  window._editIbajiConfigId = null;
+  window._editIbajiChalSelections = {};
+  document.getElementById('edit-ibaji-compose').style.display = 'none';
+  ['이바지大','이바지小'].forEach(function(s) {
+    const b = document.getElementById('edit-ibaji-obtn-' + s);
+    if (b) { b.style.background='#fff'; b.style.color='var(--brown-mid)'; b.style.borderColor='var(--border)'; }
+  });
+  showToast('✅ ' + cfg.setType + ' 추가됐어요!', 'success');
+}
+
+
+function hideEditIbajiDd(idx) {
+  var d = document.getElementById('edit-ibaji-chal-' + idx + '-dd');
+  if (d) d.style.display = 'none';
 }
 
 // ============ 퀵비 요금표 (구별 구분) ============
@@ -6685,6 +6833,15 @@ function renderModalEdit(o) {
             <button onclick="addEditTteok()" style="margin-left:auto;padding:6px 12px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 추가</button>
           </div>
         </div>
+        <!-- 이바지 영역 -->
+        <div id="edit-tarea-ibaji" style="display:none;background:#fff9f0;border:1.5px solid var(--brown-pale);border-radius:10px;padding:10px;margin-bottom:6px;">
+          <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;">🎀 이바지 세트 선택</div>
+          <div id="edit-ibaji-buttons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
+          <div id="edit-ibaji-compose" style="display:none;">
+            <div id="edit-ibaji-config-area"></div>
+          </div>
+        </div>
+
         <!-- 되 영역 -->
         <div id="edit-tarea-doe" style="display:none;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
