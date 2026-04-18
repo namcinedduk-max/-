@@ -8289,6 +8289,7 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><span class="modal-detail-value">${delivDate}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><span class="modal-detail-value">${normalizeTimeStr(o.deliveryTime) || '-'}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span class="modal-detail-value" style="color:var(--accent-red);font-size:18px;font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">메모</span><span class="modal-detail-value">${o.memo||'-'}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span><span class="modal-detail-value">${o.payStatus}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span><span class="modal-detail-value">${o.staffName}</span></div>
   `;
@@ -8332,6 +8333,7 @@ function openFuneralModal(id) {
         <option value="부분결제" ${o.payStatus==='부분결제'?'selected':''}>🔸 부분결제</option>
       </select>
     </div>
+    <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ef_memo" value="${o.memo||''}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
       <select id="ef_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
         <option value="직원1" ${o.staffName==='직원1'?'selected':''}>직원 1</option>
@@ -8377,6 +8379,7 @@ function saveFuneralEdit() {
     deliveryTime: document.getElementById('ef_deliveryTime').value,
     priceProduct: p, priceDelivery: d, priceDiscount: dis, priceTotal: p+d-dis,
     payStatus: document.getElementById('ef_payStatus').value,
+    memo: document.getElementById('ef_memo') ? document.getElementById('ef_memo').value.trim() : '',
     staffName: document.getElementById('ef_staffName').value,
   };
   if (!gasUrl) {
