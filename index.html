@@ -1073,6 +1073,8 @@
                       </div>
                     </div>
 
+                    <!-- 코리아 세트 프리셋 버튼 -->
+                    <div id="korea-preset-area" style="display:none;margin-bottom:8px;padding:8px;background:#f5f0eb;border-radius:8px;"></div>
                     <div id="setTteokList" style="margin-bottom:8px;"></div>
                     <div id="setTotalQtyRow" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                       <span style="font-size:13px;font-weight:700;color:var(--brown-mid);">총 수량:</span>
@@ -1873,8 +1875,68 @@
               <span style="font-size:13px;color:#888;">원/개</span>
             </div>
           </div>
-          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">덕세트 구성별 기본가</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-size:13px;font-weight:700;color:var(--brown-mid);">덕세트 구성별 기본가</div>
+            <button onclick="showAddDeokConfigForm()" style="padding:4px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 구성 추가</button>
+          </div>
+          <!-- 덕세트 구성 추가 폼 -->
+          <div id="deok-add-form" style="display:none;background:#f0f7ff;border:1.5px solid #90CAF9;border-radius:10px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;">새 덕세트 구성 추가</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <select id="deok-add-type" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">
+                <option value="덕세트">덕세트</option>
+                <option value="덕6구세트">덕6구세트</option>
+              </select>
+              <input id="deok-add-label" placeholder="구성 라벨 (예: 찹쌀떡30구 4종)" style="flex:2;min-width:150px;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">
+              <input id="deok-add-price" type="number" placeholder="기본가" style="width:90px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">
+            </div>
+            <div style="font-size:11px;color:#888;margin-bottom:6px;">구성 떡 (콤마로 구분, 예: 흰모찌:10,쑥모찌:10,호박모찌:5)</div>
+            <input id="deok-add-items" placeholder="흰모찌:10,쑥모찌:10,호박모찌:5" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="checkbox" id="deok-add-chal"> 찰떡류 선택 포함
+              </label>
+              <input id="deok-add-chal-slots" type="number" placeholder="슬롯수" min="1" max="6" value="2" style="width:70px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;display:none;">
+              <input id="deok-add-chal-qty" type="number" placeholder="각 수량" min="1" value="9" style="width:70px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;display:none;">
+              <input id="deok-add-chal-price" type="number" placeholder="찰떡기준가" value="1000" style="width:90px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;display:none;">
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button onclick="addDeokConfig()" style="flex:1;padding:7px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">추가</button>
+              <button onclick="document.getElementById('deok-add-form').style.display='none'" style="padding:7px 12px;background:#eee;color:#555;border:none;border-radius:8px;font-size:12px;cursor:pointer;">취소</button>
+            </div>
+          </div>
           <div id="deok-price-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
+
+          <!-- 코리아 세트 프리셋 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;margin-top:8px;">
+            <div style="font-size:13px;font-weight:700;color:var(--brown-mid);">코리아(대) 구성 프리셋</div>
+            <button onclick="showAddKoreaPresetForm('코리아(대)')" style="padding:4px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 구성 추가</button>
+          </div>
+          <div id="korea-large-add-form" style="display:none;background:#f0f7ff;border:1.5px solid #90CAF9;border-radius:10px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:11px;color:#888;margin-bottom:6px;">구성 이름과 떡 목록 (콤마로 구분, 예: 흰모찌:8,깨끼떡:12)</div>
+            <input id="korea-large-preset-label" placeholder="구성 이름 (예: 흰8+깨끼12)" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;margin-bottom:6px;">
+            <input id="korea-large-preset-items" placeholder="흰모찌:8,깨끼떡:12" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;margin-bottom:6px;">
+            <div style="display:flex;gap:6px;">
+              <button onclick="addKoreaPreset('코리아(대)')" style="flex:1;padding:7px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">추가</button>
+              <button onclick="document.getElementById('korea-large-add-form').style.display='none'" style="padding:7px 12px;background:#eee;color:#555;border:none;border-radius:8px;font-size:12px;cursor:pointer;">취소</button>
+            </div>
+          </div>
+          <div id="korea-large-preset-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-size:13px;font-weight:700;color:var(--brown-mid);">코리아(소) 구성 프리셋</div>
+            <button onclick="showAddKoreaPresetForm('코리아(소)')" style="padding:4px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 구성 추가</button>
+          </div>
+          <div id="korea-small-add-form" style="display:none;background:#f0f7ff;border:1.5px solid #90CAF9;border-radius:10px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:11px;color:#888;margin-bottom:6px;">구성 이름과 떡 목록 (콤마로 구분, 예: 흰모찌:6,깨끼떡:8)</div>
+            <input id="korea-small-preset-label" placeholder="구성 이름 (예: 흰6+깨끼8)" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;margin-bottom:6px;">
+            <input id="korea-small-preset-items" placeholder="흰모찌:6,깨끼떡:8" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;margin-bottom:6px;">
+            <div style="display:flex;gap:6px;">
+              <button onclick="addKoreaPreset('코리아(소)')" style="flex:1;padding:7px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">추가</button>
+              <button onclick="document.getElementById('korea-small-add-form').style.display='none'" style="padding:7px 12px;background:#eee;color:#555;border:none;border-radius:8px;font-size:12px;cursor:pointer;">취소</button>
+            </div>
+          </div>
+          <div id="korea-small-preset-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
 
           <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;margin-top:8px;">이바지 세트 기본가 (고정금액)</div>
           <div id="ibaji-price-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
@@ -2208,6 +2270,13 @@ const IBAJI_SET_CONFIGS = [
   },
 ];
 
+
+// 코리아 세트 프리셋
+window.KOREA_PRESETS = {
+  '코리아(대)': [],
+  '코리아(소)': []
+};
+
 // 덕세트 구성 정의
 const DEOK_SET_CONFIGS = [
   {
@@ -2296,7 +2365,20 @@ function loadTteokPriceSettings() {
       if (d.koreaSmallBoxFee !== undefined && SET_DB['코리아(소)']) SET_DB['코리아(소)'].boxFee = d.koreaSmallBoxFee;
       if (d.deokBaseMocciPrice !== undefined) { SET_DB['덕세트'].baseMocciPrice = d.deokBaseMocciPrice; SET_DB['덕6구세트'].baseMocciPrice = d.deokBaseMocciPrice; }
       if (d.ibajiSetConfigs) { d.ibajiSetConfigs.forEach(function(saved){ var cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customLabel) cfg.customLabel = saved.customLabel; } }); }
-      if (d.deokSetConfigs) { d.deokSetConfigs.forEach(function(saved){ var cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customName) cfg.customName = saved.customName; if(saved.customLabel) cfg.customLabel = saved.customLabel; } }); }
+      if (d.deokSetConfigs) {
+        d.deokSetConfigs.forEach(function(saved) {
+          var cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === saved.id; });
+          if (cfg) {
+            cfg.basePrice = saved.basePrice;
+            if (saved.customName) cfg.customName = saved.customName;
+            if (saved.customLabel) cfg.customLabel = saved.customLabel;
+          } else if (saved.isCustom) {
+            // 커스텀 구성이면 새로 추가
+            DEOK_SET_CONFIGS.push(saved);
+          }
+        });
+      }
+      if (d.koreaPresets) { try { window.KOREA_PRESETS = d.koreaPresets; } catch(e){} }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
       if (d.orderCategories) { 
         try { 
@@ -2465,8 +2547,9 @@ function renderTteokAllList() {
   const deokList = document.getElementById('deok-price-list');
   if (deokList) {
     deokList.innerHTML = DEOK_SET_CONFIGS.map(function(cfg, idx) {
+      const itemDesc = cfg.items.map(function(i){ return i.name + ' ' + i.qty + '개'; }).join(', ');
       return '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
-        '<div style="width:100%;font-size:11px;color:#888;margin-bottom:3px;">' + cfg.setType + ' - ' + cfg.label + '</div>' +
+        '<div style="width:100%;font-size:11px;color:#888;margin-bottom:3px;">' + cfg.setType + ' - ' + cfg.label + (itemDesc ? ' (' + itemDesc + ')' : '') + '</div>' +
         '<span style="font-size:11px;color:#888;">라벨</span>' +
         '<input type="text" value="' + (cfg.customLabel || cfg.label) + '" placeholder="라벨 수정" style="flex:2;min-width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="DEOK_SET_CONFIGS[' + idx + '].customLabel=this.value">' +
         '<span style="font-size:11px;color:#888;">표시이름</span>' +
@@ -2474,8 +2557,50 @@ function renderTteokAllList() {
         '<span style="font-size:11px;color:#888;">기본가</span>' +
         '<input type="number" value="' + cfg.basePrice + '" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="DEOK_SET_CONFIGS[' + idx + '].basePrice=Number(this.value)">' +
         '<span style="font-size:11px;color:#888;">원</span>' +
+        (cfg.isCustom ? '<button onclick="deleteDeokConfig(\'' + cfg.id + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">✕</button>' : '') +
         '</div>';
     }).join('');
+  }
+
+
+  // 코리아(대) 프리셋 렌더링
+  const koreaLargeList = document.getElementById('korea-large-preset-list');
+  if (koreaLargeList) {
+    const presets = window.KOREA_PRESETS['코리아(대)'] || [];
+    if (presets.length === 0) {
+      koreaLargeList.innerHTML = '<div style="font-size:12px;color:#aaa;padding:8px;">등록된 구성이 없어요. + 구성 추가를 눌러주세요.</div>';
+    } else {
+      koreaLargeList.innerHTML = presets.map(function(p) {
+        const itemDesc = p.items.map(function(i){ return i.name + ' ' + i.qty + '개'; }).join(', ');
+        return '<div style="display:flex;align-items:center;gap:6px;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
+          '<div style="flex:1;">' +
+          '<div style="font-size:12px;font-weight:700;">' + p.label + '</div>' +
+          '<div style="font-size:11px;color:#888;">' + itemDesc + '</div>' +
+          '</div>' +
+          '<button onclick="deleteKoreaPreset(\'코리아(대)\',\'' + p.id + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">✕</button>' +
+          '</div>';
+      }).join('');
+    }
+  }
+
+  // 코리아(소) 프리셋 렌더링
+  const koreaSmallList = document.getElementById('korea-small-preset-list');
+  if (koreaSmallList) {
+    const presets2 = window.KOREA_PRESETS['코리아(소)'] || [];
+    if (presets2.length === 0) {
+      koreaSmallList.innerHTML = '<div style="font-size:12px;color:#aaa;padding:8px;">등록된 구성이 없어요. + 구성 추가를 눌러주세요.</div>';
+    } else {
+      koreaSmallList.innerHTML = presets2.map(function(p) {
+        const itemDesc = p.items.map(function(i){ return i.name + ' ' + i.qty + '개'; }).join(', ');
+        return '<div style="display:flex;align-items:center;gap:6px;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
+          '<div style="flex:1;">' +
+          '<div style="font-size:12px;font-weight:700;">' + p.label + '</div>' +
+          '<div style="font-size:11px;color:#888;">' + itemDesc + '</div>' +
+          '</div>' +
+          '<button onclick="deleteKoreaPreset(\'코리아(소)\',\'' + p.id + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">✕</button>' +
+          '</div>';
+      }).join('');
+    }
   }
   const ehyeList = document.getElementById('ehye-price-list');
   if (ehyeList) {
@@ -2567,7 +2692,8 @@ function saveTteokPriceSettings() {
       koreaSmallBoxFee: SET_DB['코리아(소)'] ? SET_DB['코리아(소)'].boxFee : 1500,
       ibajiSetConfigs: IBAJI_SET_CONFIGS.map(function(c){ return {id:c.id, basePrice:c.basePrice, customLabel:c.customLabel||''}; }),
       deokBaseMocciPrice: SET_DB['덕세트'] ? SET_DB['덕세트'].baseMocciPrice : 1800,
-      deokSetConfigs: DEOK_SET_CONFIGS.map(function(c){ return {id:c.id, basePrice:c.basePrice, customName:c.customName||'', customLabel:c.customLabel||''}; }),
+      deokSetConfigs: DEOK_SET_CONFIGS.map(function(c){ return {id:c.id, setType:c.setType, label:c.label, basePrice:c.basePrice, customName:c.customName||'', customLabel:c.customLabel||'', items:c.items||[], hasChalTteok:c.hasChalTteok||false, chalBasePrice:c.chalBasePrice||1000, chalTteokSlots:c.chalTteokSlots||[], isCustom:c.isCustom||false}; }),
+      koreaPresets: window.KOREA_PRESETS,
       catLabels: window.CAT_LABELS,
       orderCategories: window.ORDER_CATEGORIES,
     };
@@ -2665,6 +2791,26 @@ function renderSetTteokList() {
   if (!list) return;
   const setType = window._currentSetType;
   const isKorea = setType === '코리아(대)' || setType === '코리아(소)';
+  // 코리아 프리셋 버튼 표시
+  const presetArea = document.getElementById('korea-preset-area');
+  if (presetArea) {
+    if (isKorea) {
+      const presets = window.KOREA_PRESETS[setType] || [];
+      if (presets.length > 0) {
+        presetArea.style.display = 'block';
+        presetArea.innerHTML = '<div style="font-size:12px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">📋 저장된 구성</div>' +
+          presets.map(function(p) {
+            return '<button type="button" onclick="applyKoreaPreset(\'' + setType + '\',\'' + p.id + '\')" ' +
+              'style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
+              p.label + '</button>';
+          }).join('');
+      } else {
+        presetArea.style.display = 'none';
+      }
+    } else {
+      presetArea.style.display = 'none';
+    }
+  }
   list.innerHTML = window._currentSetItems.map(function(item, i) {
     const name = isKorea ? item.name : item;
     const qty = isKorea ? item.qty : null;
@@ -4275,6 +4421,130 @@ function addEditIbajiItem() {
 function hideEditIbajiDd(idx) {
   var d = document.getElementById('edit-ibaji-chal-' + idx + '-dd');
   if (d) d.style.display = 'none';
+}
+
+
+// ============ 덕세트 구성 추가/삭제 ============
+function showAddDeokConfigForm() {
+  const form = document.getElementById('deok-add-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  // 찰떡 체크박스 토글
+  const chalCb = document.getElementById('deok-add-chal');
+  if (chalCb) chalCb.onchange = function() {
+    const show = this.checked;
+    ['deok-add-chal-slots','deok-add-chal-qty','deok-add-chal-price'].forEach(function(id){
+      const el = document.getElementById(id);
+      if (el) el.style.display = show ? '' : 'none';
+    });
+  };
+}
+
+function addDeokConfig() {
+  const setType = document.getElementById('deok-add-type').value;
+  const label = document.getElementById('deok-add-label').value.trim();
+  const basePrice = parseInt(document.getElementById('deok-add-price').value) || 0;
+  const itemsStr = document.getElementById('deok-add-items').value.trim();
+  const hasChal = document.getElementById('deok-add-chal').checked;
+  const chalSlots = parseInt(document.getElementById('deok-add-chal-slots').value) || 2;
+  const chalQty = parseInt(document.getElementById('deok-add-chal-qty').value) || 9;
+  const chalBasePrice = parseInt(document.getElementById('deok-add-chal-price').value) || 1000;
+
+  if (!label) { showToast('구성 라벨을 입력해주세요.', 'error'); return; }
+
+  // 떡 목록 파싱: "흰모찌:10,쑥모찌:10" → [{name,qty}]
+  const items = itemsStr ? itemsStr.split(',').map(function(s) {
+    const parts = s.trim().split(':');
+    return { name: parts[0].trim(), qty: parseInt(parts[1]) || 0 };
+  }).filter(function(i){ return i.name; }) : [];
+
+  const newCfg = {
+    id: 'deok_custom_' + Date.now(),
+    setType: setType,
+    label: label,
+    basePrice: basePrice,
+    items: items,
+    hasChalTteok: hasChal,
+    isCustom: true,
+  };
+  if (hasChal) {
+    newCfg.chalBasePrice = chalBasePrice;
+    newCfg.chalTteokSlots = [];
+    for (let i = 0; i < chalSlots; i++) {
+      newCfg.chalTteokSlots.push({ qty: chalQty, label: '찰떡 ' + (i+1) + '종' });
+    }
+  }
+
+  DEOK_SET_CONFIGS.push(newCfg);
+  renderTteokAllList();
+  document.getElementById('deok-add-form').style.display = 'none';
+  // 입력 초기화
+  ['deok-add-label','deok-add-price','deok-add-items'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  showToast('✅ 덕세트 구성 추가됐어요!', 'success');
+}
+
+function deleteDeokConfig(id) {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === id; });
+  if (!cfg) return;
+  if (!confirm(cfg.label + ' 구성을 삭제할까요?')) return;
+  const idx = DEOK_SET_CONFIGS.findIndex(function(c){ return c.id === id; });
+  if (idx > -1) DEOK_SET_CONFIGS.splice(idx, 1);
+  renderTteokAllList();
+  showToast('🗑 구성 삭제됐어요.', 'error');
+}
+
+// ============ 코리아 세트 프리셋 추가/삭제 ============
+function showAddKoreaPresetForm(setType) {
+  const formId = setType === '코리아(대)' ? 'korea-large-add-form' : 'korea-small-add-form';
+  const form = document.getElementById(formId);
+  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function addKoreaPreset(setType) {
+  const isLarge = setType === '코리아(대)';
+  const labelEl = document.getElementById(isLarge ? 'korea-large-preset-label' : 'korea-small-preset-label');
+  const itemsEl = document.getElementById(isLarge ? 'korea-large-preset-items' : 'korea-small-preset-items');
+  const label = labelEl ? labelEl.value.trim() : '';
+  const itemsStr = itemsEl ? itemsEl.value.trim() : '';
+  if (!label) { showToast('구성 이름을 입력해주세요.', 'error'); return; }
+  if (!itemsStr) { showToast('떡 목록을 입력해주세요.', 'error'); return; }
+
+  const items = itemsStr.split(',').map(function(s) {
+    const parts = s.trim().split(':');
+    return { name: parts[0].trim(), qty: parseInt(parts[1]) || 1 };
+  }).filter(function(i){ return i.name; });
+
+  if (!window.KOREA_PRESETS[setType]) window.KOREA_PRESETS[setType] = [];
+  window.KOREA_PRESETS[setType].push({ id: 'korea_' + Date.now(), label: label, items: items });
+
+  renderTteokAllList();
+  if (labelEl) labelEl.value = '';
+  if (itemsEl) itemsEl.value = '';
+  const formId = isLarge ? 'korea-large-add-form' : 'korea-small-add-form';
+  document.getElementById(formId).style.display = 'none';
+  showToast('✅ 코리아 구성 추가됐어요!', 'success');
+}
+
+function deleteKoreaPreset(setType, id) {
+  if (!window.KOREA_PRESETS[setType]) return;
+  const preset = window.KOREA_PRESETS[setType].find(function(p){ return p.id === id; });
+  if (!preset) return;
+  if (!confirm(preset.label + ' 구성을 삭제할까요?')) return;
+  window.KOREA_PRESETS[setType] = window.KOREA_PRESETS[setType].filter(function(p){ return p.id !== id; });
+  renderTteokAllList();
+  showToast('🗑 구성 삭제됐어요.', 'error');
+}
+
+// 코리아 프리셋 적용 (주문 접수에서)
+function applyKoreaPreset(setType, presetId) {
+  const preset = (window.KOREA_PRESETS[setType] || []).find(function(p){ return p.id === presetId; });
+  if (!preset) return;
+  // 현재 코리아 세트 items에 프리셋 적용
+  window._currentSetItems = preset.items.map(function(i){ return { name: i.name, qty: i.qty }; });
+  renderSetTteokList();
+  updateSetPrice();
+  showToast('✅ ' + preset.label + ' 구성 적용!', 'success');
 }
 
 // ============ 퀵비 요금표 (구별 구분) ============
