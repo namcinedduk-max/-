@@ -3459,7 +3459,7 @@ function updateEditTteokPrice() {
 
 function editChooseSetType(setType) {
   window._editCurrentSetType = setType;
-  ['분홍세트','은혜세트'].forEach(function(s) {
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','덕세트','덕6구세트'].forEach(function(s) {
     const b = document.getElementById('edit-setbtn-' + s);
     if (b) { b.style.background = s===setType?'var(--brown-deep)':'#fff'; b.style.color = s===setType?'#fff':'var(--brown-mid)'; b.style.borderColor = s===setType?'var(--brown-deep)':'var(--border)'; }
   });
@@ -3552,7 +3552,7 @@ function addEditTteokFromSet() {
   document.getElementById('edit-setTteokList').innerHTML = '';
   document.getElementById('edit-setTotalQty').value = '';
   document.getElementById('edit-setPricePreview').textContent = '';
-  ['분홍세트','은혜세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','덕세트','덕6구세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
 }
 
 function updateEditDoePrice() {
@@ -6633,9 +6633,13 @@ function renderModalEdit(o) {
         <div id="edit-cat-buttons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"></div>
         <!-- 선물세트 영역 -->
         <div id="edit-tarea-set" style="display:none;background:#fff9f0;border:1.5px solid var(--brown-pale);border-radius:10px;padding:10px;margin-bottom:6px;">
-          <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <button type="button" onclick="editChooseSetType('분홍세트')" id="edit-setbtn-분홍세트" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 분홍세트</button>
-            <button type="button" onclick="editChooseSetType('은혜세트')" id="edit-setbtn-은혜세트" style="flex:1;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 은혜세트</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+            <button type="button" onclick="editChooseSetType('분홍세트')" id="edit-setbtn-분홍세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 분홍세트</button>
+            <button type="button" onclick="editChooseSetType('은혜세트')" id="edit-setbtn-은혜세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 은혜세트</button>
+            <button type="button" onclick="editChooseSetType('코리아(대)')" id="edit-setbtn-코리아(대)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(대)</button>
+            <button type="button" onclick="editChooseSetType('코리아(소)')" id="edit-setbtn-코리아(소)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(소)</button>
+            <button type="button" onclick="editChooseSetType('덕세트')" id="edit-setbtn-덕세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕세트</button>
+            <button type="button" onclick="editChooseSetType('덕6구세트')" id="edit-setbtn-덕6구세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕6구세트</button>
           </div>
           <div id="edit-setCompose" style="display:none;">
             <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;"><span id="edit-setTypeName"></span> 구성 떡</div>
