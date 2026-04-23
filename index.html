@@ -1769,6 +1769,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
         <h2 style="margin:0;">📦 택배 발송 목록</h2>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="deliveryTabSearch" placeholder="🔍 받는분/전화/상품명 검색" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;min-width:180px;" oninput="renderDeliveryTab()">
           <input type="date" id="deliveryTabDate" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" onchange="renderDeliveryTab()">
           <button onclick="clearDeliveryDateFilter()" style="padding:6px 10px;background:#eee;border:none;border-radius:8px;font-size:12px;cursor:pointer;">전체</button>
           <button onclick="downloadDeliveryExcel()" style="padding:6px 14px;background:#217346;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📥 엑셀 다운</button>
@@ -5728,15 +5729,27 @@ async function printLabels() {
 // ============ 택배 탭 ============
 function clearDeliveryDateFilter() {
   document.getElementById('deliveryTabDate').value = '';
+  const s = document.getElementById('deliveryTabSearch'); if(s) s.value = '';
   renderDeliveryTab();
 }
 
 function renderDeliveryTab() {
   const date = document.getElementById('deliveryTabDate').value;
+  const searchEl = document.getElementById('deliveryTabSearch');
+  const kw = searchEl ? searchEl.value.trim().toLowerCase() : '';
   const list = orders.filter(o => {
     if (o.deliveryMethod !== '택배') return false;
-    if (!date) return true;
-    return normalizeDateStr(String(o.deliveryDate||'')) === date;
+    if (date && normalizeDateStr(String(o.deliveryDate||'')) !== date) return false;
+    if (kw) {
+      const searchTarget = [
+        o.receiverName||'', o.receiverPhone||'',
+        o.senderName||'', o.tteokType||'',
+        o.tteokItems ? o.tteokItems.map(t=>t.name).join(' ') : '',
+        o.memo||''
+      ].join(' ').toLowerCase();
+      if (!searchTarget.includes(kw)) return false;
+    }
+    return true;
   });
 
   const area = document.getElementById('deliveryTabContent');
@@ -5745,37 +5758,65 @@ function renderDeliveryTab() {
     return;
   }
 
+  // 개인주문목록처럼 카드형 렌더링
   area.innerHTML = `
     <div style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">총 ${list.length}건</div>
     <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:700px;">
         <thead>
           <tr style="background:var(--brown-deep);color:#fff;">
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">No.</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">받는분</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">전화번호</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">주소</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">상품명</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">수량</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">보내는분</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">메모</th>
-            <th style="padding:8px 10px;text-align:left;white-space:nowrap;">배송일</th>
+            <th style="padding:8px 10px;text-align:left;width:36px;"></th>
+            <th style="padding:8px 10px;text-align:left;">No.</th>
+            <th style="padding:8px 10px;text-align:left;">받는분/보내는분</th>
+            <th style="padding:8px 10px;text-align:left;">전화번호</th>
+            <th style="padding:8px 10px;text-align:left;">주소</th>
+            <th style="padding:8px 10px;text-align:left;">메모</th>
+            <th style="padding:8px 10px;text-align:left;">떡 종류</th>
+            <th style="padding:8px 10px;text-align:left;">배송일</th>
+            <th style="padding:8px 10px;text-align:left;">금액</th>
+            <th style="padding:8px 10px;text-align:left;">결제</th>
+            <th style="padding:8px 10px;text-align:left;">결제상태</th>
+            <th style="padding:8px 10px;text-align:left;">액션</th>
           </tr>
         </thead>
         <tbody>
-          ${list.map((o, i) => `
+          ${list.map((o, i) => {
+            const tteokHtml = o.tteokItems && o.tteokItems.length > 0
+              ? o.tteokItems.map(t => `<span>🍡 ${t.name||''} <b style="color:var(--accent-red);">${t.qty||''}</b></span>`).join('<br>')
+              : `<span>${o.tteokType||'-'}</span>`;
+            const payBadge = o.payStatus === '결제완료'
+              ? `<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;">결제완료</span>`
+              : o.payStatus === '미수금'
+              ? `<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;">미수금</span>`
+              : `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;">${o.payStatus||'-'}</span>`;
+            const addr = [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ') || '-';
+            const total = Number(o.priceTotal||0);
+            return `
             <tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openModal(${o.id})">
-              <td style="padding:8px 10px;color:var(--brown-light);">${i+1}</td>
-              <td style="padding:8px 10px;font-weight:700;">${o.receiverName||'-'}</td>
-              <td style="padding:8px 10px;">${o.receiverPhone||'-'}</td>
-              <td style="padding:8px 10px;max-width:180px;">${[o.deliveryAddr1,o.deliveryAddr2].filter(Boolean).join(' ')||'-'}</td>
-              <td style="padding:8px 10px;">${o.tteokType||'-'}</td>
-              <td style="padding:8px 10px;">${o.tteokItems ? o.tteokItems.map(t=>t.qty||'').filter(Boolean).join(', ') : '-'}</td>
-              <td style="padding:8px 10px;">${o.senderName||'-'}</td>
-              <td style="padding:8px 10px;color:var(--accent-red);">${o.memo||''}</td>
+              <td style="padding:8px 10px;" onclick="event.stopPropagation()">
+                <input type="checkbox" class="order-checkbox" data-id="${o.id}">
+              </td>
+              <td style="padding:8px 10px;color:var(--brown-light);white-space:nowrap;">#${o.id}</td>
+              <td style="padding:8px 10px;">
+                <div style="font-weight:700;">${o.receiverName||'-'}</div>
+                <div style="font-size:11px;color:#888;">${o.senderName||''}</div>
+              </td>
+              <td style="padding:8px 10px;white-space:nowrap;">
+                <div>${o.receiverPhone||'-'}</div>
+                <div style="font-size:11px;color:#888;">${o.senderPhone||''}</div>
+              </td>
+              <td style="padding:8px 10px;max-width:160px;font-size:12px;">${addr}</td>
+              <td style="padding:8px 10px;color:var(--accent-red);font-size:12px;">${o.memo ? '⚠️ ' + o.memo : ''}</td>
+              <td style="padding:8px 10px;line-height:1.6;">${tteokHtml}</td>
               <td style="padding:8px 10px;white-space:nowrap;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
-            </tr>
-          `).join('')}
+              <td style="padding:8px 10px;font-weight:700;white-space:nowrap;">${total > 0 ? total.toLocaleString() + '원' : '0원'}</td>
+              <td style="padding:8px 10px;font-size:12px;">${o.payMethod||'-'}</td>
+              <td style="padding:8px 10px;">${payBadge}</td>
+              <td style="padding:8px 10px;" onclick="event.stopPropagation()">
+                <button onclick="deleteOrder(${o.id})" style="padding:4px 8px;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">삭제</button>
+              </td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
