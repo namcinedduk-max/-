@@ -109,9 +109,9 @@
 
   /* MAIN LAYOUT */
   .main {
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 28px 24px;
+    padding: 16px 16px;
   }
 
   /* PANEL */
@@ -5766,17 +5766,17 @@ function renderDeliveryTab() {
         <thead>
           <tr style="background:var(--brown-deep);color:#fff;">
             <th style="padding:8px 10px;text-align:left;width:36px;"></th>
-            <th style="padding:8px 10px;text-align:left;">No.</th>
-            <th style="padding:8px 10px;text-align:left;">받는분/보내는분</th>
-            <th style="padding:8px 10px;text-align:left;">전화번호</th>
-            <th style="padding:8px 10px;text-align:left;">주소</th>
-            <th style="padding:8px 10px;text-align:left;">메모</th>
-            <th style="padding:8px 10px;text-align:left;">떡 종류</th>
-            <th style="padding:8px 10px;text-align:left;">배송일</th>
-            <th style="padding:8px 10px;text-align:left;">금액</th>
-            <th style="padding:8px 10px;text-align:left;">결제</th>
-            <th style="padding:8px 10px;text-align:left;">결제상태</th>
-            <th style="padding:8px 10px;text-align:left;">액션</th>
+            <th style="padding:8px 6px;text-align:left;min-width:50px;">No.</th>
+            <th style="padding:8px 6px;text-align:left;min-width:100px;">받는분/보내는분</th>
+            <th style="padding:8px 6px;text-align:left;min-width:110px;">전화번호</th>
+            <th style="padding:8px 6px;text-align:left;min-width:150px;">주소</th>
+            <th style="padding:8px 6px;text-align:left;min-width:80px;">메모</th>
+            <th style="padding:8px 6px;text-align:left;min-width:180px;">떡 종류</th>
+            <th style="padding:8px 6px;text-align:left;min-width:90px;">배송일</th>
+            <th style="padding:8px 6px;text-align:left;min-width:80px;">금액</th>
+            <th style="padding:8px 6px;text-align:left;min-width:50px;">결제</th>
+            <th style="padding:8px 6px;text-align:left;min-width:80px;">결제상태</th>
+            <th style="padding:8px 6px;text-align:left;min-width:50px;">액션</th>
           </tr>
         </thead>
         <tbody>
@@ -5796,22 +5796,22 @@ function renderDeliveryTab() {
               <td style="padding:8px 10px;" onclick="event.stopPropagation()">
                 <input type="checkbox" class="order-checkbox" data-id="${o.id}">
               </td>
-              <td style="padding:8px 10px;color:var(--brown-light);white-space:nowrap;">#${o.id}</td>
+              <td style="padding:6px 6px;color:var(--brown-light);white-space:nowrap;">#${o.id}</td>
               <td style="padding:8px 10px;">
                 <div style="font-weight:700;">${o.receiverName||'-'}</div>
                 <div style="font-size:11px;color:#888;">${o.senderName||''}</div>
               </td>
-              <td style="padding:8px 10px;white-space:nowrap;">
+              <td style="padding:6px 6px;white-space:nowrap;">
                 <div>${o.receiverPhone||'-'}</div>
                 <div style="font-size:11px;color:#888;">${o.senderPhone||''}</div>
               </td>
-              <td style="padding:8px 10px;max-width:160px;font-size:12px;">${addr}</td>
-              <td style="padding:8px 10px;color:var(--accent-red);font-size:12px;">${o.memo ? '⚠️ ' + o.memo : ''}</td>
-              <td style="padding:8px 10px;line-height:1.6;">${tteokHtml}</td>
-              <td style="padding:8px 10px;white-space:nowrap;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
-              <td style="padding:8px 10px;font-weight:700;white-space:nowrap;">${total > 0 ? total.toLocaleString() + '원' : '0원'}</td>
-              <td style="padding:8px 10px;font-size:12px;">${o.payMethod||'-'}</td>
-              <td style="padding:8px 10px;">${payBadge}</td>
+              <td style="padding:6px 6px;min-width:150px;font-size:12px;">${addr}</td>
+              <td style="padding:6px 6px;color:var(--accent-red);font-size:12px;">${o.memo ? '⚠️ ' + o.memo : ''}</td>
+              <td style="padding:6px 6px;min-width:180px;line-height:1.6;font-size:12px;">${tteokHtml}</td>
+              <td style="padding:6px 6px;white-space:nowrap;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
+              <td style="padding:6px 6px;font-weight:700;white-space:nowrap;">${total > 0 ? total.toLocaleString() + '원' : '0원'}</td>
+              <td style="padding:6px 6px;font-size:12px;">${o.payMethod||'-'}</td>
+              <td style="padding:6px 6px;">${payBadge}</td>
               <td style="padding:8px 10px;" onclick="event.stopPropagation()">
                 <button onclick="deleteOrder(${o.id})" style="padding:4px 8px;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">삭제</button>
               </td>
