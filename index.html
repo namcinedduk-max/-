@@ -7583,9 +7583,12 @@ function saveEdit() {
     ? orders.filter(x => x.bundleId === updated.bundleId && String(x.id) !== String(updated.id))
     : [];
 
-  showToast('💾 저장 중...', '');
-  const saveMain = gasPost({ action: 'update', data: updated });
-  const saveSiblings = bundleSiblings.map(sib => {
+  // 낙관적 업데이트 - 즉시 화면 반영
+  const idx2 = orders.findIndex(x => String(x.id) === String(updated.id));
+  if (idx2 > -1) orders[idx2] = updated;
+
+  // 묶음 형제 주문도 즉시 반영
+  const sibUpdates = bundleSiblings.map(sib => {
     const sibUpdated = {
       ...sib,
       payStatus: updated.payStatus,
@@ -7597,33 +7600,34 @@ function saveEdit() {
     };
     const sidx = orders.findIndex(x => String(x.id) === String(sib.id));
     if (sidx > -1) orders[sidx] = sibUpdated;
-    return gasPost({ action: 'update', data: sibUpdated });
+    return sibUpdated;
   });
 
-  Promise.all([saveMain, ...saveSiblings])
-    .then(results => {
-      if (results[0].success) {
-        const idx2 = orders.findIndex(x => String(x.id) === String(updated.id));
-        if (idx2 > -1) orders[idx2] = updated;
+  updateStats(); renderList();
+  const msg = bundleSiblings.length > 0
+    ? `✅ 수정되었습니다! (묶음 ${bundleSiblings.length + 1}건 동기화)`
+    : '✅ 수정되었습니다!';
+  showToast(msg, 'success');
+  closeModal();
+
+  // 백그라운드에서 GAS 저장 (실패해도 화면은 유지, 다음 새로고침 시 반영)
+  if (gasUrl) {
+    const saves = [
+      gasPost({ action: 'update', data: updated }),
+      ...sibUpdates.map(s => gasPost({ action: 'update', data: s }))
+    ];
+    Promise.all(saves).then(function(results) {
+      if (results[0] && !results[0].success) {
+        showToast('⚠️ 서버 저장 실패 - 새로고침 시 원래대로 돌아갈 수 있어요', 'error');
+        // 실패 시 원래 데이터로 복구
+        const ridx = orders.findIndex(x => String(x.id) === String(o.id));
+        if (ridx > -1) orders[ridx] = o;
         updateStats(); renderList();
-        const msg = bundleSiblings.length > 0
-          ? `✅ 수정되었습니다! (묶음 ${bundleSiblings.length + 1}건 결제정보 동기화)`
-          : '✅ 수정되었습니다!';
-        showToast(msg, 'success');
-        closeModal();
-      } else {
-        const idx2 = orders.findIndex(x => String(x.id) === String(updated.id));
-        if (idx2 > -1) orders[idx2] = o;
-        updateStats(); renderList();
-        showToast('❌ 저장 실패', 'error');
       }
-    })
-    .catch(() => {
-      const idx2 = orders.findIndex(x => String(x.id) === String(updated.id));
-      if (idx2 > -1) orders[idx2] = o;
-      updateStats(); renderList();
-      showToast('❌ 저장 실패', 'error');
+    }).catch(function() {
+      showToast('⚠️ 서버 연결 실패 - 새로고침 시 원래대로 돌아갈 수 있어요', 'error');
     });
+  }
 }
 
 function closeModal() {
@@ -8077,31 +8081,18 @@ function gasGet(params) {
   });
 }
 
-function gasPost(body, retry) {
+function gasPost(body) {
+  const controller = new AbortController();
+  const timeout = setTimeout(function(){ controller.abort(); }, 12000); // 12초 타임아웃
   return fetch(gasUrl, {
     method: 'POST',
     headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify(body)
-  }).then(r => r.json())
-  .then(function(res) {
-    // 실패 시 1회 자동 재시도
-    if (!res.success && !retry) {
-      return new Promise(function(resolve) {
-        setTimeout(function() {
-          resolve(gasPost(body, true));
-        }, 1000);
-      });
-    }
-    return res;
+    body: JSON.stringify(body),
+    signal: controller.signal
   })
-  .catch(function(err) {
-    if (!retry) {
-      return new Promise(function(resolve) {
-        setTimeout(function() {
-          resolve(gasPost(body, true));
-        }, 1000);
-      });
-    }
+  .then(function(r){ clearTimeout(timeout); return r.json(); })
+  .catch(function(err){
+    clearTimeout(timeout);
     throw err;
   });
 }
