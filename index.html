@@ -1312,8 +1312,16 @@
           <label>장례식장 이름 <span class="required">*</span></label>
           <select id="f_funeralName">
             <option value="">-- 선택 --</option>
-            <option value="충대장례식장">충대장례식장</option>
-            <option value="대청장례식장">대청장례식장</option>
+            <optgroup label="충대장례식장">
+              <option value="충대장례식장">충대장례식장</option>
+              <option value="충대본관영양">충대본관영양</option>
+              <option value="소비조합">소비조합</option>
+              <option value="재활환자">재활환자</option>
+              <option value="재활직원">재활직원</option>
+            </optgroup>
+            <optgroup label="대청장례식장">
+              <option value="대청장례식장">대청장례식장</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-group">
@@ -5669,14 +5677,14 @@ function updateTteokSelect(selectId, type) {
 
 // 떡 선택 시 단가 자동 계산
 function calcPriceFromTteok(type) {
+  // 개인고객 단가 계산 (기존 유지)
   const items = type === 'funeral' ? funeralTteokItems : tteokItems;
   const prices = priceSettings[type];
   let total = 0;
   items.forEach(item => {
-    const priceItem = prices.find(p => p.name === item.name);
+    const priceItem = prices ? prices.find(p => p.name === item.name) : null;
     if (!priceItem || !item.qty) return;
     const qtyStr = String(item.qty).trim();
-    // 묶음 단위인지 확인 (예: "1박스", "2판")
     const bundleMatch = qtyStr.match(/^(\d+)(박스|판|묶음|세트)/);
     const numMatch = qtyStr.match(/^(\d+)/);
     if (bundleMatch) {
@@ -5692,6 +5700,42 @@ function calcPriceFromTteok(type) {
     } else {
       document.getElementById('priceProduct').value = total;
       calcTotal();
+    }
+  }
+}
+
+// 장례식장/웨딩홀 단가 자동계산
+function calcVenuePrice(type) {
+  const items = type === 'funeral' ? funeralTteokItems : weddingTteokItems;
+  const venueName = type === 'funeral'
+    ? document.getElementById('f_funeralName').value
+    : document.getElementById('w_weddingName').value;
+
+  // 충대 계열은 chungdae 단가, 대청은 daecheong 단가, 웨딩홀은 wedding 단가
+  let priceKey = 'wedding';
+  if (type === 'funeral') {
+    const chungdaeVenues = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'];
+    priceKey = chungdaeVenues.includes(venueName) ? 'chungdae' : 'daecheong';
+  }
+
+  const prices = venuePrices[priceKey] || {};
+  if (Object.keys(prices).length === 0) return; // 단가 미설정이면 스킵
+
+  let total = 0;
+  items.forEach(item => {
+    const unitPrice = prices[item.name];
+    if (!unitPrice || !item.qty) return;
+    const numMatch = String(item.qty).match(/^(\d+)/);
+    if (numMatch) total += parseInt(numMatch[1]) * unitPrice;
+  });
+
+  if (total > 0) {
+    if (type === 'funeral') {
+      document.getElementById('f_priceProduct').value = total;
+      calcFuneralTotal();
+    } else {
+      document.getElementById('w_priceProduct').value = total;
+      calcWeddingTotal();
     }
   }
 }
@@ -7174,6 +7218,7 @@ function addFuneralTteokItem() {
   sel.value = ''; custom.style.display = 'none'; custom.value = '';
   document.getElementById('f_tteokQty').value = '';
   calcPriceFromTteok('funeral');
+  calcVenuePrice('funeral');
 }
 
 function removeFuneralTteokItem(idx) {
@@ -9262,6 +9307,7 @@ function addWeddingTteokItem() {
   renderWeddingTteokList();
   sel.value = ''; custom.value = ''; custom.style.display = 'none';
   document.getElementById('w_tteokQty').value = '';
+  calcVenuePrice('wedding');
 }
 
 function removeWeddingTteokItem(i) {
