@@ -7865,11 +7865,10 @@ function clearFilter() {
 }
 
 function filterByUnpaid() {
-  // 이미 미수금 필터 중이면 해제, 아니면 적용
-  if (window._filterPayStatus === '미수금') {
+  if (window._filterPayStatus === '입금대기') {
     window._filterPayStatus = null;
   } else {
-    window._filterPayStatus = '미수금';
+    window._filterPayStatus = '입금대기';
     document.getElementById('filterDate').value = '';
   }
   renderList();
