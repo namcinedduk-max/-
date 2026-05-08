@@ -1310,7 +1310,7 @@
         <!-- 장례식장 정보 -->
         <div class="form-group">
           <label>장례식장 이름 <span class="required">*</span></label>
-          <select id="f_funeralName" onchange="onFuneralNameChange()">
+          <select id="f_funeralName">
             <option value="">-- 선택 --</option>
             <option value="충대장례식장">충대장례식장</option>
             <option value="대청장례식장">대청장례식장</option>
@@ -2000,9 +2000,9 @@
       <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
         <button class="settings-tab-btn active" id="stab-personal" onclick="switchSettingsTab('personal')">👤 개인고객 단가</button>
         <button class="settings-tab-btn" id="stab-funeral" onclick="switchSettingsTab('funeral')">🏛️ 장례식장 단가</button>
+        <button class="settings-tab-btn" id="stab-wedding-price" onclick="switchSettingsTab('wedding-price')">💒 웨딩홀 단가</button>
         <button class="settings-tab-btn" id="stab-quickfee" onclick="switchSettingsTab('quickfee')">📦 퀵비 요금표</button>
         <button class="settings-tab-btn" id="stab-tteokprice" onclick="switchSettingsTab('tteokprice')">🍡 떡 단가</button>
-        <button class="settings-tab-btn" id="stab-venue" onclick="switchSettingsTab('venue')">🏢 거래처 단가</button>
       </div>
 
       <div id="settings-personal">
@@ -2011,10 +2011,51 @@
       </div>
 
       <div id="settings-funeral" style="display:none;">
-        <div id="priceList-funeral" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
-        <button class="btn-small btn-primary" onclick="addPriceItem('funeral')">+ 떡 종류 추가</button>
+        <!-- 충대장례식장 단가 -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 충대장례식장</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">품목별 고정단가 설정. 주문 접수 시 자동 표시돼요.</p>
+          <div id="priceList-chungdae" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="chungdae-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="chungdae-new-price" type="number" placeholder="단가 (원)" style="width:110px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addVenuePrice('chungdae')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+
+        <!-- 대청장례식장 단가 -->
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 대청장례식장</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">상주한테 받는 금액 기준으로 입력. 수수료 공제 후 실수령액이 자동 계산돼요.</p>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;">
+            <span style="font-size:13px;font-weight:700;color:#92400e;">대청 수수료율</span>
+            <input id="daecheong-rate" type="number" placeholder="예: 25" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:center;">
+            <span style="font-size:13px;color:#92400e;">%</span>
+            <button onclick="saveDaecheongRate()" style="padding:6px 14px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">저장</button>
+            <span id="daecheong-rate-saved" style="font-size:12px;color:green;display:none;">✅ 저장됨</span>
+          </div>
+          <div id="priceList-daecheong" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="daecheong-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="daecheong-new-price" type="number" placeholder="상주가격 (원)" style="width:110px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addVenuePrice('daecheong')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+
+        <button class="btn-submit" onclick="saveFuneralPrices()">💾 장례식장 단가 저장</button>
       </div>
 
+
+      <div id="settings-wedding-price" style="display:none;margin-top:8px;">
+        <p style="font-size:12px;color:var(--brown-light);margin-bottom:14px;">웨딩홀 공통 납품단가. 모든 웨딩홀에 동일하게 적용돼요.</p>
+        <div id="priceList-wedding" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <input id="wedding-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <input id="wedding-new-price" type="number" placeholder="납품단가 (원)" style="width:110px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <button onclick="addVenuePrice('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+        </div>
+        <button class="btn-submit" onclick="saveWeddingPrices()">💾 웨딩홀 단가 저장</button>
+      </div>
 
       <div id="settings-tteokprice" style="display:none;margin-top:8px;">
 
@@ -6650,7 +6691,6 @@ function switchTab(tab) {
   if (tab === 'funeral') {
     const fd = document.getElementById('f_deliveryDate');
     if (fd && !fd.value) fd.value = getLocalDateStr();
-    loadVenues();
   }
   if (tab === 'guide') {
     // 떡 선택 옵션 동기화
@@ -6667,7 +6707,6 @@ function switchTab(tab) {
   if (tab === 'wedding') {
     const d = document.getElementById('w_deliveryDate');
     if (d && !d.value) d.value = getLocalDateStr();
-    loadVenues();
   }
   if (tab === 'weddingList') {
     if (gasUrl) loadWeddingOrdersFromSheet(); else renderWeddingList();
@@ -9175,11 +9214,6 @@ function initPurchaseTab() {
 // ============================================================
 // 거래처 단가 (장례식장 / 웨딩홀 공통)
 // ============================================================
-let venues = JSON.parse(localStorage.getItem('venues') || '[]');
-
-function saveVenueData() {
-  localStorage.setItem('venues', JSON.stringify(venues));
-}
 
 function loadVenues() {
   if (gasUrl) {
@@ -9197,71 +9231,11 @@ function loadVenues() {
   }
 }
 
-function updateVenueSelects() {
-  // 장례식장 select 업데이트
-  const fSel = document.getElementById('f_funeralName');
-  if (fSel) {
-    const cur = fSel.value;
-    const funeralVenues = venues.filter(v => v.venueType === 'funeral');
-    // 기본 옵션 유지 + GAS 등록 거래처 추가
-    const defaults = ['충대장례식장', '대청장례식장'];
-    const all = [...new Set([...defaults, ...funeralVenues.map(v => v.name)])];
-    fSel.innerHTML = '<option value="">-- 선택 --</option>' +
-      all.map(n => `<option value="${n}">${n}</option>`).join('');
-    fSel.value = cur;
-  }
-  // 웨딩홀 select 업데이트
-  const wSel = document.getElementById('w_weddingName');
-  if (wSel) {
-    const cur = wSel.value;
-    const weddingVenues = venues.filter(v => v.venueType === 'wedding');
-    const defaults = ['마리드엘','유성컨벤션 2층','유성컨벤션 3층','빌라드알티오라','KW웨딩홀','명가','킹덤'];
-    const all = [...new Set([...defaults, ...weddingVenues.map(v => v.name)])];
-    wSel.innerHTML = '<option value="">-- 선택 --</option>' +
-      all.map(n => `<option value="${n}">${n}</option>`).join('');
-    wSel.value = cur;
-  }
-}
 
 // 거래처 선택 시 단가 안내 표시
-function getVenueInfo(name) {
-  return venues.find(v => v.name === name) || null;
-}
 
-function showVenuePriceGuide(guideId, venueName) {
-  const el = document.getElementById(guideId);
-  if (!el) return;
-  const v = getVenueInfo(venueName);
-  if (!v) { el.style.display = 'none'; return; }
-  let msg = '';
-  if (v.priceType === 'fixed') {
-    const prices = v.prices || {};
-    const items = Object.entries(prices).map(([k, val]) => `${k}: ${Number(val).toLocaleString()}원`).join(' / ');
-    msg = `📌 ${venueName} 고정단가 — ${items || '단가 미설정'}`;
-  } else if (v.priceType === 'discount') {
-    msg = `📌 ${venueName} — 상주가격 입력 후 수수료 ${v.discountRate || 0}% 정산`;
-  } else if (v.priceType === 'common') {
-    const prices = v.prices || {};
-    const items = Object.entries(prices).map(([k, val]) => `${k}: ${Number(val).toLocaleString()}원`).join(' / ');
-    msg = `📌 ${venueName} 납품단가 — ${items || '단가 미설정'}`;
-  }
-  if (msg) {
-    el.textContent = msg;
-    el.style.display = 'block';
-  } else {
-    el.style.display = 'none';
-  }
-}
 
-function onFuneralNameChange() {
-  const name = document.getElementById('f_funeralName').value;
-  showVenuePriceGuide('f_priceGuide', name);
-}
 
-function onWeddingNameChange() {
-  const name = document.getElementById('w_weddingName').value;
-  showVenuePriceGuide('w_priceGuide', name);
-}
 
 // ============================================================
 // 웨딩홀 주문
@@ -9506,138 +9480,81 @@ function printWeddingOrders() {
 }
 
 
+
+
 // ============================================================
-// 거래처 단가 관리 (설정 탭)
+// 장례식장 / 웨딩홀 단가 설정
 // ============================================================
-let editingVenueId = null;
-let editingVenuePrices = {};
+let venuePrices = JSON.parse(localStorage.getItem('venuePrices') || '{"chungdae":{},"daecheong":{},"wedding":{}}');
+let daecheongRate = parseFloat(localStorage.getItem('daecheongRate') || '0');
 
-function onVenuePriceTypeChange() {
-  const type = document.getElementById('venue-priceType').value;
-  document.getElementById('venue-discount-row').style.display = type === 'discount' ? 'block' : 'none';
+function saveVenuePriceData() {
+  localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
 }
 
-function saveVenue() {
-  const name = document.getElementById('venue-name').value.trim();
-  const venueType = document.getElementById('venue-type').value;
-  const priceType = document.getElementById('venue-priceType').value;
-  const discountRate = parseFloat(document.getElementById('venue-discountRate').value) || 0;
-  const memo = document.getElementById('venue-memo').value.trim();
-  if (!name) { showToast('거래처명을 입력해주세요.', 'error'); return; }
-  if (venues.find(v => v.name === name)) { showToast('이미 있는 거래처예요.', 'error'); return; }
-
-  const v = { id: Date.now(), name, venueType, priceType, discountRate, memo, prices: {}, createdAt: new Date().toLocaleString('ko-KR') };
-  venues.push(v);
-  saveVenueData();
-
-  // GAS 저장
-  if (gasUrl) gasPost({ action: 'save', sheet: 'venue', data: v }).catch(() => {});
-
-  document.getElementById('venue-name').value = '';
-  document.getElementById('venue-memo').value = '';
-  document.getElementById('venue-discountRate').value = '';
-  renderVenueList();
-  updateVenueSelects();
-  showToast('✅ ' + name + ' 거래처 추가됐어요!', 'success');
+function addVenuePrice(venue) {
+  const nameEl = document.getElementById(venue + '-new-name');
+  const priceEl = document.getElementById(venue + '-new-price');
+  const name = nameEl.value.trim();
+  const price = parseInt(priceEl.value) || 0;
+  if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
+  if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
+  if (!venuePrices[venue]) venuePrices[venue] = {};
+  venuePrices[venue][name] = price;
+  nameEl.value = ''; priceEl.value = '';
+  renderVenuePrices(venue);
 }
 
-function deleteVenue(id) {
-  if (!confirm('이 거래처를 삭제할까요?')) return;
-  venues = venues.filter(v => v.id !== id);
-  saveVenueData();
-  if (gasUrl) gasPost({ action: 'delete', sheet: 'venue', id: id }).catch(() => {});
-  renderVenueList();
-  updateVenueSelects();
-  showToast('🗑 거래처 삭제됐어요.', '');
+function removeVenuePrice(venue, name) {
+  delete venuePrices[venue][name];
+  renderVenuePrices(venue);
 }
 
-function renderVenueList() {
-  const el = document.getElementById('venueList');
+function renderVenuePrices(venue) {
+  const el = document.getElementById('priceList-' + venue);
   if (!el) return;
-  if (venues.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">등록된 거래처가 없어요.</div>';
-    return;
-  }
-
-  const typeLabel = t => t === 'funeral' ? '장례식장' : '웨딩홀';
-  const priceLabel = t => ({ fixed: '품목별 고정', discount: '수수료율 할인', common: '공통 납품단가' })[t] || t;
-
-  el.innerHTML = venues.map(v => `
-    <div style="display:flex;align-items:center;gap:10px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;">
-      <div style="flex:1;">
-        <div style="font-weight:700;font-size:14px;">${v.name}
-          <span style="font-size:11px;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:8px;margin-left:6px;">${typeLabel(v.venueType)}</span>
-          <span style="font-size:11px;background:#dcfce7;color:#166534;padding:2px 7px;border-radius:8px;margin-left:4px;">${priceLabel(v.priceType)}</span>
-        </div>
-        <div style="font-size:12px;color:var(--brown-light);margin-top:3px;">
-          ${v.priceType === 'discount' ? '수수료율: ' + v.discountRate + '%' : '단가 ' + Object.keys(v.prices || {}).length + '개 등록'}
-          ${v.memo ? ' · ' + v.memo : ''}
-        </div>
-      </div>
-      ${v.priceType !== 'discount' ? `<button onclick="openVenuePriceEditor(${v.id})" style="background:#fef9c3;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;">단가편집</button>` : ''}
-      <button onclick="deleteVenue(${v.id})" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;">삭제</button>
-    </div>`).join('');
-}
-
-function openVenuePriceEditor(id) {
-  editingVenueId = id;
-  const v = venues.find(v => v.id === id);
-  if (!v) return;
-  editingVenuePrices = Object.assign({}, v.prices || {});
-  document.getElementById('venuePriceEditorTitle').textContent = v.name + ' 단가 편집';
-  renderVenuePriceList();
-  document.getElementById('venuePriceEditor').style.display = 'block';
-  document.getElementById('venuePriceEditor').scrollIntoView({ behavior: 'smooth' });
-}
-
-function closeVenuePriceEditor() {
-  document.getElementById('venuePriceEditor').style.display = 'none';
-  editingVenueId = null;
-  editingVenuePrices = {};
-}
-
-function renderVenuePriceList() {
-  const el = document.getElementById('venuePriceList');
-  if (!el) return;
-  const entries = Object.entries(editingVenuePrices);
+  const entries = Object.entries(venuePrices[venue] || {});
   if (entries.length === 0) {
-    el.innerHTML = '<div style="color:#aaa;font-size:12px;">단가가 없어요. 아래에서 추가하세요.</div>';
+    el.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px 0;">등록된 단가가 없어요.</div>';
     return;
   }
   el.innerHTML = entries.map(([name, price]) => `
-    <div style="display:flex;align-items:center;gap:8px;background:#f8f4ef;border-radius:8px;padding:8px 12px;">
-      <span style="flex:2;font-size:13px;font-weight:600;">${name}</span>
-      <span style="flex:1;font-size:13px;text-align:right;">${Number(price).toLocaleString()}원</span>
-      <button onclick="removeVenuePrice('${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">삭제</button>
+    <div style="display:flex;align-items:center;gap:10px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;">
+      <span style="flex:2;font-size:13px;font-weight:700;">${name}</span>
+      <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(price).toLocaleString()}원</span>
+      ${venue === 'daecheong' ? `<span style="font-size:11px;color:#92400e;background:#fef9c3;padding:2px 7px;border-radius:6px;">실수령 ${Math.round(price*(1-daecheongRate/100)).toLocaleString()}원</span>` : ''}
+      <button onclick="removeVenuePrice('${venue}','${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
     </div>`).join('');
 }
 
-function addVenuePrice() {
-  const item = document.getElementById('vpItem').value.trim();
-  const price = parseInt(document.getElementById('vpPrice').value) || 0;
-  if (!item) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
-  if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
-  editingVenuePrices[item] = price;
-  renderVenuePriceList();
-  document.getElementById('vpItem').value = '';
-  document.getElementById('vpPrice').value = '';
+function saveDaecheongRate() {
+  const val = parseFloat(document.getElementById('daecheong-rate').value) || 0;
+  daecheongRate = val;
+  localStorage.setItem('daecheongRate', String(val));
+  renderVenuePrices('daecheong');
+  const saved = document.getElementById('daecheong-rate-saved');
+  if (saved) { saved.style.display = 'inline'; setTimeout(() => saved.style.display = 'none', 2000); }
+  showToast('✅ 수수료율 저장됐어요!', 'success');
 }
 
-function removeVenuePrice(name) {
-  delete editingVenuePrices[name];
-  renderVenuePriceList();
+function saveFuneralPrices() {
+  saveVenuePriceData();
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { venuePrices, daecheongRate } }).catch(() => {});
+  showToast('✅ 장례식장 단가 저장됐어요!', 'success');
 }
 
-function saveVenuePrices() {
-  if (!editingVenueId) return;
-  const v = venues.find(v => v.id === editingVenueId);
-  if (!v) return;
-  v.prices = Object.assign({}, editingVenuePrices);
-  saveVenueData();
-  if (gasUrl) gasPost({ action: 'update', sheet: 'venue', data: v }).catch(() => {});
-  renderVenueList();
-  closeVenuePriceEditor();
-  showToast('✅ 단가 저장됐어요!', 'success');
+function saveWeddingPrices() {
+  saveVenuePriceData();
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { venuePrices } }).catch(() => {});
+  showToast('✅ 웨딩홀 단가 저장됐어요!', 'success');
+}
+
+function initVenuePriceSettings() {
+  // 저장된 수수료율 표시
+  const rateEl = document.getElementById('daecheong-rate');
+  if (rateEl) rateEl.value = daecheongRate || '';
+  // 각 단가 렌더링
+  ['chungdae', 'daecheong', 'wedding'].forEach(v => renderVenuePrices(v));
 }
 
 // ============ TOAST ============
@@ -9755,5 +9672,6 @@ function showToast(msg, type='') {
 
 </body>
 </html>
-  if (tab === 'venue') renderVenueList();
+  if (tab === 'funeral') initVenuePriceSettings();
+  if (tab === 'wedding-price') initVenuePriceSettings();
 }
