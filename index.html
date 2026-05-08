@@ -1351,7 +1351,7 @@
         <!-- 장례식장 정보 -->
         <div class="form-group">
           <label>장례식장 이름 <span class="required">*</span></label>
-          <select id="f_funeralName" onchange="updateVenueTteokSelect('f_tteokSelect','funeral')">
+          <select id="f_funeralName" onchange="updateVenueTteokSelect('f_tteokSelect','funeral'); calcFuneralTotal();">
             <option value="">-- 선택 --</option>
             <optgroup label="충대장례식장">
               <option value="충대장례식장">충대장례식장</option>
@@ -7326,7 +7326,18 @@ function calcFuneralTotal() {
   const p = parseInt(document.getElementById('f_priceProduct').value) || 0;
   const d = parseInt(document.getElementById('f_priceDelivery').value) || 0;
   const dis = parseInt(document.getElementById('f_priceDiscount').value) || 0;
-  document.getElementById('f_priceTotal').textContent = (p + d - dis).toLocaleString('ko-KR') + ' 원';
+  const funeralName = document.getElementById('f_funeralName').value;
+  const isDaecheong = funeralName === '대청장례식장';
+  const actualP = isDaecheong ? Math.round(p * (1 - daecheongRate / 100)) : p;
+  const total = actualP + d - dis;
+  const totalEl = document.getElementById('f_priceTotal');
+  if (isDaecheong && daecheongRate > 0 && p > 0) {
+    totalEl.innerHTML = '<span style="text-decoration:line-through;color:#aaa;font-size:14px;">' + (p + d - dis).toLocaleString('ko-KR') + '원</span>'
+      + ' → <span style="color:var(--accent-red);font-size:20px;">' + total.toLocaleString('ko-KR') + ' 원</span>'
+      + '<span style="font-size:11px;color:#888;margin-left:6px;">(수수료 ' + daecheongRate + '% 차감)</span>';
+  } else {
+    totalEl.textContent = total.toLocaleString('ko-KR') + ' 원';
+  }
 }
 
 function submitFuneralOrder() {
@@ -7342,6 +7353,11 @@ function submitFuneralOrder() {
   const p = parseInt(document.getElementById('f_priceProduct').value) || 0;
   const d = parseInt(document.getElementById('f_priceDelivery').value) || 0;
   const dis = parseInt(document.getElementById('f_priceDiscount').value) || 0;
+
+  // 대청장례식장은 수수료 차감 후 실수령액으로 저장
+  const isDaecheong = funeralName === '대청장례식장';
+  const actualProduct = isDaecheong ? Math.round(p * (1 - daecheongRate / 100)) : p;
+  const actualTotal = actualProduct + d - dis;
 
   const order = {
     id: Date.now(),
@@ -7360,7 +7376,8 @@ function submitFuneralOrder() {
     memo: (document.getElementById('f_memo') ? document.getElementById('f_memo').value.trim() : ''),
     deliveryDate,
     deliveryTime: document.getElementById('f_deliveryTime').value.trim(),
-    priceProduct: p, priceDelivery: d, priceDiscount: dis, priceTotal: p + d - dis,
+    priceProduct: actualProduct, priceDelivery: d, priceDiscount: dis, priceTotal: actualTotal,
+    priceProductOrig: isDaecheong ? p : null,  // 대청 원래 상주가격 보관
     payMethod,
     payStatus: document.getElementById('f_payStatus').value,
     staffName: document.getElementById('f_staffName').value,
