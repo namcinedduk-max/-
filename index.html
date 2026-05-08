@@ -1501,8 +1501,8 @@
         <div class="stat-value" id="stat-total">0</div>
         <div class="stat-sub">건</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">미수금</div>
+      <div class="stat-card" onclick="filterByUnpaid()" style="cursor:pointer;" title="클릭하면 미수금 주문만 보기">
+        <div class="stat-label">미수금 🔍</div>
         <div class="stat-value" id="stat-unpaid" style="color:var(--accent-red)">0</div>
         <div class="stat-sub">원</div>
       </div>
@@ -7632,6 +7632,7 @@ function renderList() {
 
   let filtered = orders.filter(o => {
     if (o.deliveryMethod === '택배') return false;
+    if (window._filterPayStatus && o.payStatus !== window._filterPayStatus) return false;
     let matchDate = true;
     if (filterDate) {
       if (filterType === 'delivery') {
@@ -7655,10 +7656,14 @@ function renderList() {
 
   // 필터 결과 안내바
   const resultBar = document.getElementById('filterResultBar');
-  if (filterDate) {
+  const isUnpaidFilter = !!window._filterPayStatus;
+  if (filterDate || isUnpaidFilter) {
     const typeLabel = filterType === 'delivery' ? '📦 배송일' : '📋 접수일';
     resultBar.classList.add('visible');
-    document.getElementById('filterResultText').textContent = typeLabel + ' ' + filterDate + ' 기준';
+    const parts = [];
+    if (filterDate) parts.push(typeLabel + ' ' + filterDate + ' 기준');
+    if (isUnpaidFilter) parts.push('💰 미수금만 보기');
+    document.getElementById('filterResultText').textContent = parts.join(' · ');
     document.getElementById('filterResultCount').textContent = filtered.length + '건';
   } else {
     resultBar.classList.remove('visible');
@@ -7855,6 +7860,18 @@ function clearFilter() {
   document.getElementById('filterDate').value = '';
   document.getElementById('searchInput').value = '';
   document.getElementById('filterDateType').value = 'delivery';
+  window._filterPayStatus = null;
+  renderList();
+}
+
+function filterByUnpaid() {
+  // 이미 미수금 필터 중이면 해제, 아니면 적용
+  if (window._filterPayStatus === '미수금') {
+    window._filterPayStatus = null;
+  } else {
+    window._filterPayStatus = '미수금';
+    document.getElementById('filterDate').value = '';
+  }
   renderList();
 }
 let editTteokItems = [];
