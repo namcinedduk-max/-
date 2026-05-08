@@ -81,21 +81,23 @@
   .tabs {
     display: flex;
     background: var(--brown-mid);
-    padding: 0 16px;
+    padding: 0 28px;
     gap: 0;
     align-items: stretch;
+    justify-content: center;
   }
   .tab-group {
     display: flex;
     flex-direction: column;
     border-right: 1px solid rgba(255,255,255,0.1);
-    padding: 0 4px;
+    padding: 0 12px;
   }
-  .tab-group:last-child { border-right: none; }
+  .tab-group:first-child { padding-left: 0; }
+  .tab-group:last-child { border-right: none; padding-right: 0; }
   .tab-group-label {
     font-size: 10px;
     color: rgba(255,255,255,0.4);
-    padding: 5px 8px 0;
+    padding: 5px 4px 0;
     letter-spacing: 0.5px;
     font-weight: 500;
   }
