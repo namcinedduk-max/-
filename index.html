@@ -4454,16 +4454,6 @@ function filterDeokChalList(idx, kw) {
   dd.style.display = filtered.length > 0 ? 'block' : 'none';
 }
 
-function selectDeokChal(idx, name) {
-  window._deokChalSelections[idx] = name;
-  const inp = document.getElementById('deokChal-' + idx + '-input');
-  const val = document.getElementById('deokChal-' + idx + '-val');
-  const dd = document.getElementById('deokChal-' + idx + '-dd');
-  if (inp) inp.value = name;
-  if (val) val.value = name;
-  if (dd) dd.style.display = 'none';
-  updateDeokPrice();
-}
 
 function updateDeokPrice() {
   const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._deokConfigId; });
@@ -6432,8 +6422,92 @@ function loadProductionPlan() {
     return;
   }
 
-  // 떡 종류별 합산
-  const summary = {}; // { name: { qty: [...], orders: count, rawQty: [] } }
+  // ── 세트 → 개별 떡 분해 헬퍼 ──────────────────────────────────────────
+  // itemName: tteokItems[].name 값, itemQty: tteokItems[].qty 값
+  // 반환값: [{ name, qty }] (qty는 "20개", "3kg", "1말 5되" 같은 문자열)
+  function decomposeSetItem(itemName, itemQty) {
+    const name = (itemName || '').trim();
+
+    // ── 1. 덕세트 / 덕6구세트 / 이바지大 / 이바지小
+    //    saveName 형식: "덕세트(흰모찌 8개, 쑥모찌 8개, 호박모찌 4개)"
+    //                   "이바지大(흰모찌 20개, 깨끼떡 3kg, ...)"
+    //    qty 형식: "2세트" → 전체 multiplier
+    const setHeaderMatch = name.match(/^(덕세트|덕6구세트|이바지大|이바지小)\((.+)\)$/);
+    if (setHeaderMatch) {
+      const setQtyStr = (itemQty || '1세트').replace(/세트$/, '').trim();
+      const multiplier = parseFloat(setQtyStr) || 1;
+      const innerStr = setHeaderMatch[2];
+      // "흰모찌 8개, 쑥모찌 8개" 또는 "흰모찌 8개/쑥모찌 8개" 형식 모두 처리
+      const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+      const result = [];
+      parts.forEach(part => {
+        // "흰모찌 8개" / "깨끼떡 3kg" / "찰떡 9개" 패턴
+        const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)?$/);
+        if (m) {
+          const tteokName = m[1].trim();
+          const num = parseFloat(m[2]) * multiplier;
+          const unit = m[3] || '개';
+          // 말/되는 multiplier 후 그대로 표현
+          const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+          result.push({ name: tteokName, qty: displayNum + unit });
+        } else {
+          // 단위 없는 경우(혹시 모를 대비): 그냥 text로
+          result.push({ name: part, qty: multiplier > 1 ? String(multiplier) + '개' : '' });
+        }
+      });
+      return result;
+    }
+
+    // ── 2. 코리아(대) / 코리아(소)
+    //    saveName 형식: "코리아(대)(흰모찌 10개/쑥모찌 5개)"
+    //    qty 형식: "1세트" (항상 1세트)
+    const koreaMatch = name.match(/^(코리아\([대소]\))\((.+)\)$/);
+    if (koreaMatch) {
+      const innerStr = koreaMatch[2];
+      const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+      const result = [];
+      parts.forEach(part => {
+        const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉)?$/);
+        if (m) {
+          result.push({ name: m[1].trim(), qty: m[2] + (m[3] || '개') });
+        } else {
+          result.push({ name: part, qty: '' });
+        }
+      });
+      return result;
+    }
+
+    // ── 3. 분홍세트 / 은혜세트
+    //    saveName 형식: "분홍세트(흰모찌/쑥모찌)" 또는 "은혜세트(흰모찌/깨끼떡)"
+    //    qty 형식: "20개" → 각 떡 종류에 qty/구성수 개씩 배분
+    //    ※ 분홍/은혜세트는 구성 떡들이 동일 수량으로 나눠지는 구조
+    const pinkEhyeMatch = name.match(/^(분홍세트|은혜세트)\((.+)\)$/);
+    if (pinkEhyeMatch) {
+      const innerStr = pinkEhyeMatch[2];
+      const parts = innerStr.split('/').map(s => s.trim()).filter(Boolean);
+      if (!parts.length) return [{ name: name, qty: itemQty }];
+      // qty 파싱: "20개" → 총 개수, 각 종류에 동일 배분
+      const totalM = (itemQty || '').match(/^([\d.]+)\s*(개|kg|g|말|되)?$/);
+      if (totalM && parts.length > 0) {
+        const totalNum = parseFloat(totalM[1]);
+        const unit = totalM[2] || '개';
+        const perTteok = totalNum / parts.length;
+        const perDisplay = Number.isInteger(perTteok) ? perTteok : Math.round(perTteok * 10) / 10;
+        return parts.map(p => ({ name: p, qty: perDisplay + unit }));
+      }
+      // qty 파싱 불가시 그대로 분배
+      return parts.map(p => ({ name: p, qty: itemQty || '' }));
+    }
+
+    // ── 4. 일반 떡 (세트 아님) → 그대로 반환
+    return [{ name: name, qty: itemQty || '' }];
+  }
+
+  // ── 떡별 합산 ────────────────────────────────────────────────────────────
+  const summary = {}; // { name: { qtys: [...], setQtys: [...], count: 0 } }
+  // setQtys: 세트에서 분해된 수량 (주문건수 카운트에서 따로 표시)
+  // count: 이 떡이 등장한 주문 건수
+
   allOrders.forEach(o => {
     const items = o.tteokItems && o.tteokItems.length > 0
       ? o.tteokItems
@@ -6441,18 +6515,32 @@ function loadProductionPlan() {
           const m = t.match(/^(.+?)\s+([\d.]+(?:되|kg|키로|g|개|판|봉)?.*)$/);
           return m ? { name: m[1].trim(), qty: m[2].trim() } : { name: t.trim(), qty: '' };
         });
+
     items.forEach(item => {
       if (!item.name) return;
-      const key = item.name;
-      if (!summary[key]) summary[key] = { qtys: [], count: 0 };
-      summary[key].count++;
-      if (item.qty) summary[key].qtys.push(item.qty);
+
+      // 세트인지 판단 (이름에 세트/코리아 키워드가 있으면 분해 시도)
+      const isSet = /^(덕세트|덕6구세트|이바지[大小]|코리아\([대소]\)|분홍세트|은혜세트)\(/.test(item.name);
+
+      if (isSet) {
+        const decomposed = decomposeSetItem(item.name, item.qty);
+        decomposed.forEach(({ name: tName, qty: tQty }) => {
+          if (!tName) return;
+          if (!summary[tName]) summary[tName] = { qtys: [], count: 0 };
+          summary[tName].count++;
+          if (tQty) summary[tName].qtys.push(tQty);
+        });
+      } else {
+        const key = item.name;
+        if (!summary[key]) summary[key] = { qtys: [], count: 0 };
+        summary[key].count++;
+        if (item.qty) summary[key].qtys.push(item.qty);
+      }
     });
   });
 
   const dateStr = formatDateKor(date);
   const rows = Object.entries(summary).map(([name, data]) => {
-    // 수량 합산 시도 (숫자+단위 파싱)
     const qtyDisplay = summarizeQtys(data.qtys);
     return { name, qtyDisplay, count: data.count };
   });
@@ -6462,15 +6550,15 @@ function loadProductionPlan() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
         <div>
           <div style="font-size:18px;font-weight:800;color:var(--brown-deep);">📅 ${dateStr} 생산계획</div>
-          <div style="font-size:13px;color:#888;margin-top:2px;">총 ${allOrders.length}건 주문</div>
+          <div style="font-size:13px;color:#888;margin-top:2px;">총 ${allOrders.length}건 주문 (세트 분해 합산)</div>
         </div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         <thead>
           <tr style="background:var(--brown-deep);color:#fff;">
             <th style="padding:12px 16px;text-align:left;border-radius:8px 0 0 0;">떡 종류</th>
-            <th style="padding:12px 16px;text-align:center;">수량</th>
-            <th style="padding:12px 16px;text-align:center;border-radius:0 8px 0 0;">주문 건수</th>
+            <th style="padding:12px 16px;text-align:center;">총 생산량</th>
+            <th style="padding:12px 16px;text-align:center;border-radius:0 8px 0 0;">포함 주문 수</th>
           </tr>
         </thead>
         <tbody>
