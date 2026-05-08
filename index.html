@@ -5603,16 +5603,16 @@ let currentSettingsTab = 'personal';
 
 function switchSettingsTab(type) {
   currentSettingsTab = type;
-  document.getElementById('settings-personal').style.display = type === 'personal' ? 'block' : 'none';
-  document.getElementById('settings-funeral').style.display = type === 'funeral' ? 'block' : 'none';
-  document.getElementById('settings-quickfee').style.display = type === 'quickfee' ? 'block' : 'none';
-  if(document.getElementById('settings-tteokprice')) document.getElementById('settings-tteokprice').style.display = type === 'tteokprice' ? 'block' : 'none';
-  document.getElementById('stab-personal').classList.toggle('active', type === 'personal');
-  document.getElementById('stab-funeral').classList.toggle('active', type === 'funeral');
-  document.getElementById('stab-quickfee').classList.toggle('active', type === 'quickfee');
-  if(document.getElementById('stab-tteokprice')) document.getElementById('stab-tteokprice').classList.toggle('active', type === 'tteokprice');
+  const tabs = ['personal', 'funeral', 'wedding-price', 'quickfee', 'tteokprice'];
+  tabs.forEach(t => {
+    const content = document.getElementById('settings-' + t);
+    const btn = document.getElementById('stab-' + t);
+    if (content) content.style.display = t === type ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', t === type);
+  });
   if (type === 'quickfee') renderQuickFeeList();
   if (type === 'tteokprice') { renderTteokPriceList(); renderOrderCatSettings(); }
+  if (type === 'funeral' || type === 'wedding-price') initVenuePriceSettings();
 }
 
 function renderPriceSettings() {
