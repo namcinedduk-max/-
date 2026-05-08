@@ -1310,7 +1310,7 @@
         <!-- 장례식장 정보 -->
         <div class="form-group">
           <label>장례식장 이름 <span class="required">*</span></label>
-          <select id="f_funeralName">
+          <select id="f_funeralName" onchange="updateVenueTteokSelect('f_tteokSelect','funeral')">
             <option value="">-- 선택 --</option>
             <optgroup label="충대장례식장">
               <option value="충대장례식장">충대장례식장</option>
@@ -5674,19 +5674,20 @@ function updateTteokSelect(selectId, type) {
   sel.value = currentVal;
 }
 
-// 장례식장/웨딩홀 떡 select - venuePrices 기반으로 이름만 표시
+// 장례식장/웨딩홀 떡 select - 선택된 거래처 기반으로 이름만 표시
 function updateVenueTteokSelect(selectId, venueType) {
   const sel = document.getElementById(selectId);
   if (!sel) return;
   const cur = sel.value;
 
-  // 어떤 venuePrices 키 쓸지 결정
   let keys = [];
   if (venueType === 'funeral') {
-    // 충대 단가 + 대청 단가 합쳐서 중복 제거
-    const chungdae = Object.keys(venuePrices['chungdae'] || {});
-    const daecheong = Object.keys(venuePrices['daecheong'] || {});
-    keys = [...new Set([...chungdae, ...daecheong])];
+    // 현재 선택된 거래처 기준으로 단가 키 결정
+    const venueName = document.getElementById('f_funeralName')
+      ? document.getElementById('f_funeralName').value : '';
+    const chungdaeVenues = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'];
+    const priceKey = chungdaeVenues.includes(venueName) ? 'chungdae' : 'daecheong';
+    keys = Object.keys(venuePrices[priceKey] || {});
   } else {
     keys = Object.keys(venuePrices['wedding'] || {});
   }
