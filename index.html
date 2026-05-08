@@ -2082,6 +2082,21 @@
         </div>
 
         <button class="btn-submit" onclick="saveFuneralPrices()">💾 장례식장 단가 저장</button>
+
+        <!-- 장례식장 거래처 관리 -->
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-top:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:6px;">🏥 장례식장 거래처 관리</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">추가한 거래처는 장례식장 주문 입력 시 선택 목록에 표시돼요.</p>
+          <div id="venueList-funeral" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select id="funeral-venue-group" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
+              <option value="chungdae">충대 계열 (충대 단가)</option>
+              <option value="daecheong">대청 계열 (대청 단가)</option>
+            </select>
+            <input id="funeral-venue-name" placeholder="거래처 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addVenueName('funeral')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
       </div>
 
 
@@ -2094,6 +2109,17 @@
           <button onclick="addVenuePrice('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
         <button class="btn-submit" onclick="saveWeddingPrices()">💾 웨딩홀 단가 저장</button>
+
+        <!-- 웨딩홀 거래처 관리 -->
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-top:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:6px;">💒 웨딩홀 거래처 관리</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">추가한 거래처는 웨딩홀 주문 입력 시 선택 목록에 표시돼요.</p>
+          <div id="venueList-wedding" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="wedding-venue-name" placeholder="거래처 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addVenueName('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
       </div>
 
       <div id="settings-tteokprice" style="display:none;margin-top:8px;">
@@ -2249,6 +2275,40 @@
         <button class="btn-small btn-secondary" onclick="resetPriceSettings()">초기화</button>
       </div>
       </div><!-- /settings-tteokprice -->
+
+      <div id="settings-venues" style="display:none;margin-top:8px;">
+        <p style="font-size:12px;color:var(--brown-light);margin-bottom:16px;">추가한 거래처는 주문 입력 시 선택 목록에 자동으로 반영돼요. 기존 거래처는 그대로 유지돼요.</p>
+
+        <div style="margin-bottom:24px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 충대 계열 추가 거래처</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">충대 단가 적용. 장례식장 주문 입력 시 표시돼요.</p>
+          <div id="venueList-chungdae" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="chungdae-venue-name" placeholder="거래처 이름 *" style="flex:2;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addVenueName('chungdae')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-bottom:24px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 대청 계열 추가 거래처</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">대청 단가 적용. 장례식장 주문 입력 시 표시돼요.</p>
+          <div id="venueList-daecheong" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="daecheong-venue-name" placeholder="거래처 이름 *" style="flex:2;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addVenueName('daecheong')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">💒 웨딩홀 추가 거래처</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">웨딩홀 주문 입력 시 선택 목록에 표시돼요.</p>
+          <div id="venueList-wedding" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="wedding-venue-name" placeholder="거래처 이름 *" style="flex:2;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <button onclick="addVenueName('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+      </div>
 
       <div id="settings-quickfee" style="display:none;margin-top:8px;">
         <p style="font-size:12px;color:var(--brown-light);margin-bottom:12px;">동 이름으로 주소 검색 시 배송비에 자동입력돼요.</p>
@@ -5622,6 +5682,7 @@ function switchSettingsTab(type) {
   if (type === 'quickfee') renderQuickFeeList();
   if (type === 'tteokprice') { renderTteokPriceList(); renderOrderCatSettings(); }
   if (type === 'funeral' || type === 'wedding-price') initVenuePriceSettings();
+
 }
 
 function renderPriceSettings() {
@@ -5686,7 +5747,8 @@ function updateVenueTteokSelect(selectId, venueType) {
     // 현재 선택된 거래처 기준으로 단가 키 결정
     const venueName = document.getElementById('f_funeralName')
       ? document.getElementById('f_funeralName').value : '';
-    const chungdaeVenues = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'];
+    const chungdaeExtra = (extraVenues.funeral||[]).filter(v=>v.group==='chungdae').map(v=>v.name);
+    const chungdaeVenues = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'].concat(chungdaeExtra);
     const priceKey = chungdaeVenues.includes(venueName) ? 'chungdae' : 'daecheong';
     keys = Object.keys(venuePrices[priceKey] || {});
   } else {
@@ -5810,6 +5872,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFuneralOrdersFromSheet(true);
     loadWeddingOrdersFromSheet(true);
   }
+  initExtraVenues();
   startClock();
   if (gasUrl) {
     // 자동 새로고침 제거 (수동 새로고침만 사용)
@@ -7684,7 +7747,8 @@ function renderList() {
   }).join('');
 
   // ── 충대 발주 섹션 ────────────────────────────────────────────
-  const chungdaeNames = ['소비조합','본관영양','재활환자','재활직원'];
+  const chungdaeExtra = (extraVenues.funeral||[]).filter(v=>v.group==='chungdae').map(v=>v.name);
+  const chungdaeNames = ['소비조합','본관영양','재활환자','재활직원'].concat(chungdaeExtra);
   const chungdaeOrders = funeralOrders.filter(o => {
     const name = o.funeralName || '';
     if (!chungdaeNames.some(n => name.includes(n))) return false;
@@ -9882,11 +9946,10 @@ function saveWeddingPrices() {
 }
 
 function initVenuePriceSettings() {
-  // 저장된 수수료율 표시
   const rateEl = document.getElementById('daecheong-rate');
   if (rateEl) rateEl.value = daecheongRate || '';
-  // 각 단가 렌더링
   ['chungdae', 'daecheong', 'wedding'].forEach(v => renderVenuePrices(v));
+  renderVenueList();
 }
 
 // ============ TOAST ============
@@ -9951,6 +10014,101 @@ function confirmNewTteok(name) {
     if (typeof renderTteokAllList === 'function') renderTteokAllList();
     showToast('✅ ' + name + ' 확인 완료!', 'success');
   }
+}
+
+// ============ 거래처 관리 ============
+// { funeral: [{name, group}], wedding: [name] }
+let extraVenues = JSON.parse(localStorage.getItem('extraVenues') || '{"funeral":[],"wedding":[]}');
+
+function saveExtraVenues() {
+  localStorage.setItem('extraVenues', JSON.stringify(extraVenues));
+}
+
+function addVenueName(type) {
+  const nameInput = document.getElementById(type + '-venue-name');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if (!name) { showToast('거래처 이름을 입력해주세요.', 'error'); return; }
+
+  if (type === 'funeral') {
+    const groupSel = document.getElementById('funeral-venue-group');
+    const group = groupSel ? groupSel.value : 'chungdae';
+    if (!extraVenues.funeral) extraVenues.funeral = [];
+    if (extraVenues.funeral.some(v => v.name === name)) { showToast('이미 등록된 거래처예요.', 'error'); return; }
+    extraVenues.funeral.push({ name, group });
+  } else {
+    if (!extraVenues.wedding) extraVenues.wedding = [];
+    if (extraVenues.wedding.includes(name)) { showToast('이미 등록된 거래처예요.', 'error'); return; }
+    extraVenues.wedding.push(name);
+  }
+
+  saveExtraVenues();
+  if (nameInput) nameInput.value = '';
+  renderVenueList();
+  applyExtraVenuesToSelects();
+  showToast('✅ ' + name + ' 추가됐어요!', 'success');
+}
+
+function removeVenueName(type, name) {
+  if (type === 'funeral') {
+    extraVenues.funeral = (extraVenues.funeral || []).filter(v => v.name !== name);
+  } else {
+    extraVenues.wedding = (extraVenues.wedding || []).filter(n => n !== name);
+  }
+  saveExtraVenues();
+  renderVenueList();
+  applyExtraVenuesToSelects();
+}
+
+function renderVenueList() {
+  const fEl = document.getElementById('venueList-funeral');
+  if (fEl) {
+    const list = extraVenues.funeral || [];
+    fEl.innerHTML = list.length === 0
+      ? '<div style="color:#aaa;font-size:12px;padding:4px 0;">추가된 거래처가 없어요.</div>'
+      : list.map(v => `
+        <div style="display:flex;align-items:center;gap:10px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;">
+          <span style="flex:1;font-size:13px;font-weight:700;">${v.name}</span>
+          <span style="font-size:11px;color:#888;">${v.group === 'chungdae' ? '충대 단가' : '대청 단가'}</span>
+          <button onclick="removeVenueName('funeral','${v.name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
+        </div>`).join('');
+  }
+  const wEl = document.getElementById('venueList-wedding');
+  if (wEl) {
+    const list = extraVenues.wedding || [];
+    wEl.innerHTML = list.length === 0
+      ? '<div style="color:#aaa;font-size:12px;padding:4px 0;">추가된 거래처가 없어요.</div>'
+      : list.map(name => `
+        <div style="display:flex;align-items:center;gap:10px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;">
+          <span style="flex:1;font-size:13px;font-weight:700;">${name}</span>
+          <button onclick="removeVenueName('wedding','${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
+        </div>`).join('');
+  }
+}
+
+function applyExtraVenuesToSelects() {
+  const fSel = document.getElementById('f_funeralName');
+  if (fSel) {
+    Array.from(fSel.querySelectorAll('option[data-extra]')).forEach(o => o.remove());
+    (extraVenues.funeral || []).forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name; opt.textContent = v.name; opt.dataset.extra = v.group;
+      const group = fSel.querySelector('optgroup[label="' + (v.group === 'chungdae' ? '충대장례식장' : '대청장례식장') + '"]');
+      if (group) group.appendChild(opt); else fSel.appendChild(opt);
+    });
+  }
+  const wSel = document.getElementById('w_weddingName');
+  if (wSel) {
+    Array.from(wSel.querySelectorAll('option[data-extra]')).forEach(o => o.remove());
+    (extraVenues.wedding || []).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name; opt.dataset.extra = 'wedding';
+      wSel.appendChild(opt);
+    });
+  }
+}
+
+function initExtraVenues() {
+  applyExtraVenuesToSelects();
 }
 
 function showToast(msg, type='') {
