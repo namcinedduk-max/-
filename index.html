@@ -5756,9 +5756,12 @@ function calcVenuePrice(type) {
   items.forEach(item => {
     const unitPrice = prices[item.name];
     if (!unitPrice || !item.qty) return;
-    const numMatch = String(item.qty).match(/^(\d+)/);
-    if (numMatch) total += parseInt(numMatch[1]) * unitPrice;
+    const qtyStr = String(item.qty).trim();
+    // 소수점 포함 숫자 파싱 (예: 0.5, 1.5kg, 2개, 0.5판)
+    const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
+    if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
   });
+  total = Math.round(total); // 소수점 계산 오차 정리
 
   if (total > 0) {
     if (type === 'funeral') {
