@@ -81,11 +81,30 @@
   .tabs {
     display: flex;
     background: var(--brown-mid);
-    padding: 0 28px;
-    gap: 4px;
+    padding: 0 16px;
+    gap: 0;
+    align-items: stretch;
+  }
+  .tab-group {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    padding: 0 4px;
+  }
+  .tab-group:last-child { border-right: none; }
+  .tab-group-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    padding: 5px 8px 0;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+  .tab-group-items {
+    display: flex;
+    gap: 0;
   }
   .tab-btn {
-    padding: 10px 22px;
+    padding: 5px 10px;
     background: none;
     border: none;
     color: var(--brown-pale);
@@ -703,18 +722,38 @@
     </div>
   </div>
   <div class="tabs">
-    <button class="tab-btn" onclick="switchTab('guide')" id="guideTabBtn">🗒️ 주문 가이드</button>
-    <button class="tab-btn active" onclick="switchTab('order')">📋 개인 주문 접수</button>
-    <button class="tab-btn" onclick="switchTab('funeral')">🏛️ 장례식장 접수</button>
-    <button class="tab-btn" onclick="switchTab('list')">📦 개인 주문 목록 <span id="pendingBadge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:4px;">0</span></button>
-    <button class="tab-btn" onclick="switchTab('funeralList')">🏛️ 장례식장 목록</button>
-    <button class="tab-btn" onclick="switchTab('wedding')">💒 웨딩홀 접수</button>
-    <button class="tab-btn" onclick="switchTab('weddingList')">💒 웨딩홀 목록</button>
-    <button class="tab-btn" onclick="switchTab('production')">🏭 생산계획</button>
-    <button class="tab-btn" onclick="switchTab('delivery')">📦 택배</button>
-    <button class="tab-btn" onclick="switchTab('sheet')">📊 구글 시트 연동</button>
-    <button class="tab-btn" onclick="switchTab('settings')">⚙️ 단가 설정</button>
-    <button class="tab-btn" onclick="switchTab('purchase')">🛒 매입 관리</button>
+    <div class="tab-group">
+      <div class="tab-group-label">접수</div>
+      <div class="tab-group-items">
+        <button class="tab-btn" onclick="switchTab('guide')" id="guideTabBtn">가이드</button>
+        <button class="tab-btn active" onclick="switchTab('order')">개인</button>
+        <button class="tab-btn" onclick="switchTab('funeral')">장례식장</button>
+        <button class="tab-btn" onclick="switchTab('wedding')">웨딩홀</button>
+      </div>
+    </div>
+    <div class="tab-group">
+      <div class="tab-group-label">목록</div>
+      <div class="tab-group-items">
+        <button class="tab-btn" onclick="switchTab('list')">개인 <span id="pendingBadge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:2px;">0</span></button>
+        <button class="tab-btn" onclick="switchTab('funeralList')">장례식장</button>
+        <button class="tab-btn" onclick="switchTab('weddingList')">웨딩홀</button>
+      </div>
+    </div>
+    <div class="tab-group">
+      <div class="tab-group-label">운영</div>
+      <div class="tab-group-items">
+        <button class="tab-btn" onclick="switchTab('production')">생산계획</button>
+        <button class="tab-btn" onclick="switchTab('delivery')">배송</button>
+      </div>
+    </div>
+    <div class="tab-group">
+      <div class="tab-group-label">설정·관리</div>
+      <div class="tab-group-items">
+        <button class="tab-btn" onclick="switchTab('settings')">단가설정</button>
+        <button class="tab-btn" onclick="switchTab('purchase')">매입</button>
+        <button class="tab-btn" onclick="switchTab('sheet')">시트연동</button>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -9761,6 +9800,3 @@ function showToast(msg, type='') {
 
 </body>
 </html>
-  if (tab === 'funeral') initVenuePriceSettings();
-  if (tab === 'wedding-price') initVenuePriceSettings();
-}
