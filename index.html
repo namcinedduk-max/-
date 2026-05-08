@@ -712,6 +712,7 @@
     <button class="tab-btn" onclick="switchTab('delivery')">📦 택배</button>
     <button class="tab-btn" onclick="switchTab('sheet')">📊 구글 시트 연동</button>
     <button class="tab-btn" onclick="switchTab('settings')">⚙️ 단가 설정</button>
+    <button class="tab-btn" onclick="switchTab('purchase')">🛒 매입 관리</button>
   </div>
 </header>
 
@@ -1998,7 +1999,119 @@
       </div>
     </div>
   </div>
+<!-- ==================== 매입 관리 패널 ==================== -->
+<div class="panel" id="panel-purchase">
 
+  <!-- 거래처 관리 + 매입 입력 -->
+  <div class="form-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <h2 style="margin:0;">🛒 매입 관리</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-small btn-secondary" onclick="switchPurchaseView('record')">매입 기록</button>
+        <button class="btn-small btn-primary" onclick="switchPurchaseView('partner')">거래처 관리</button>
+      </div>
+    </div>
+
+    <!-- 이번 달 매입 요약 -->
+    <div id="purchaseSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;padding:16px;background:var(--cream);border-radius:10px;"></div>
+
+    <!-- 매입 기록 화면 -->
+    <div id="purchase-record-view">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">날짜</label>
+          <input type="date" id="pur_date" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처 *</label>
+          <select id="pur_partner" onchange="onPurPartnerChange()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <option value="">거래처 선택</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">항목 *</label>
+          <input type="text" id="pur_item" placeholder="예: 찹쌀 100kg" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">분류</label>
+          <select id="pur_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <option value="material">원재료</option>
+            <option value="packaging">포장재</option>
+            <option value="delivery">퀵/배송비</option>
+            <option value="labor">인건비</option>
+            <option value="etc">기타</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">금액 *</label>
+          <input type="number" id="pur_amount" placeholder="0" min="0" style="width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">메모</label>
+          <input type="text" id="pur_memo" placeholder="참고사항" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <button class="btn-small btn-primary" onclick="savePurchaseRecord()" style="padding:9px 20px;white-space:nowrap;">+ 추가</button>
+      </div>
+
+      <!-- 필터 -->
+      <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;">
+        <input type="month" id="pur_filterMonth" onchange="renderPurchaseTable()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <select id="pur_filterType" onchange="renderPurchaseTable()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <option value="">전체 분류</option>
+          <option value="material">원재료</option>
+          <option value="packaging">포장재</option>
+          <option value="delivery">퀵/배송비</option>
+          <option value="labor">인건비</option>
+          <option value="etc">기타</option>
+        </select>
+        <span style="font-size:13px;color:#888;" id="pur_totalLabel"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>거래처</th>
+              <th>항목</th>
+              <th>분류</th>
+              <th style="text-align:right;">금액</th>
+              <th>메모</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="purchaseTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 거래처 관리 화면 -->
+    <div id="purchase-partner-view" style="display:none;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처명 *</label>
+          <input type="text" id="part_name" placeholder="예: 대전농협, 삼성포장재" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">주요 분류</label>
+          <select id="part_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <option value="material">원재료</option>
+            <option value="packaging">포장재</option>
+            <option value="delivery">퀵/배송비</option>
+            <option value="labor">인건비</option>
+            <option value="etc">기타</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">연락처</label>
+          <input type="tel" id="part_phone" placeholder="010-0000-0000" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <button class="btn-small btn-primary" onclick="savePartner()" style="padding:9px 20px;">+ 거래처 추가</button>
+      </div>
+      <div id="partnerList"></div>
+    </div>
+  </div>
+</div>
 </div><!-- /main -->
 
 <!-- DETAIL MODAL -->
