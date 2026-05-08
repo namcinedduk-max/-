@@ -5829,8 +5829,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('gasUrl').value = gasUrl;
     document.getElementById('sheetStatus').textContent = '연결됨';
     document.getElementById('sheetStatus').className = 'sheet-status connected';
-    loadOrdersFromSheet();
-    loadFuneralOrdersFromSheet();
+    // 앱 시작 시 3개 시트 동시 프리로드 (콜드 스타트 워밍업)
+    loadOrdersFromSheet(true);
+    loadFuneralOrdersFromSheet(true);
+    loadWeddingOrdersFromSheet(true);
   }
   startClock();
   if (gasUrl) {
@@ -6874,14 +6876,14 @@ function switchTab(tab) {
   if (tab === 'order') { setTimeout(renderOrderCategoryButtons, 50); }
   const btn = event.target.closest('.tab-btn');
   if (btn) btn.classList.add('active');
-  if (tab === 'list') { if (gasUrl) loadOrdersFromSheet(); else { updateStats(); renderList(); } }
-  if (tab === 'funeralList') { if (gasUrl) loadFuneralOrdersFromSheet(); else { updateFuneralStats(); renderFuneralList(); } }
+  if (tab === 'list') { if (gasUrl) loadOrdersFromSheet(false, true); else { updateStats(); renderList(); } }
+  if (tab === 'funeralList') { if (gasUrl) loadFuneralOrdersFromSheet(false, true); else { updateFuneralStats(); renderFuneralList(); } }
   if (tab === 'production') {
     document.getElementById('prodDate').value = getLocalDateStr();
     if (gasUrl) {
       Promise.all([
-        orders.length === 0 ? loadOrdersFromSheet(true) : Promise.resolve(),
-        funeralOrders.length === 0 ? loadFuneralOrdersFromSheet(true) : Promise.resolve(),
+        loadOrdersFromSheet(true),
+        loadFuneralOrdersFromSheet(true),
       ]).then(() => loadProductionPlan());
     } else {
       loadProductionPlan();
@@ -6890,7 +6892,7 @@ function switchTab(tab) {
   if (tab === 'delivery') {
     document.getElementById('deliveryTabDate').value = getLocalDateStr();
     if (gasUrl) {
-      orders.length === 0 ? loadOrdersFromSheet(true).then(() => renderDeliveryTab()) : renderDeliveryTab();
+      loadOrdersFromSheet(true).then(() => renderDeliveryTab());
     } else {
       renderDeliveryTab();
     }
@@ -6918,7 +6920,7 @@ function switchTab(tab) {
     updateVenueTteokSelect('w_tteokSelect', 'wedding');
   }
   if (tab === 'weddingList') {
-    if (gasUrl) loadWeddingOrdersFromSheet(); else renderWeddingList();
+    if (gasUrl) loadWeddingOrdersFromSheet(false, true); else renderWeddingList();
   }
   // 설정 탭: 라벨 이미지 패널도 함께 표시
   const labelPanel = document.getElementById('panel-label-image');
@@ -8721,15 +8723,24 @@ function gasPost(body) {
 
 let _prevPendingIds = null; // null = 아직 초기화 전
 
+// ── 시트 캐시 타임스탬프 (마지막 성공 로드 시각, ms)
+const SHEET_CACHE_TTL = 3 * 60 * 1000; // 3분
+let _cacheTs = { orders: 0, funeral: 0, wedding: 0 };
+
 function requestNotifPermission() {}
 
-function loadOrdersFromSheet(silent) {
+function loadOrdersFromSheet(silent, force) {
   if (!gasUrl) return Promise.resolve();
+  // 캐시 유효 시 재요청 생략 (force=true 또는 silent=false면 항상 갱신)
+  if (!force && silent && orders.length > 0 && Date.now() - _cacheTs.orders < SHEET_CACHE_TTL) {
+    return Promise.resolve();
+  }
   if (!silent) showLoading(true);
   return gasGet({ action: 'getOrders' })
     .then(data => {
       if (data.success) {
         orders = data.orders || [];
+        _cacheTs.orders = Date.now();
         if (_prevPendingIds === null) {
           _prevPendingIds = new Set(orders.filter(o => o.orderType === '고객신청').map(o => String(o.id)));
         }
@@ -9131,12 +9142,16 @@ function printFuneralOrders() {
   w.document.close();
 }
 
-function loadFuneralOrdersFromSheet(silent) {
+function loadFuneralOrdersFromSheet(silent, force) {
   if (!gasUrl) return Promise.resolve();
+  if (!force && silent && funeralOrders.length > 0 && Date.now() - _cacheTs.funeral < SHEET_CACHE_TTL) {
+    return Promise.resolve();
+  }
   return gasFuneralGet({ action: 'getOrders' })
     .then(data => {
       if (data.success) {
         funeralOrders = data.orders || [];
+        _cacheTs.funeral = Date.now();
         if (!silent) { updateFuneralStats(); renderFuneralList(); }
       }
     })
@@ -9589,13 +9604,17 @@ function resetWeddingForm() {
   const g = document.getElementById('w_priceGuide'); if (g) g.style.display = 'none';
 }
 
-function loadWeddingOrdersFromSheet(silent) {
+function loadWeddingOrdersFromSheet(silent, force) {
   if (!gasUrl) return Promise.resolve();
+  if (!force && silent && weddingOrders.length > 0 && Date.now() - _cacheTs.wedding < SHEET_CACHE_TTL) {
+    return Promise.resolve();
+  }
   return fetch(gasUrl + '?action=getOrders&sheet=wedding')
     .then(r => r.json())
     .then(data => {
       if (data.success) {
         weddingOrders = data.orders || [];
+        _cacheTs.wedding = Date.now();
         localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
         if (!silent) { updateWeddingStats(); renderWeddingList(); }
       }
