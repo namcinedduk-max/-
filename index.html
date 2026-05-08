@@ -5657,9 +5657,8 @@ function removePriceItem(type, idx) {
 }
 
 function updateTteokSelects() {
-  // 개인주문 접수 셀렉트 업데이트
-  // updateTteokSelect('tteokSelect', 'personal'); // TTEOK_DB 기반으로 별도 관리
-  updateTteokSelect('f_tteokSelect', 'funeral');
+  updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  updateVenueTteokSelect('w_tteokSelect', 'wedding');
 }
 
 function updateTteokSelect(selectId, type) {
@@ -5667,12 +5666,43 @@ function updateTteokSelect(selectId, type) {
   if (!sel) return;
   const currentVal = sel.value;
   const fixedOptions = `<option value="">-- 목록에서 선택 --</option>`;
-  const priceOptions = priceSettings[type].map(item =>
+  const priceOptions = (priceSettings[type] || []).map(item =>
     `<option value="${item.name}">${item.name} (개당 ${item.unitPrice.toLocaleString()}원 / ${item.bundleName} ${item.bundlePrice.toLocaleString()}원)</option>`
   ).join('');
   const customOption = `<option value="직접입력">✏️ 직접 입력</option>`;
   sel.innerHTML = fixedOptions + priceOptions + customOption;
   sel.value = currentVal;
+}
+
+// 장례식장/웨딩홀 떡 select - venuePrices 기반으로 이름만 표시
+function updateVenueTteokSelect(selectId, venueType) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const cur = sel.value;
+
+  // 어떤 venuePrices 키 쓸지 결정
+  let keys = [];
+  if (venueType === 'funeral') {
+    // 충대 단가 + 대청 단가 합쳐서 중복 제거
+    const chungdae = Object.keys(venuePrices['chungdae'] || {});
+    const daecheong = Object.keys(venuePrices['daecheong'] || {});
+    keys = [...new Set([...chungdae, ...daecheong])];
+  } else {
+    keys = Object.keys(venuePrices['wedding'] || {});
+  }
+
+  const base = `<option value="">-- 목록에서 선택 --</option>`;
+  const opts = keys.map(name => `<option value="${name}">${name}</option>`).join('');
+  const custom = `<option value="직접입력">✏️ 직접 입력</option>`;
+
+  // 단가 미설정 시 기본 목록 유지
+  if (keys.length === 0) {
+    const defaults = ['백설기','인절미','시루떡','송편','절편','찰떡','영양떡','콩떡','팥떡','무지개떡','두텁떡'];
+    sel.innerHTML = base + defaults.map(n => `<option value="${n}">${n}</option>`).join('') + custom;
+  } else {
+    sel.innerHTML = base + opts + custom;
+  }
+  sel.value = cur;
 }
 
 // 떡 선택 시 단가 자동 계산
@@ -6735,6 +6765,7 @@ function switchTab(tab) {
   if (tab === 'funeral') {
     const fd = document.getElementById('f_deliveryDate');
     if (fd && !fd.value) fd.value = getLocalDateStr();
+    updateVenueTteokSelect('f_tteokSelect', 'funeral');
   }
   if (tab === 'guide') {
     // 떡 선택 옵션 동기화
@@ -6751,6 +6782,7 @@ function switchTab(tab) {
   if (tab === 'wedding') {
     const d = document.getElementById('w_deliveryDate');
     if (d && !d.value) d.value = getLocalDateStr();
+    updateVenueTteokSelect('w_tteokSelect', 'wedding');
   }
   if (tab === 'weddingList') {
     if (gasUrl) loadWeddingOrdersFromSheet(); else renderWeddingList();
@@ -9548,12 +9580,19 @@ function addVenuePrice(venue) {
   if (!venuePrices[venue]) venuePrices[venue] = {};
   venuePrices[venue][name] = price;
   nameEl.value = ''; priceEl.value = '';
+  saveVenuePriceData(); // 즉시 저장
   renderVenuePrices(venue);
+  // 장례식장/웨딩홀 떡 select도 즉시 업데이트
+  if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
 }
 
 function removeVenuePrice(venue, name) {
   delete venuePrices[venue][name];
+  saveVenuePriceData();
   renderVenuePrices(venue);
+  if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
 }
 
 function renderVenuePrices(venue) {
