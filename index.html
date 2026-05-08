@@ -2083,6 +2083,9 @@
 
         <button class="btn-submit" onclick="saveFuneralPrices()">💾 장례식장 단가 저장</button>
 
+        <!-- 추가 장례식장 별도 단가 섹션 (동적) -->
+        <div id="extra-funeral-price-sections"></div>
+
         <!-- 장례식장 거래처 관리 -->
         <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-top:20px;">
           <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:6px;">🏥 장례식장 거래처 관리</div>
@@ -2090,8 +2093,9 @@
           <div id="venueList-funeral" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <select id="funeral-venue-group" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
-              <option value="chungdae">충대 계열 (충대 단가)</option>
-              <option value="daecheong">대청 계열 (대청 단가)</option>
+              <option value="own">별도 단가 설정</option>
+              <option value="chungdae">충대 방식 (충대 단가 사용)</option>
+              <option value="daecheong">대청 방식 (수수료 공제)</option>
             </select>
             <input id="funeral-venue-name" placeholder="거래처 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
             <button onclick="addVenueName('funeral')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
@@ -5749,7 +5753,9 @@ function updateVenueTteokSelect(selectId, venueType) {
       ? document.getElementById('f_funeralName').value : '';
     const chungdaeExtra = (extraVenues.funeral||[]).filter(v=>v.group==='chungdae').map(v=>v.name);
     const chungdaeVenues = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'].concat(chungdaeExtra);
-    const priceKey = chungdaeVenues.includes(venueName) ? 'chungdae' : 'daecheong';
+    const daecheongExtra = (extraVenues.funeral||[]).filter(v=>v.group==='daecheong').map(v=>v.name);
+    const ownVenue = (extraVenues.funeral||[]).find(v=>v.group==='own' && v.name===venueName);
+    const priceKey = ownVenue ? venueName : (chungdaeVenues.includes(venueName) ? 'chungdae' : 'daecheong');
     keys = Object.keys(venuePrices[priceKey] || {});
   } else {
     keys = Object.keys(venuePrices['wedding'] || {});
@@ -9896,6 +9902,10 @@ function addVenuePrice(venue) {
   // 장례식장/웨딩홀 떡 select도 즉시 업데이트
   if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
   if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
+  // 별도 단가 거래처인 경우도 떡 select 업데이트
+  if (extraVenues.funeral && extraVenues.funeral.some(v => v.name === venue && v.group === 'own')) {
+    updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  }
 }
 
 function removeVenuePrice(venue, name) {
@@ -9904,6 +9914,9 @@ function removeVenuePrice(venue, name) {
   renderVenuePrices(venue);
   if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
   if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
+  if (extraVenues.funeral && extraVenues.funeral.some(v => v.name === venue && v.group === 'own')) {
+    updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  }
 }
 
 function renderVenuePrices(venue) {
@@ -9950,6 +9963,7 @@ function initVenuePriceSettings() {
   if (rateEl) rateEl.value = daecheongRate || '';
   ['chungdae', 'daecheong', 'wedding'].forEach(v => renderVenuePrices(v));
   renderVenueList();
+  renderExtraFuneralPriceSections();
 }
 
 // ============ TOAST ============
@@ -10031,10 +10045,15 @@ function addVenueName(type) {
 
   if (type === 'funeral') {
     const groupSel = document.getElementById('funeral-venue-group');
-    const group = groupSel ? groupSel.value : 'chungdae';
+    const group = groupSel ? groupSel.value : 'own'; // own = 별도 단가
     if (!extraVenues.funeral) extraVenues.funeral = [];
     if (extraVenues.funeral.some(v => v.name === name)) { showToast('이미 등록된 거래처예요.', 'error'); return; }
     extraVenues.funeral.push({ name, group });
+    // 별도 단가 방식이면 venuePrices에 빈 객체 생성
+    if (group === 'own' && !venuePrices[name]) {
+      venuePrices[name] = {};
+      saveVenuePriceData();
+    }
   } else {
     if (!extraVenues.wedding) extraVenues.wedding = [];
     if (extraVenues.wedding.includes(name)) { showToast('이미 등록된 거래처예요.', 'error'); return; }
@@ -10044,6 +10063,7 @@ function addVenueName(type) {
   saveExtraVenues();
   if (nameInput) nameInput.value = '';
   renderVenueList();
+  renderExtraFuneralPriceSections();
   applyExtraVenuesToSelects();
   showToast('✅ ' + name + ' 추가됐어요!', 'success');
 }
@@ -10051,12 +10071,38 @@ function addVenueName(type) {
 function removeVenueName(type, name) {
   if (type === 'funeral') {
     extraVenues.funeral = (extraVenues.funeral || []).filter(v => v.name !== name);
+    // 해당 거래처 단가 데이터도 삭제
+    if (venuePrices[name]) {
+      delete venuePrices[name];
+      saveVenuePriceData();
+    }
   } else {
     extraVenues.wedding = (extraVenues.wedding || []).filter(n => n !== name);
   }
   saveExtraVenues();
   renderVenueList();
+  renderExtraFuneralPriceSections();
   applyExtraVenuesToSelects();
+}
+
+function renderExtraFuneralPriceSections() {
+  const container = document.getElementById('extra-funeral-price-sections');
+  if (!container) return;
+  const list = (extraVenues.funeral || []).filter(v => v.group === 'own');
+  if (list.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = list.map(v => `
+    <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-bottom:20px;">
+      <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 ${v.name}</div>
+      <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">별도 단가 설정. 주문 접수 시 자동 계산돼요.</p>
+      <div id="priceList-${v.name}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="${v.name}-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <input id="${v.name}-new-price" type="number" placeholder="단가 (원)" style="width:110px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <button onclick="addVenuePrice('${v.name}')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+      </div>
+    </div>`).join('');
+  // 각 섹션 단가 렌더
+  list.forEach(v => renderVenuePrices(v.name));
 }
 
 function renderVenueList() {
@@ -10088,13 +10134,28 @@ function renderVenueList() {
 function applyExtraVenuesToSelects() {
   const fSel = document.getElementById('f_funeralName');
   if (fSel) {
-    Array.from(fSel.querySelectorAll('option[data-extra]')).forEach(o => o.remove());
-    (extraVenues.funeral || []).forEach(v => {
+    // 기존 추가 옵션/그룹 제거
+    Array.from(fSel.querySelectorAll('option[data-extra], optgroup[data-extra]')).forEach(o => o.remove());
+    // 충대/대청 방식은 해당 optgroup에 추가
+    (extraVenues.funeral || []).filter(v => v.group !== 'own').forEach(v => {
       const opt = document.createElement('option');
       opt.value = v.name; opt.textContent = v.name; opt.dataset.extra = v.group;
-      const group = fSel.querySelector('optgroup[label="' + (v.group === 'chungdae' ? '충대장례식장' : '대청장례식장') + '"]');
-      if (group) group.appendChild(opt); else fSel.appendChild(opt);
+      const groupLabel = v.group === 'chungdae' ? '충대장례식장' : '대청장례식장';
+      const grp = fSel.querySelector('optgroup[label="' + groupLabel + '"]');
+      if (grp) grp.appendChild(opt); else fSel.appendChild(opt);
     });
+    // 별도 단가 거래처는 새 optgroup으로 추가
+    const ownVenues = (extraVenues.funeral || []).filter(v => v.group === 'own');
+    if (ownVenues.length > 0) {
+      const grp = document.createElement('optgroup');
+      grp.label = '추가 거래처'; grp.dataset.extra = 'own';
+      ownVenues.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.name; opt.textContent = v.name; opt.dataset.extra = 'own';
+        grp.appendChild(opt);
+      });
+      fSel.appendChild(grp);
+    }
   }
   const wSel = document.getElementById('w_weddingName');
   if (wSel) {
