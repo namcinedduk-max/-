@@ -1980,6 +1980,8 @@
       </div>
     </div>
 
+</div><!-- /panel-settings -->
+<div class="panel" id="panel-label-image">
     <!-- 라벨 이미지 설정 -->
     <div class="form-card" style="margin-top:16px;">
       <h2>🖼️ 라벨 테두리 이미지 설정</h2>
@@ -1998,6 +2000,7 @@
         </div>
       </div>
     </div>
+</div><!-- /panel-label-image -->
 <!-- ==================== 매입 관리 패널 ==================== -->
 <div class="panel" id="panel-purchase">
 
@@ -6444,6 +6447,15 @@ function switchTab(tab) {
   if (tab === 'purchase') {
     initPurchaseTab();
   }
+  // 설정 탭: 라벨 이미지 패널도 함께 표시
+  const labelPanel = document.getElementById('panel-label-image');
+  if (labelPanel) {
+    if (tab === 'settings') {
+      labelPanel.classList.add('active');
+    } else {
+      labelPanel.classList.remove('active');
+    }
+  }
 }
 
 function loadUnusedLinks() {
@@ -8760,7 +8772,8 @@ function savePartner() {
   showToast('✅ ' + name + ' 거래처 추가됐어요!', 'success');
   // GAS 저장
   if (gasUrl) {
-    gasPost({ action: 'save', sheet: 'partner', data: { name: name, type: type, phone: phone, memo: memo } }).catch(function(){});
+    const pid = purchasePartners[purchasePartners.length - 1].id;
+    gasPost({ action: 'save', sheet: 'partner', data: { id: pid, name: name, type: type, phone: phone, memo: memo } }).catch(function(){});
   }
 }
 
