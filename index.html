@@ -1669,23 +1669,10 @@
           <div class="tteok-list" id="w_tteokList"></div>
           <div class="tteok-add-row">
             <div class="tteok-add-row-inputs">
-              <select id="w_tteokSelect" onchange="onWeddingTteokSelectChange()">
+              <select id="w_tteokSelect">
                 <option value="">-- 목록에서 선택 --</option>
-                <option value="백설기">백설기</option>
-                <option value="인절미">인절미</option>
-                <option value="시루떡">시루떡</option>
-                <option value="송편">송편</option>
-                <option value="절편">절편</option>
-                <option value="찰떡">찰떡</option>
-                <option value="영양떡">영양떡</option>
-                <option value="콩떡">콩떡</option>
-                <option value="팥떡">팥떡</option>
-                <option value="무지개떡">무지개떡</option>
-                <option value="두텁떡">두텁떡</option>
-                <option value="직접입력">✏️ 직접 입력</option>
               </select>
-              <input type="text" id="w_tteokCustom" placeholder="직접 입력" style="display:none;">
-              <input type="text" id="w_tteokQty" placeholder="수량 (예: 2개)">
+              <input type="number" id="w_tteokQty" placeholder="kg" min="0" step="0.5" style="width:80px;">
               <button class="btn-add-tteok" type="button" onclick="addWeddingTteokItem()">+ 추가</button>
             </div>
           </div>
@@ -5727,8 +5714,14 @@ function updateVenueTteokSelect(selectId, venueType) {
   const opts = keys.map(name => `<option value="${name}">${name}</option>`).join('');
   const custom = `<option value="직접입력">✏️ 직접 입력</option>`;
 
-  // 단가 미설정 시 기본 목록 유지
-  if (keys.length === 0) {
+  if (venueType === 'wedding') {
+    // 웨딩홀: 단가 설정 목록만, 직접입력 없음
+    if (keys.length === 0) {
+      sel.innerHTML = base + `<option disabled>단가 설정에서 먼저 등록해주세요</option>`;
+    } else {
+      sel.innerHTML = base + opts;
+    }
+  } else if (keys.length === 0) {
     const defaults = ['백설기','인절미','시루떡','송편','절편','찰떡','영양떡','콩떡','팥떡','무지개떡','두텁떡'];
     sel.innerHTML = base + defaults.map(n => `<option value="${n}">${n}</option>`).join('') + custom;
   } else {
@@ -6394,7 +6387,6 @@ function loadProductionPlan() {
   const date = document.getElementById('prodDate').value;
   if (!date) { showToast('날짜를 선택해주세요.', 'error'); return; }
 
-  // 개인주문 + 장례식장 주문 모두 합산
   const normalizeDate = d => {
     if (!d) return '';
     const s = String(d);
@@ -6412,14 +6404,14 @@ function loadProductionPlan() {
     return s.slice(0,10);
   };
 
-  const allOrders = [
-    ...orders.filter(o => normalizeDate(o.deliveryDate) === date && o.payStatus !== '대기'),
-    ...funeralOrders.filter(o => normalizeDate(o.deliveryDate) === date),
-  ];
+  // 개인 주문만 (장례식장 제외)
+  const personalOrders = orders.filter(o => normalizeDate(o.deliveryDate) === date && o.payStatus !== '대기');
+  // 웨딩홀 주문
+  const weddingOrdersToday = weddingOrders.filter(o => normalizeDate(o.deliveryDate) === date);
 
   const container = document.getElementById('prodResult');
 
-  if (allOrders.length === 0) {
+  if (personalOrders.length === 0 && weddingOrdersToday.length === 0) {
     container.innerHTML = `<div style="text-align:center;color:#999;padding:40px;font-size:14px;">📭 ${formatDateKor(date)} 배송 예정 주문이 없어요</div>`;
     return;
   }
@@ -6505,12 +6497,10 @@ function loadProductionPlan() {
     return [{ name: name, qty: itemQty || '' }];
   }
 
-  // ── 떡별 합산 ────────────────────────────────────────────────────────────
-  const summary = {}; // { name: { qtys: [...], setQtys: [...], count: 0 } }
-  // setQtys: 세트에서 분해된 수량 (주문건수 카운트에서 따로 표시)
-  // count: 이 떡이 등장한 주문 건수
+  // ── 개인 주문 떡별 합산 ─────────────────────────────────────
+  const personalSummary = {};
 
-  allOrders.forEach(o => {
+  personalOrders.forEach(o => {
     const items = o.tteokItems && o.tteokItems.length > 0
       ? o.tteokItems
       : (o.tteokType || '').split(', ').map(t => {
@@ -6520,63 +6510,114 @@ function loadProductionPlan() {
 
     items.forEach(item => {
       if (!item.name) return;
-
-      // 세트인지 판단 (이름에 세트/코리아 키워드가 있으면 분해 시도)
-      const isSet = /^(덕세트|덕6구세트|이바지[大小]|코리아\([대소]\)|분홍세트|은혜세트)\(/.test(item.name);
-
+      const isSet = /^.+\(/.test(item.name);
       if (isSet) {
         const decomposed = decomposeSetItem(item.name, item.qty);
         decomposed.forEach(({ name: tName, qty: tQty }) => {
           if (!tName) return;
-          if (!summary[tName]) summary[tName] = { qtys: [], count: 0 };
-          summary[tName].count++;
-          if (tQty) summary[tName].qtys.push(tQty);
+          if (!personalSummary[tName]) personalSummary[tName] = { qtys: [], count: 0 };
+          personalSummary[tName].count++;
+          if (tQty) personalSummary[tName].qtys.push(tQty);
         });
       } else {
-        const key = item.name;
-        if (!summary[key]) summary[key] = { qtys: [], count: 0 };
-        summary[key].count++;
-        if (item.qty) summary[key].qtys.push(item.qty);
+        if (!personalSummary[item.name]) personalSummary[item.name] = { qtys: [], count: 0 };
+        personalSummary[item.name].count++;
+        if (item.qty) personalSummary[item.name].qtys.push(item.qty);
       }
     });
   });
 
-  const dateStr = formatDateKor(date);
-  const rows = Object.entries(summary).map(([name, data]) => {
-    const qtyDisplay = summarizeQtys(data.qtys);
-    return { name, qtyDisplay, count: data.count };
+  // ── 웨딩홀별 합산 ────────────────────────────────────────────
+  // { 홀이름: { 떡이름: kg합계 } }
+  const weddingByHall = {};
+  const weddingTotalSummary = {};
+
+  weddingOrdersToday.forEach(o => {
+    const hallName = o.weddingName || o.hallName || '웨딩홀';
+    if (!weddingByHall[hallName]) weddingByHall[hallName] = {};
+
+    const items = o.tteokItems && o.tteokItems.length > 0
+      ? o.tteokItems
+      : (o.tteokType || '').split(', ').map(t => {
+          const m = t.match(/^(.+?)\s+([\d.]+(?:kg|키로)?.*)$/);
+          return m ? { name: m[1].trim(), qty: m[2].trim() } : { name: t.trim(), qty: '' };
+        });
+
+    items.forEach(item => {
+      if (!item.name) return;
+      const kgM = String(item.qty || '').match(/^([\d.]+)\s*(kg|키로)?$/);
+      const kg = kgM ? parseFloat(kgM[1]) : 0;
+      weddingByHall[hallName][item.name] = (weddingByHall[hallName][item.name] || 0) + kg;
+      weddingTotalSummary[item.name] = (weddingTotalSummary[item.name] || 0) + kg;
+    });
   });
+
+  const dateStr = formatDateKor(date);
+
+  // ── 개인 주문 테이블 행 ──────────────────────────────────────
+  const personalRows = Object.entries(personalSummary).map(([name, data]) => ({
+    name, qtyDisplay: summarizeQtys(data.qtys), count: data.count
+  }));
+
+  // ── 웨딩홀 카드 HTML ─────────────────────────────────────────
+  const hallCards = Object.entries(weddingByHall).map(([hall, items]) => `
+    <div style="background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:130px;">
+      <div style="font-size:11px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);">${hall}</div>
+      ${Object.entries(items).map(([tteok, kg]) => `
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid #f0e8dc;font-size:13px;">
+          <span>${tteok}</span><span style="font-weight:700;">${kg % 1 === 0 ? kg : kg}kg</span>
+        </div>`).join('')}
+    </div>`).join('');
+
+  const weddingTotalRows = Object.entries(weddingTotalSummary).map(([tteok, kg]) => `
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:14px;">
+      <span>${tteok}</span><span style="font-weight:700;">${kg % 1 === 0 ? kg : kg}kg</span>
+    </div>`).join('');
 
   container.innerHTML = `
     <div id="prodPrintArea">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-        <div>
-          <div style="font-size:18px;font-weight:800;color:var(--brown-deep);">📅 ${dateStr} 생산계획</div>
-          <div style="font-size:13px;color:#888;margin-top:2px;">총 ${allOrders.length}건 주문 (세트 분해 합산)</div>
+      <div style="font-size:18px;font-weight:800;color:var(--brown-deep);margin-bottom:4px;">📅 ${dateStr} 생산계획</div>
+      <div style="font-size:13px;color:#888;margin-bottom:20px;">개인 ${personalOrders.length}건 · 웨딩홀 ${weddingOrdersToday.length}건</div>
+
+      ${personalRows.length > 0 ? `
+      <div style="background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">👤 개인 주문</div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:var(--brown-deep);color:#fff;">
+              <th style="padding:10px 14px;text-align:left;border-radius:8px 0 0 0;">떡 종류</th>
+              <th style="padding:10px 14px;text-align:center;">총 생산량</th>
+              <th style="padding:10px 14px;text-align:center;border-radius:0 8px 0 0;">주문 수</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${personalRows.map((r, i) => `
+            <tr style="background:${i%2===0?'#fffbf5':'#fff'};border-bottom:1px solid var(--border);">
+              <td style="padding:10px 14px;font-weight:700;">🍡 ${r.name}</td>
+              <td style="padding:10px 14px;text-align:center;font-weight:800;font-size:15px;color:var(--brown-deep);">${r.qtyDisplay || '-'}</td>
+              <td style="padding:10px 14px;text-align:center;color:#666;">${r.count}건</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+
+      ${Object.keys(weddingByHall).length > 0 ? `
+      <div style="background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">🏛 웨딩홀</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+          ${hallCards}
         </div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:14px;">
-        <thead>
-          <tr style="background:var(--brown-deep);color:#fff;">
-            <th style="padding:12px 16px;text-align:left;border-radius:8px 0 0 0;">떡 종류</th>
-            <th style="padding:12px 16px;text-align:center;">총 생산량</th>
-            <th style="padding:12px 16px;text-align:center;border-radius:0 8px 0 0;">포함 주문 수</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((r, i) => `
-          <tr style="background:${i%2===0?'#fffbf5':'#fff'};border-bottom:1px solid var(--border);">
-            <td style="padding:14px 16px;font-weight:700;font-size:15px;">🍡 ${r.name}</td>
-            <td style="padding:14px 16px;text-align:center;font-weight:800;font-size:16px;color:var(--brown-deep);">${r.qtyDisplay || '-'}</td>
-            <td style="padding:14px 16px;text-align:center;color:#666;">${r.count}건</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top:16px;padding:12px 16px;background:#f0fdf4;border-radius:10px;border:1.5px solid #bbf7d0;">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);">합계</div>
+          ${weddingTotalRows}
+        </div>
+      </div>` : ''}
+
+      <div style="margin-top:4px;padding:12px 16px;background:#f0fdf4;border-radius:10px;border:1.5px solid #bbf7d0;">
         <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:8px;">📋 주문 상세</div>
-        ${allOrders.map(o => `
+        ${personalOrders.map(o => `
           <div style="font-size:12px;color:#555;padding:4px 0;border-bottom:1px solid #e5e7eb;">
-            ${o.receiverName||o.funeralName||'-'} · ${o.tteokType||'-'} · ${normalizeTimeStr(o.deliveryTime)||'시간미정'}
+            ${o.receiverName||'-'} · ${o.tteokType||'-'} · ${normalizeTimeStr(o.deliveryTime)||'시간미정'}
             ${o.deliveryAddr1 ? ' · ' + o.deliveryAddr1 : ''}
           </div>`).join('')}
       </div>
@@ -6884,6 +6925,7 @@ function switchTab(tab) {
       Promise.all([
         loadOrdersFromSheet(true),
         loadFuneralOrdersFromSheet(true),
+        loadWeddingOrdersFromSheet(true),
       ]).then(() => loadProductionPlan());
     } else {
       loadProductionPlan();
@@ -9487,22 +9529,18 @@ let weddingTteokItems = [];
 let weddingSortKey = 'deliveryDate';
 let weddingSortDir = 1;
 
-function onWeddingTteokSelectChange() {
-  const sel = document.getElementById('w_tteokSelect');
-  const custom = document.getElementById('w_tteokCustom');
-  if (sel.value === '직접입력') { custom.style.display = 'block'; custom.focus(); }
-  else { custom.style.display = 'none'; custom.value = ''; }
-}
+
 
 function addWeddingTteokItem() {
   const sel = document.getElementById('w_tteokSelect');
-  const custom = document.getElementById('w_tteokCustom');
   const qty = document.getElementById('w_tteokQty').value.trim();
-  const name = sel.value === '직접입력' ? custom.value.trim() : sel.value;
-  if (!name) { showToast('떡 종류를 선택하거나 입력해주세요.', 'error'); return; }
-  weddingTteokItems.push({ name, qty: qty || '' });
+  const name = sel.value;
+  if (!name) { showToast('떡 종류를 선택해주세요.', 'error'); return; }
+  if (!qty) { showToast('kg을 입력해주세요.', 'error'); return; }
+  const qtyStr = parseFloat(qty) % 1 === 0 ? qty + 'kg' : parseFloat(qty) + 'kg';
+  weddingTteokItems.push({ name, qty: qtyStr });
   renderWeddingTteokList();
-  sel.value = ''; custom.value = ''; custom.style.display = 'none';
+  sel.value = '';
   document.getElementById('w_tteokQty').value = '';
   calcVenuePrice('wedding');
 }
