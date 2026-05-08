@@ -6921,8 +6921,8 @@ function switchTab(tab) {
   if (tab === 'order') { setTimeout(renderOrderCategoryButtons, 50); }
   const btn = event.target.closest('.tab-btn');
   if (btn) btn.classList.add('active');
-  if (tab === 'list') { if (gasUrl) loadOrdersFromSheet(false, true); else { updateStats(); renderList(); } }
-  if (tab === 'funeralList') { if (gasUrl) loadFuneralOrdersFromSheet(false, true); else { updateFuneralStats(); renderFuneralList(); } }
+  if (tab === 'list') { if (gasUrl) loadOrdersFromSheet(false); else { updateStats(); renderList(); } }
+  if (tab === 'funeralList') { if (gasUrl) loadFuneralOrdersFromSheet(false); else { updateFuneralStats(); renderFuneralList(); } }
   if (tab === 'production') {
     document.getElementById('prodDate').value = getLocalDateStr();
     if (gasUrl) {
@@ -6966,7 +6966,7 @@ function switchTab(tab) {
     updateVenueTteokSelect('w_tteokSelect', 'wedding');
   }
   if (tab === 'weddingList') {
-    if (gasUrl) loadWeddingOrdersFromSheet(false, true); else renderWeddingList();
+    if (gasUrl) loadWeddingOrdersFromSheet(false); else renderWeddingList();
   }
   // 설정 탭: 라벨 이미지 패널도 함께 표시
   const labelPanel = document.getElementById('panel-label-image');
