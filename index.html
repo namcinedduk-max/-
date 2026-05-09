@@ -9579,68 +9579,68 @@ function printInvoice(order, orderType) {
 
   const items = order.tteokItems && order.tteokItems.length > 0 ? order.tteokItems : [];
   const totalAmount = Number(order.priceTotal) || 0;
-  const minRows = 12;
+  const minRows = 10;
   const itemRows = items.map(item =>
-    `<tr><td style="border:0.5px solid #999;padding:4px 5px;font-size:9px;">${item.name||''}</td><td style="border:0.5px solid #999;padding:4px 5px;text-align:center;font-size:9px;">${item.qty||''}</td><td style="border:0.5px solid #999;padding:4px 5px;font-size:9px;"></td><td style="border:0.5px solid #999;padding:4px 5px;font-size:9px;"></td></tr>`
+    `<tr><td style="border:0.5px solid #999;padding:0;height:22px;font-size:10px;padding-left:4px;">${item.name||''}</td><td style="border:0.5px solid #999;text-align:center;font-size:10px;">${item.qty||''}</td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>`
   ).join('');
   const blankRows = Array(Math.max(0, minRows - items.length)).fill(
-    '<tr><td style="border:0.5px solid #999;padding:7px 5px;">&nbsp;</td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
+    '<tr><td style="border:0.5px solid #999;height:22px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
   ).join('');
 
   const makeSlip = (copy) => `
-    <div style="flex:1;min-width:0;padding:10px 10px;box-sizing:border-box;display:flex;flex-direction:column;height:100%;">
-      <div style="text-align:center;margin-bottom:8px;">
-        <div style="font-size:14px;font-weight:bold;letter-spacing:4px;margin-bottom:4px;">거 래 명 세 표</div>
+    <div style="flex:1;min-width:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;">
+      <div style="text-align:center;margin-bottom:6px;">
+        <div style="font-size:14px;font-weight:bold;letter-spacing:4px;margin-bottom:3px;">거 래 명 세 표</div>
         <span style="font-size:9px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 10px;color:${copy.color};">${copy.label}</span>
       </div>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:5px;">
         <tr>
-          <td style="border:0.5px solid #999;padding:4px 5px;width:50%;vertical-align:top;">
-            <div style="color:#888;font-size:7px;margin-bottom:2px;">공 급 자</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+          <td style="border:0.5px solid #999;padding:3px 5px;width:50%;vertical-align:top;">
+            <div style="color:#888;font-size:7px;margin-bottom:1px;">공 급 자</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
               <div style="font-weight:bold;font-size:10px;">${company}</div>
-              ${sealImg ? `<img src="${sealImg}" style="height:30px;opacity:0.9;flex-shrink:0;">` : ''}
+              ${sealImg ? `<img src="${sealImg}" style="height:28px;opacity:0.9;">` : ''}
             </div>
             <div style="font-size:7px;color:#555;">사업자: ${regno}</div>
             <div style="font-size:7px;color:#555;">대표: ${ceo} | 업태: ${bizType} / ${bizItem}</div>
             <div style="font-size:7px;color:#555;">전화: ${tel}</div>
             <div style="font-size:7px;color:#555;">${addr}</div>
           </td>
-          <td style="border:0.5px solid #999;border-left:none;padding:4px 5px;width:50%;vertical-align:top;">
-            <div style="color:#888;font-size:7px;margin-bottom:2px;">공급받는자</div>
+          <td style="border:0.5px solid #999;border-left:none;padding:3px 5px;width:50%;vertical-align:top;">
+            <div style="color:#888;font-size:7px;margin-bottom:1px;">공급받는자</div>
             <div style="font-weight:bold;font-size:10px;">${venueName}${subInfo ? ' / ' + subInfo : ''}</div>
             ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
             ${venueCeo ? `<div style="font-size:7px;color:#555;">대표: ${venueCeo}</div>` : ''}
             ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
-            <div style="font-size:7px;color:#555;margin-top:4px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
+            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
           </td>
         </tr>
       </table>
-      <table style="width:100%;border-collapse:collapse;flex:1;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;flex:1;">
         <thead><tr style="background:#f0f0f0;">
-          <th style="border:0.5px solid #999;padding:4px;font-size:9px;text-align:center;width:36%;">품 목</th>
-          <th style="border:0.5px solid #999;padding:4px;font-size:9px;text-align:center;width:14%;">수량</th>
-          <th style="border:0.5px solid #999;padding:4px;font-size:9px;text-align:center;width:25%;">단 가</th>
-          <th style="border:0.5px solid #999;padding:4px;font-size:9px;text-align:center;width:25%;">금 액</th>
+          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:36%;">품 목</th>
+          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:14%;">수량</th>
+          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:25%;">단 가</th>
+          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:25%;">금 액</th>
         </tr></thead>
         <tbody>${itemRows}${blankRows}</tbody>
         <tfoot><tr style="background:#f5f5f5;">
-          <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:9px;">합 계</td>
-          <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:9px;">${totalAmount.toLocaleString()}</td>
+          <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">합 계</td>
+          <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">${totalAmount.toLocaleString()}</td>
         </tr></tfoot>
       </table>
-      <div style="margin-top:5px;border:0.5px solid #ddd;padding:4px 6px;min-height:28px;">
+      <div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;height:28px;">
         <div style="font-size:7px;color:#aaa;">메 모</div>
-        <div style="font-size:8px;">${order.memo||''}</div>
+        <div style="font-size:9px;">${order.memo||''}</div>
       </div>
-      <div style="margin-top:auto;padding-top:16px;text-align:right;font-size:9px;color:#555;">
+      <div style="margin-top:6px;text-align:right;font-size:9px;color:#555;">
         (인) _______________
       </div>
     </div>`;
 
   const dividers = copies.map((copy, i) => {
     const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
-    return `<div style="flex:1;min-width:0;${borderRight};display:flex;">${makeSlip(copy)}</div>`;
+    return `<div style="flex:1;min-width:0;${borderRight}">${makeSlip(copy)}</div>`;
   }).join('');
 
   const cutLabel = copies.length === 3 ? '✂ 절취선 — A4 가로 3등분 절취' : '✂ 절취선 — A4 가로 반으로 절취';
@@ -9650,10 +9650,10 @@ function printInvoice(order, orderType) {
 <style>
   @page { size: A4 landscape; margin: 5mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; }
-  body { font-family: '맑은 고딕', 'Apple SD Gothic Neo', sans-serif; }
-  .wrap { display: flex; flex-direction: row; width: 100%; height: calc(100% - 18px); border: 0.5px solid #ccc; }
-  .cut { text-align: center; font-size: 9px; color: #999; padding: 3px; border-top: 1px dashed #aaa; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body { font-family: '맑은 고딕', 'Apple SD Gothic Neo', sans-serif; display: flex; flex-direction: column; }
+  .wrap { display: flex; flex-direction: row; width: 100%; flex: 1; border: 0.5px solid #ccc; overflow: hidden; }
+  .cut { text-align: center; font-size: 8px; color: #999; padding: 2px; border-top: 1px dashed #aaa; flex-shrink: 0; }
 </style></head>
 <body>
   <div class="wrap">${dividers}</div>
@@ -9665,6 +9665,7 @@ function printInvoice(order, orderType) {
   win.document.write(html);
   win.document.close();
 }
+
 
 
 
