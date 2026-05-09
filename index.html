@@ -9628,13 +9628,11 @@ function printInvoice(order, orderType) {
       if (vname === '대청장례식장') {
         const p = (venuePrices['daecheong'] || {})[itemName];
         if (p) {
-          // 수량에서 숫자 추출 (5kg→5, 10kg→10)
           const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 5;
           let basePrice = 0;
           if (qtyNum >= 10 && p.price10) basePrice = p.price10;
           else basePrice = p.price5 || 0;
-          if (daecheongRate > 0) basePrice = Math.round(basePrice * (1 - daecheongRate/100));
-          // 5kg 단위 고정금액이므로 unitPrice 없이 amount만 반환
+          // 명세서에는 수수료율 적용 전 금액 표시
           return { unitPrice: 0, amount: basePrice };
         }
       } else if (vname === '충대장례식장') {
