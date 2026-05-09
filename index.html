@@ -11091,6 +11091,12 @@ function openWeddingModal(id) {
   currentModalType = 'wedding';
   const delivDate = normalizeDateStr(String(o.deliveryDate||''));
 
+  // 모달 상태 초기화
+  document.getElementById('modalContent').style.display = 'block';
+  document.getElementById('modalEditContent').style.display = 'none';
+  document.getElementById('modalEditBtn').style.display = '';
+  document.getElementById('modalSaveBtn').style.display = 'none';
+
   // 보기 모드
   document.getElementById('modalContent').innerHTML = `
     <div class="modal-detail-row"><span class="modal-detail-label">접수 시각</span><span>${o.createdAt||'-'}</span></div>
