@@ -755,6 +755,7 @@
       <div class="tab-group-items">
         <button class="tab-btn" onclick="switchTab('settings')">단가설정</button>
         <button class="tab-btn" onclick="switchTab('purchase')">매입</button>
+        <button class="tab-btn" onclick="switchTab('settlement')">📊 정산</button>
         <button class="tab-btn" onclick="switchTab('sheet')">시트연동</button>
       </div>
     </div>
@@ -2016,6 +2017,30 @@
       <div id="unusedLinksList">
         <div style="text-align:center;color:#999;padding:40px;font-size:14px;">탭을 열면 자동으로 불러와요</div>
       </div>
+    </div>
+  </div>
+
+  <!-- ==================== 정산 패널 ==================== -->
+  <div class="panel" id="panel-settlement">
+    <div class="form-card">
+      <h2>📊 거래처별 정산 조회</h2>
+
+      <!-- 기간 선택 -->
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+        <input type="date" id="settle-from" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <span style="font-size:14px;color:var(--brown-mid);font-weight:700;">~</span>
+        <input type="date" id="settle-to" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <button onclick="runSettlement()" style="padding:9px 20px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🔍 조회</button>
+        <button onclick="setSettleMonth(0)" style="padding:9px 14px;background:#f3f4f6;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">이번달</button>
+        <button onclick="setSettleMonth(-1)" style="padding:9px 14px;background:#f3f4f6;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">지난달</button>
+      </div>
+
+      <!-- 결과 -->
+      <div id="settlement-result" style="display:none;">
+        <div id="settlement-summary" style="margin-bottom:20px;"></div>
+        <div id="settlement-detail"></div>
+      </div>
+      <div id="settlement-empty" style="text-align:center;color:#aaa;padding:40px 0;font-size:14px;">기간을 선택하고 조회해주세요.</div>
     </div>
   </div>
 
@@ -7362,6 +7387,7 @@ function switchTab(tab) {
     } else { updateStats(); renderList(); }
   }
   if (tab === 'funeralList') { if (gasUrl) loadFuneralOrdersFromSheet(false); else { updateFuneralStats(); renderFuneralList(); } }
+  if (tab === 'settlement') { initSettlementTab(); }
   if (tab === 'production') {
     document.getElementById('prodDate').value = getLocalDateStr();
     if (gasUrl) {
@@ -11025,6 +11051,192 @@ function clearOtherFilter() {
   const v = document.getElementById('otFilterVenue'); if (v) v.value = '';
   const s = document.getElementById('otSearchInput'); if (s) s.value = '';
   renderOtherList();
+}
+
+// ============================================================
+// 정산 탭
+// ============================================================
+function initSettlementTab() {
+  // 기본값: 이번달
+  setSettleMonth(0);
+}
+
+function setSettleMonth(offset) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + offset;
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  const fmt = d => d.toISOString().slice(0, 10);
+  document.getElementById('settle-from').value = fmt(first);
+  document.getElementById('settle-to').value = fmt(last);
+}
+
+function runSettlement() {
+  const from = document.getElementById('settle-from').value;
+  const to = document.getElementById('settle-to').value;
+  if (!from || !to) { showToast('기간을 선택해주세요.', 'error'); return; }
+
+  document.getElementById('settlement-empty').style.display = 'none';
+  document.getElementById('settlement-result').style.display = 'none';
+  document.getElementById('settlement-summary').innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">불러오는 중...</div>';
+  document.getElementById('settlement-result').style.display = 'block';
+
+  // 모든 데이터 병렬 로드
+  const loads = [];
+  if (gasUrl) {
+    loads.push(
+      gasGet({ action: 'getOrders', sheet: 'funeral' }),
+      gasGet({ action: 'getOrders', sheet: 'wedding' }),
+      gasGet({ action: 'getOrders', sheet: 'other' })
+    );
+  } else {
+    loads.push(
+      Promise.resolve({ success: true, orders: funeralOrders }),
+      Promise.resolve({ success: true, orders: weddingOrders }),
+      Promise.resolve({ success: true, orders: otherOrders || [] })
+    );
+  }
+
+  Promise.all(loads).then(function(results) {
+    const fOrders = (results[0].orders || []);
+    const wOrders = (results[1].orders || []);
+    const oOrders = (results[2].orders || []);
+
+    // 기간 필터
+    function inRange(o) {
+      const d = normalizeDateStr(String(o.deliveryDate || ''));
+      return d >= from && d <= to;
+    }
+
+    const fFiltered = fOrders.filter(inRange);
+    const wFiltered = wOrders.filter(inRange);
+    const oFiltered = oOrders.filter(inRange);
+
+    // 거래처별 집계
+    const map = {};
+    function addTo(key, type, order) {
+      if (!map[key]) map[key] = { type, name: key, orders: [], total: 0, count: 0 };
+      map[key].orders.push(order);
+      map[key].total += Number(order.priceTotal) || 0;
+      map[key].count++;
+    }
+    fFiltered.forEach(o => addTo(o.funeralName || '장례식장', 'funeral', o));
+    wFiltered.forEach(o => addTo(o.weddingName || o.hallName || '웨딩홀', 'wedding', o));
+    oFiltered.forEach(o => addTo(o.venueName || '기타', 'other', o));
+
+    const entries = Object.values(map).sort((a, b) => b.total - a.total);
+    const grandTotal = entries.reduce((s, e) => s + e.total, 0);
+    const grandCount = entries.reduce((s, e) => s + e.count, 0);
+
+    if (entries.length === 0) {
+      document.getElementById('settlement-summary').innerHTML =
+        '<div style="text-align:center;color:#aaa;padding:30px;">해당 기간에 주문이 없어요.</div>';
+      document.getElementById('settlement-detail').innerHTML = '';
+      return;
+    }
+
+    // 요약 테이블
+    const typeLabel = { funeral: '🏥 장례식장', wedding: '💒 웨딩홀', other: '🏢 기타업체' };
+    const typeBg = { funeral: '#f0fdf4', wedding: '#eff6ff', other: '#ecfeff' };
+    const typeColor = { funeral: '#166534', wedding: '#1d4ed8', other: '#0891b2' };
+
+    document.getElementById('settlement-summary').innerHTML = `
+      <div style="font-size:14px;font-weight:700;color:var(--brown-deep);margin-bottom:12px;">
+        📅 ${from} ~ ${to} &nbsp; 총 ${grandCount}건 &nbsp;
+        <span style="color:var(--brown-deep);font-size:16px;">${grandTotal.toLocaleString()}원</span>
+      </div>
+      <div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:var(--brown-deep);color:#fff;">
+              <th style="padding:10px 14px;text-align:left;font-weight:700;">거래처</th>
+              <th style="padding:10px 14px;text-align:left;font-weight:700;">구분</th>
+              <th style="padding:10px 14px;text-align:center;font-weight:700;">건수</th>
+              <th style="padding:10px 14px;text-align:right;font-weight:700;">합계금액</th>
+              <th style="padding:10px 14px;text-align:center;font-weight:700;">상세</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entries.map(e => `
+              <tr style="border-bottom:1px solid var(--border);background:${typeBg[e.type]};">
+                <td style="padding:10px 14px;font-weight:700;color:${typeColor[e.type]};">${e.name}</td>
+                <td style="padding:10px 14px;font-size:12px;color:#666;">${typeLabel[e.type]}</td>
+                <td style="padding:10px 14px;text-align:center;">${e.count}건</td>
+                <td style="padding:10px 14px;text-align:right;font-weight:700;">${e.total.toLocaleString()}원</td>
+                <td style="padding:10px 14px;text-align:center;">
+                  <button onclick="toggleSettleDetail('${e.name.replace(/'/g,"\\'")}')"
+                    style="font-size:11px;padding:3px 10px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;" id="settle-btn-${e.name.replace(/[^a-zA-Z0-9가-힣]/g,'_')}">
+                    펼치기 ▼
+                  </button>
+                </td>
+              </tr>
+              <tr id="settle-detail-${e.name.replace(/[^a-zA-Z0-9가-힣]/g,'_')}" style="display:none;">
+                <td colspan="5" style="padding:0;">
+                  <div style="padding:10px 20px;background:#fafafa;border-top:1px solid var(--border);">
+                    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                      <thead>
+                        <tr style="color:#888;border-bottom:1px solid var(--border);">
+                          <th style="padding:5px 8px;text-align:left;font-weight:600;">배송일</th>
+                          <th style="padding:5px 8px;text-align:left;font-weight:600;">떡 종류</th>
+                          <th style="padding:5px 8px;text-align:right;font-weight:600;">금액</th>
+                          <th style="padding:5px 8px;text-align:center;font-weight:600;">결제</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${e.orders.sort((a,b) => (a.deliveryDate||'') > (b.deliveryDate||'') ? 1 : -1).map(o => `
+                          <tr style="border-bottom:1px solid #f0f0f0;">
+                            <td style="padding:5px 8px;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
+                            <td style="padding:5px 8px;">${o.tteokType||'-'}</td>
+                            <td style="padding:5px 8px;text-align:right;font-weight:600;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
+                            <td style="padding:5px 8px;text-align:center;">
+                              <span style="font-size:11px;padding:2px 7px;border-radius:8px;background:${o.payStatus==='결제완료'||o.payStatus==='완료'?'#dcfce7':'#fef9c3'};color:${o.payStatus==='결제완료'||o.payStatus==='완료'?'#166534':'#854d0e'};">
+                                ${o.payStatus||'미수금'}
+                              </span>
+                            </td>
+                          </tr>`).join('')}
+                        <tr style="background:#f3f4f6;font-weight:700;">
+                          <td colspan="2" style="padding:6px 8px;">합계</td>
+                          <td style="padding:6px 8px;text-align:right;">${e.total.toLocaleString()}원</td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+            <tr style="background:var(--brown-pale);font-weight:700;font-size:14px;">
+              <td colspan="2" style="padding:12px 14px;">총합계</td>
+              <td style="padding:12px 14px;text-align:center;">${grandCount}건</td>
+              <td style="padding:12px 14px;text-align:right;color:var(--brown-deep);">${grandTotal.toLocaleString()}원</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;text-align:right;">
+        <button onclick="printSettlement()" style="padding:8px 18px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ 출력/PDF</button>
+      </div>`;
+
+    document.getElementById('settlement-detail').innerHTML = '';
+  }).catch(function() {
+    showToast('데이터 불러오기 실패', 'error');
+  });
+}
+
+function toggleSettleDetail(name) {
+  const safeId = name.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+  const row = document.getElementById('settle-detail-' + safeId);
+  const btn = document.getElementById('settle-btn-' + safeId);
+  if (!row) return;
+  const isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : 'table-row';
+  if (btn) btn.textContent = isOpen ? '펼치기 ▼' : '접기 ▲';
+}
+
+function printSettlement() {
+  window.print();
 }
 
 function initOtherSettings() {
