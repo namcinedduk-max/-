@@ -4199,11 +4199,18 @@ function addTteokToGlobalList() {
 
   // 즉시 저장
   localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
-  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER } }).catch(() => {});
-
-  renderTteokAllList();
-  renderOrderCatSettings();
-  showToast('✅ ' + name + ' 추가됐어요! (자동 저장됨)', 'success');
+  if (gasUrl) {
+    showToast('⏳ 저장 중...', '');
+    gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER } })
+      .then(function(res) {
+        if (res && res.success) showToast('✅ ' + name + ' 추가 및 저장됐어요!', 'success');
+        else showToast('❌ GAS 저장 실패 - 단가 저장 버튼을 눌러주세요', 'error');
+      }).catch(function(err) {
+        showToast('❌ 저장 실패: ' + (err.message||''), 'error');
+      });
+  } else {
+    showToast('✅ ' + name + ' 추가됐어요! (로컬 저장)', 'success');
+  }
 }
 
 
