@@ -9619,15 +9619,67 @@ function printInvoice(order, orderType) {
   const items = order.tteokItems && order.tteokItems.length > 0 ? order.tteokItems : [];
   const totalAmount = Number(order.priceTotal) || 0;
   const minRows = 10;
-  const itemRows = items.map(item => {
-    const price = Number(item.price) || 0;
+  // 거래처별 단가 조회 함수
+  function getItemPrice(itemName, qty, type, vname) {
+    const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+    let unitPrice = 0;
+
+    if (type === 'funeral') {
+      if (vname === '대청장례식장') {
+        const p = (venuePrices['daecheong'] || {})[itemName];
+        if (p) unitPrice = p.price5 || 0;
+        if (unitPrice > 0 && daecheongRate > 0) unitPrice = Math.round(unitPrice * (1 - daecheongRate/100));
+      } else if (vname === '충대장례식장') {
+        const p = (venuePrices['chungdae'] || {})[itemName];
+        if (p) unitPrice = p.price5 || 0;
+      } else {
+        // 충대 식당류 (kg 단가)
+        unitPrice = (venuePrices['chungdae_restaurant'] || {})[itemName] || 0;
+      }
+    } else if (type === 'wedding') {
+      unitPrice = (venuePrices['wedding'] || {})[itemName] || 0;
+    } else if (type === 'other') {
+      const ov = (otherVenuePrices || {})[vname] || {};
+      const op = ov[itemName];
+      if (op && typeof op === 'object') unitPrice = op.price5 || 0;
+      else unitPrice = Number(op) || 0;
+    }
+
+    const amount = unitPrice > 0 && qtyNum > 0 ? Math.round(unitPrice * qtyNum) : 0;
+    return { unitPrice, amount };
+  }
+
+  const itemRows = items.map((item) => {
+    const storedPrice = Number(item.price) || 0;
+    let unitPrice = 0, displayAmount = 0;
+
+    if (storedPrice > 0) {
+      // 저장된 금액이 있으면 그걸 사용
+      displayAmount = storedPrice;
+      const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
+      unitPrice = qtyNum > 0 ? Math.round(storedPrice / qtyNum) : 0;
+    } else {
+      // 없으면 단가설정에서 계산
+      const looked = getItemPrice(item.name, item.qty, orderType, venueName);
+      unitPrice = looked.unitPrice;
+      displayAmount = looked.amount;
+    }
+
     return `<tr>
       <td style="border:0.5px solid #999;padding:0;height:22px;font-size:10px;padding-left:4px;">${item.name||''}</td>
       <td style="border:0.5px solid #999;text-align:center;font-size:10px;">${item.qty||''}</td>
-      <td style="border:0.5px solid #999;"></td>
-      <td style="border:0.5px solid #999;text-align:right;font-size:10px;padding-right:3px;font-weight:bold;">${price > 0 ? price.toLocaleString() : ''}</td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:10px;padding-right:3px;">${unitPrice > 0 ? unitPrice.toLocaleString() : ''}</td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:10px;padding-right:3px;font-weight:bold;">${displayAmount > 0 ? displayAmount.toLocaleString() : ''}</td>
     </tr>`;
   }).join('');
+
+  // 합계: 품목별 금액 합산 (없으면 priceTotal 사용)
+  const calcTotal = items.reduce((sum, item) => {
+    if (Number(item.price) > 0) return sum + Number(item.price);
+    const looked = getItemPrice(item.name, item.qty, orderType, venueName);
+    return sum + (looked.amount || 0);
+  }, 0);
+  const displayTotal = calcTotal > 0 ? calcTotal : totalAmount;
   const blankRows = Array(Math.max(0, minRows - items.length)).fill(
     '<tr><td style="border:0.5px solid #999;height:22px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
   ).join('');
@@ -9671,7 +9723,7 @@ function printInvoice(order, orderType) {
         <tbody>${itemRows}${blankRows}</tbody>
         <tfoot><tr style="background:#f5f5f5;">
           <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">합 계</td>
-          <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">${totalAmount.toLocaleString()}</td>
+          <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">${displayTotal.toLocaleString()}</td>
         </tr></tfoot>
       </table>
       <div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;height:28px;">
