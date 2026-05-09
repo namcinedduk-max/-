@@ -3054,9 +3054,15 @@ function loadTteokPriceSettings() {
         Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
         Object.assign(TTEOK_DB, d.tteokPriceDB);
         localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
-        // 화면 갱신
+        // 현재 떡단가 탭이 열려있으면 즉시 재렌더링
         if (typeof renderTteokAllList === 'function') renderTteokAllList();
         if (typeof updateTteokSelects === 'function') updateTteokSelects();
+        // 저장 후 확인용 로그
+        gasGet({ action: 'getTteokSettings' }).then(function(check) {
+            const keys = check.data && check.data.tteokPriceDB ? Object.keys(check.data.tteokPriceDB) : [];
+            console.log('[단가저장 확인] GAS에서 읽힌 떡 목록:', keys);
+            console.log('[단가저장 확인] 총', keys.length, '개');
+          });
       } catch(e){ console.error('tteokPriceDB 로드 오류', e); } }
       if (d.priceSettings) { try {
         priceSettings = d.priceSettings;
@@ -5986,7 +5992,28 @@ function switchSettingsTab(type) {
     if (btn) btn.classList.toggle('active', t === type);
   });
   if (type === 'quickfee') renderQuickFeeList();
-  if (type === 'tteokprice') { renderTteokPriceList(); renderOrderCatSettings(); }
+  if (type === 'tteokprice') {
+    // GAS에서 최신 데이터 불러온 후 렌더링
+    if (gasUrl) {
+      showToast('⏳ 최신 단가 불러오는 중...', '');
+      gasGet({ action: 'getTteokSettings' }).then(function(data) {
+        if (data.success && data.data && data.data.tteokPriceDB) {
+          Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
+          Object.assign(TTEOK_DB, data.data.tteokPriceDB);
+          localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
+        }
+        renderTteokPriceList();
+        renderOrderCatSettings();
+        showToast('', '');
+      }).catch(function() {
+        renderTteokPriceList();
+        renderOrderCatSettings();
+      });
+    } else {
+      renderTteokPriceList();
+      renderOrderCatSettings();
+    }
+  }
   if (type === 'funeral' || type === 'wedding-price') initVenuePriceSettings();
   if (type === 'other-price') initOtherSettings();
 }
