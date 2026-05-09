@@ -8599,7 +8599,7 @@ function deleteOrder(id) {
   updateStats(); renderList();
   closeModal();
   if (!gasUrl) { showToast('🗑 주문이 삭제되었습니다.', 'error'); return; }
-  gasPost({ action: 'delete', id: String(id) })
+  gasPost({ action: 'delete', sheet: 'order', id: String(id) })
     .then(data => {
       if (data.success) {
         showToast('🗑 주문이 삭제되었습니다.', 'error');
@@ -8956,7 +8956,7 @@ function confirmApprove() {
   updateStats(); renderList();
   showToast('✅ 주문이 승인됐어요!', 'success');
   // 백그라운드 저장
-  gasPost({ action: 'delete', id: String(id) })
+  gasPost({ action: 'delete', sheet: 'order', id: String(id) })
     .then(() => gasPost({ action: 'save', data: o }))
     .catch(() => {
       orders = backup; updateStats(); renderList();
@@ -8974,7 +8974,7 @@ function confirmReject() {
   orders = orders.filter(o => String(o.id) !== String(id));
   updateStats(); renderList();
   showToast('🗑️ 주문이 거절됐어요.', '');
-  gasPost({ action: 'delete', id: String(id) })
+  gasPost({ action: 'delete', sheet: 'order', id: String(id) })
     .catch(() => {
       orders = backup; updateStats(); renderList();
       showToast('❌ 실패. 다시 시도해주세요.', 'error');
