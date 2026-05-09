@@ -2023,24 +2023,27 @@
   <!-- ==================== 정산 패널 ==================== -->
   <div class="panel" id="panel-settlement">
     <div class="form-card">
-      <h2>📊 거래처별 정산 조회</h2>
+      <h2>📊 거래처별 정산</h2>
 
-      <!-- 기간 선택 -->
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
-        <input type="date" id="settle-from" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-        <span style="font-size:14px;color:var(--brown-mid);font-weight:700;">~</span>
-        <input type="date" id="settle-to" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+      <!-- 조회 조건 -->
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;">
+        <div>
+          <div style="font-size:11px;color:var(--brown-light);margin-bottom:4px;">거래처</div>
+          <select id="settle-venue" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;min-width:150px;">
+            <option value="">전체</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--brown-light);margin-bottom:4px;">조회 월</div>
+          <input type="month" id="settle-month" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
         <button onclick="runSettlement()" style="padding:9px 20px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🔍 조회</button>
-        <button onclick="setSettleMonth(0)" style="padding:9px 14px;background:#f3f4f6;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">이번달</button>
-        <button onclick="setSettleMonth(-1)" style="padding:9px 14px;background:#f3f4f6;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">지난달</button>
+        <button onclick="setSettleThisMonth(0)" style="padding:9px 14px;background:#f3f4f6;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">이번달</button>
+        <button onclick="setSettleThisMonth(-1)" style="padding:9px 14px;background:#f3f4f6;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">지난달</button>
       </div>
 
-      <!-- 결과 -->
-      <div id="settlement-result" style="display:none;">
-        <div id="settlement-summary" style="margin-bottom:20px;"></div>
-        <div id="settlement-detail"></div>
-      </div>
-      <div id="settlement-empty" style="text-align:center;color:#aaa;padding:40px 0;font-size:14px;">기간을 선택하고 조회해주세요.</div>
+      <div id="settlement-result" style="display:none;"></div>
+      <div id="settlement-empty" style="text-align:center;color:#aaa;padding:40px 0;font-size:14px;">거래처와 월을 선택하고 조회해주세요.</div>
     </div>
   </div>
 
@@ -2362,6 +2365,13 @@
           </div>
         </div>
         <button class="btn-submit" onclick="saveOtherPrices()" style="margin-top:20px;">💾 기타업체 단가 저장</button>
+
+        <!-- 거래처별 계산서 설정 -->
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-top:24px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🧾 거래처별 계산서 설정</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:12px;">정산 탭에서 세금계산서/영수증 발행 여부를 관리해요.</p>
+          <div id="venueTaxSettingList" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
       </div>
 
       <div id="settings-tteokprice" style="display:none;margin-top:8px;">
@@ -3134,6 +3144,18 @@ function loadTteokPriceSettings() {
         try {
           otherVenuePrices = d.otherVenuePrices;
           localStorage.setItem('otherVenuePrices', JSON.stringify(otherVenuePrices));
+        } catch(e) {}
+      }
+      if (d.venueSettings) {
+        try {
+          venueSettings = d.venueSettings;
+          localStorage.setItem('venueSettings', JSON.stringify(venueSettings));
+        } catch(e) {}
+      }
+      if (d.paymentRecords) {
+        try {
+          paymentRecords = d.paymentRecords;
+          localStorage.setItem('paymentRecords', JSON.stringify(paymentRecords));
         } catch(e) {}
       }
       if (d.daecheongRate !== undefined) {
@@ -11056,193 +11078,346 @@ function clearOtherFilter() {
 // ============================================================
 // 정산 탭
 // ============================================================
-function initSettlementTab() {
-  // 기본값: 이번달
-  setSettleMonth(0);
+// ============================================================
+// 정산 데이터
+// ============================================================
+// 거래처 설정: { '대청장례식장': { taxType: 'tax', contractDate: '2026-01-01' }, ... }
+let venueSettings = JSON.parse(localStorage.getItem('venueSettings') || '{}');
+// 입금 내역: { '대청장례식장_2026-05': [{date, amount, memo}], ... }
+let paymentRecords = JSON.parse(localStorage.getItem('paymentRecords') || '{}');
+
+function saveVenueSettings() {
+  localStorage.setItem('venueSettings', JSON.stringify(venueSettings));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { venueSettings, paymentRecords } }).catch(() => {});
+}
+function savePaymentRecords() {
+  localStorage.setItem('paymentRecords', JSON.stringify(paymentRecords));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { paymentRecords } }).catch(() => {});
 }
 
-function setSettleMonth(offset) {
+function initSettlementTab() {
+  setSettleThisMonth(0);
+  updateSettleVenueSelect();
+  // GAS에서 입금내역/거래처설정 불러오기
+  if (gasUrl) {
+    gasGet({ action: 'getTteokSettings' }).then(function(data) {
+      if (!data.success) return;
+      const d = data.data || {};
+      if (d.venueSettings) { venueSettings = d.venueSettings; localStorage.setItem('venueSettings', JSON.stringify(venueSettings)); }
+      if (d.paymentRecords) { paymentRecords = d.paymentRecords; localStorage.setItem('paymentRecords', JSON.stringify(paymentRecords)); }
+    }).catch(() => {});
+  }
+}
+
+function setSettleThisMonth(offset) {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + offset;
-  const first = new Date(y, m, 1);
-  const last = new Date(y, m + 1, 0);
-  const fmt = d => d.toISOString().slice(0, 10);
-  document.getElementById('settle-from').value = fmt(first);
-  document.getElementById('settle-to').value = fmt(last);
+  const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  document.getElementById('settle-month').value = ym;
+}
+
+function updateSettleVenueSelect() {
+  const sel = document.getElementById('settle-venue');
+  if (!sel) return;
+  // 모든 거래처 수집
+  const venues = new Set();
+  funeralOrders.forEach(o => { if (o.funeralName) venues.add(o.funeralName); });
+  weddingOrders.forEach(o => { if (o.weddingName||o.hallName) venues.add(o.weddingName||o.hallName); });
+  (otherOrders||[]).forEach(o => { if (o.venueName) venues.add(o.venueName); });
+  // 거래처 설정에 있는 것도 포함
+  Object.keys(venueSettings).forEach(v => venues.add(v));
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체</option>' +
+    Array.from(venues).sort().map(v => `<option value="${v}">${v}</option>`).join('');
+  if (cur) sel.value = cur;
 }
 
 function runSettlement() {
-  const from = document.getElementById('settle-from').value;
-  const to = document.getElementById('settle-to').value;
-  if (!from || !to) { showToast('기간을 선택해주세요.', 'error'); return; }
+  const ym = document.getElementById('settle-month').value;
+  const venueFilter = document.getElementById('settle-venue').value;
+  if (!ym) { showToast('월을 선택해주세요.', 'error'); return; }
 
-  document.getElementById('settlement-empty').style.display = 'none';
-  document.getElementById('settlement-result').style.display = 'none';
-  document.getElementById('settlement-summary').innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">불러오는 중...</div>';
-  document.getElementById('settlement-result').style.display = 'block';
+  const [year, month] = ym.split('-').map(Number);
+  const fromDate = ym + '-01';
+  const lastDay = new Date(year, month, 0).getDate();
+  const toDate = ym + '-' + String(lastDay).padStart(2,'0');
 
-  // 모든 데이터 병렬 로드
-  const loads = [];
-  if (gasUrl) {
-    loads.push(
-      gasGet({ action: 'getOrders', sheet: 'funeral' }),
-      gasGet({ action: 'getOrders', sheet: 'wedding' }),
-      gasGet({ action: 'getOrders', sheet: 'other' })
-    );
-  } else {
-    loads.push(
-      Promise.resolve({ success: true, orders: funeralOrders }),
-      Promise.resolve({ success: true, orders: weddingOrders }),
-      Promise.resolve({ success: true, orders: otherOrders || [] })
-    );
-  }
+  // 전월 계산
+  const prevDate = new Date(year, month - 2, 1);
+  const prevYm = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
+
+  const resultEl = document.getElementById('settlement-result');
+  const emptyEl = document.getElementById('settlement-empty');
+  resultEl.style.display = 'none';
+  emptyEl.style.display = 'none';
+  resultEl.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;">불러오는 중...</div>';
+  resultEl.style.display = 'block';
+
+  const loads = gasUrl ? [
+    gasGet({ action: 'getOrders', sheet: 'funeral' }),
+    gasGet({ action: 'getOrders', sheet: 'wedding' }),
+    gasGet({ action: 'getOrders', sheet: 'other' })
+  ] : [
+    Promise.resolve({ success:true, orders: funeralOrders }),
+    Promise.resolve({ success:true, orders: weddingOrders }),
+    Promise.resolve({ success:true, orders: otherOrders||[] })
+  ];
 
   Promise.all(loads).then(function(results) {
-    const fOrders = (results[0].orders || []);
-    const wOrders = (results[1].orders || []);
-    const oOrders = (results[2].orders || []);
+    const allOrders = [
+      ...(results[0].orders||[]).map(o => ({ ...o, _venue: o.funeralName, _type:'funeral' })),
+      ...(results[1].orders||[]).map(o => ({ ...o, _venue: o.weddingName||o.hallName, _type:'wedding' })),
+      ...(results[2].orders||[]).map(o => ({ ...o, _venue: o.venueName, _type:'other' }))
+    ];
 
-    // 기간 필터
-    function inRange(o) {
-      const d = normalizeDateStr(String(o.deliveryDate || ''));
-      return d >= from && d <= to;
+    function inMonth(o, targetYm) {
+      const d = normalizeDateStr(String(o.deliveryDate||''));
+      return d && d.startsWith(targetYm);
     }
-
-    const fFiltered = fOrders.filter(inRange);
-    const wFiltered = wOrders.filter(inRange);
-    const oFiltered = oOrders.filter(inRange);
 
     // 거래처별 집계
-    const map = {};
-    function addTo(key, type, order) {
-      if (!map[key]) map[key] = { type, name: key, orders: [], total: 0, count: 0 };
-      map[key].orders.push(order);
-      map[key].total += Number(order.priceTotal) || 0;
-      map[key].count++;
+    const venueMap = {};
+    allOrders.forEach(function(o) {
+      if (!o._venue) return;
+      if (venueFilter && o._venue !== venueFilter) return;
+      if (!venueMap[o._venue]) venueMap[o._venue] = { type: o._type, thisMonth:[], prevMonth:[] };
+      if (inMonth(o, ym)) venueMap[o._venue].thisMonth.push(o);
+      if (inMonth(o, prevYm)) venueMap[o._venue].prevMonth.push(o);
+    });
+
+    // venueFilter만 선택됐는데 주문이 없어도 표시
+    if (venueFilter && !venueMap[venueFilter]) {
+      venueMap[venueFilter] = { type: 'other', thisMonth:[], prevMonth:[] };
     }
-    fFiltered.forEach(o => addTo(o.funeralName || '장례식장', 'funeral', o));
-    wFiltered.forEach(o => addTo(o.weddingName || o.hallName || '웨딩홀', 'wedding', o));
-    oFiltered.forEach(o => addTo(o.venueName || '기타', 'other', o));
 
-    const entries = Object.values(map).sort((a, b) => b.total - a.total);
-    const grandTotal = entries.reduce((s, e) => s + e.total, 0);
-    const grandCount = entries.reduce((s, e) => s + e.count, 0);
-
+    const entries = Object.entries(venueMap);
     if (entries.length === 0) {
-      document.getElementById('settlement-summary').innerHTML =
-        '<div style="text-align:center;color:#aaa;padding:30px;">해당 기간에 주문이 없어요.</div>';
-      document.getElementById('settlement-detail').innerHTML = '';
+      resultEl.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;">해당 월에 주문이 없어요.</div>';
       return;
     }
 
-    // 요약 테이블
-    const typeLabel = { funeral: '🏥 장례식장', wedding: '💒 웨딩홀', other: '🏢 기타업체' };
-    const typeBg = { funeral: '#f0fdf4', wedding: '#eff6ff', other: '#ecfeff' };
-    const typeColor = { funeral: '#166534', wedding: '#1d4ed8', other: '#0891b2' };
+    resultEl.innerHTML = entries.map(function([venueName, data]) {
+      return renderVenueSettlement(venueName, data, ym, prevYm);
+    }).join('<div style="height:20px;"></div>');
 
-    document.getElementById('settlement-summary').innerHTML = `
-      <div style="font-size:14px;font-weight:700;color:var(--brown-deep);margin-bottom:12px;">
-        📅 ${from} ~ ${to} &nbsp; 총 ${grandCount}건 &nbsp;
-        <span style="color:var(--brown-deep);font-size:16px;">${grandTotal.toLocaleString()}원</span>
-      </div>
-      <div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr style="background:var(--brown-deep);color:#fff;">
-              <th style="padding:10px 14px;text-align:left;font-weight:700;">거래처</th>
-              <th style="padding:10px 14px;text-align:left;font-weight:700;">구분</th>
-              <th style="padding:10px 14px;text-align:center;font-weight:700;">건수</th>
-              <th style="padding:10px 14px;text-align:right;font-weight:700;">합계금액</th>
-              <th style="padding:10px 14px;text-align:center;font-weight:700;">상세</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${entries.map(e => `
-              <tr style="border-bottom:1px solid var(--border);background:${typeBg[e.type]};">
-                <td style="padding:10px 14px;font-weight:700;color:${typeColor[e.type]};">${e.name}</td>
-                <td style="padding:10px 14px;font-size:12px;color:#666;">${typeLabel[e.type]}</td>
-                <td style="padding:10px 14px;text-align:center;">${e.count}건</td>
-                <td style="padding:10px 14px;text-align:right;font-weight:700;">${e.total.toLocaleString()}원</td>
-                <td style="padding:10px 14px;text-align:center;">
-                  <button onclick="toggleSettleDetail('${e.name.replace(/'/g,"\\'")}')"
-                    style="font-size:11px;padding:3px 10px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;" id="settle-btn-${e.name.replace(/[^a-zA-Z0-9가-힣]/g,'_')}">
-                    펼치기 ▼
-                  </button>
-                </td>
-              </tr>
-              <tr id="settle-detail-${e.name.replace(/[^a-zA-Z0-9가-힣]/g,'_')}" style="display:none;">
-                <td colspan="5" style="padding:0;">
-                  <div style="padding:10px 20px;background:#fafafa;border-top:1px solid var(--border);">
-                    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                      <thead>
-                        <tr style="color:#888;border-bottom:1px solid var(--border);">
-                          <th style="padding:5px 8px;text-align:left;font-weight:600;">배송일</th>
-                          <th style="padding:5px 8px;text-align:left;font-weight:600;">떡 종류</th>
-                          <th style="padding:5px 8px;text-align:right;font-weight:600;">금액</th>
-                          <th style="padding:5px 8px;text-align:center;font-weight:600;">결제</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${e.orders.sort((a,b) => (a.deliveryDate||'') > (b.deliveryDate||'') ? 1 : -1).map(o => `
-                          <tr style="border-bottom:1px solid #f0f0f0;">
-                            <td style="padding:5px 8px;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
-                            <td style="padding:5px 8px;">${o.tteokType||'-'}</td>
-                            <td style="padding:5px 8px;text-align:right;font-weight:600;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
-                            <td style="padding:5px 8px;text-align:center;">
-                              <span style="font-size:11px;padding:2px 7px;border-radius:8px;background:${o.payStatus==='결제완료'||o.payStatus==='완료'?'#dcfce7':'#fef9c3'};color:${o.payStatus==='결제완료'||o.payStatus==='완료'?'#166534':'#854d0e'};">
-                                ${o.payStatus||'미수금'}
-                              </span>
-                            </td>
-                          </tr>`).join('')}
-                        <tr style="background:#f3f4f6;font-weight:700;">
-                          <td colspan="2" style="padding:6px 8px;">합계</td>
-                          <td style="padding:6px 8px;text-align:right;">${e.total.toLocaleString()}원</td>
-                          <td></td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-            `).join('')}
-            <tr style="background:var(--brown-pale);font-weight:700;font-size:14px;">
-              <td colspan="2" style="padding:12px 14px;">총합계</td>
-              <td style="padding:12px 14px;text-align:center;">${grandCount}건</td>
-              <td style="padding:12px 14px;text-align:right;color:var(--brown-deep);">${grandTotal.toLocaleString()}원</td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div style="margin-top:12px;text-align:right;">
-        <button onclick="printSettlement()" style="padding:8px 18px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ 출력/PDF</button>
-      </div>`;
-
-    document.getElementById('settlement-detail').innerHTML = '';
   }).catch(function() {
     showToast('데이터 불러오기 실패', 'error');
   });
 }
 
-function toggleSettleDetail(name) {
-  const safeId = name.replace(/[^a-zA-Z0-9가-힣]/g,'_');
-  const row = document.getElementById('settle-detail-' + safeId);
-  const btn = document.getElementById('settle-btn-' + safeId);
-  if (!row) return;
-  const isOpen = row.style.display !== 'none';
-  row.style.display = isOpen ? 'none' : 'table-row';
-  if (btn) btn.textContent = isOpen ? '펼치기 ▼' : '접기 ▲';
+function getVenueTotal(orders) {
+  return orders.reduce(function(s,o){ return s + (Number(o.priceTotal)||0); }, 0);
 }
 
-function printSettlement() {
-  window.print();
+function getPrevCarryover(venueName, prevYm) {
+  // 전전월까지 누적 미수 계산
+  const key = venueName + '_' + prevYm;
+  const prevTotal = 0; // 실제론 전월 납품 합계 필요 - 여기선 입금기록에서 역산
+  const paid = (paymentRecords[key]||[]).reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
+  // 전월 이월 = 이전 이월 + 전월납품 - 전월입금 → 재귀 구조 대신 기록 기반으로
+  return 0; // 실제 구현에서 전월 미수잔액 사용
+}
+
+function renderVenueSettlement(venueName, data, ym, prevYm) {
+  const thisTotal = getVenueTotal(data.thisMonth);
+  const key = venueName + '_' + ym;
+  const prevKey = venueName + '_' + prevYm;
+  const payments = paymentRecords[key] || [];
+  const totalPaid = payments.reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
+
+  // 전월 미수 계산 (전월 납품 - 전월 입금)
+  // 전월 납품은 data.prevMonth로 계산
+  const prevTotal = getVenueTotal(data.prevMonth);
+  const prevPaid = (paymentRecords[prevKey]||[]).reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
+  const prevCarryover = Math.max(0, prevTotal - prevPaid);
+
+  const totalBill = thisTotal + prevCarryover;
+  const remaining = Math.max(0, totalBill - totalPaid);
+
+  const settings = venueSettings[venueName] || {};
+  const taxLabel = { tax:'세금계산서', receipt:'영수증', none:'' }[settings.taxType||'none'];
+  const taxIssued = settings['taxIssued_'+ym] || false;
+
+  const typeColor = { funeral:'#166534', wedding:'#1d4ed8', other:'#0891b2' };
+  const typeBg = { funeral:'#f0fdf4', wedding:'#eff6ff', other:'#ecfeff' };
+  const color = typeColor[data.type] || '#444';
+  const bg = typeBg[data.type] || '#f9fafb';
+
+  // 3개월 이상 미수 체크
+  const oldDebt = remaining > 0 && prevCarryover > 0;
+
+  const safeId = venueName.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+
+  return `<div style="border:1.5px solid ${oldDebt?'#ef4444':'#e5e7eb'};border-radius:12px;overflow:hidden;">
+    <div style="background:${bg};padding:12px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:14px;font-weight:700;color:${color};">${venueName}</span>
+        ${oldDebt ? '<span style="font-size:11px;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:8px;font-weight:700;">⚠️ 이월 미수</span>' : ''}
+        ${taxLabel ? `<span style="font-size:11px;background:#fff;border:1px solid ${color};color:${color};padding:2px 8px;border-radius:8px;">${taxLabel}</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${taxLabel ? `<label style="font-size:12px;color:#666;display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" ${taxIssued?'checked':''} onchange="toggleTaxIssued('${venueName}','${ym}',this.checked)" style="cursor:pointer;">
+          발행완료
+        </label>` : ''}
+        <button onclick="toggleSettleVenueDetail('${safeId}')" id="settle-toggle-${safeId}" style="font-size:12px;padding:4px 12px;background:#fff;border:1px solid #ddd;border-radius:6px;cursor:pointer;">납품내역 ▼</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e5e7eb;">
+      <div style="padding:12px 16px;border-right:1px solid #e5e7eb;">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">전월 이월</div>
+        <div style="font-size:16px;font-weight:700;color:${prevCarryover>0?'#d97706':'#aaa'};">${prevCarryover.toLocaleString()}원</div>
+      </div>
+      <div style="padding:12px 16px;border-right:1px solid #e5e7eb;">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">이번달 납품</div>
+        <div style="font-size:16px;font-weight:700;">${thisTotal.toLocaleString()}원</div>
+      </div>
+      <div style="padding:12px 16px;border-right:1px solid #e5e7eb;">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">입금 완료</div>
+        <div style="font-size:16px;font-weight:700;color:#16a34a;">${totalPaid.toLocaleString()}원</div>
+      </div>
+      <div style="padding:12px 16px;background:${remaining>0?'#fef9c3':'#f0fdf4'};">
+        <div style="font-size:11px;color:#888;margin-bottom:3px;">미수 잔액</div>
+        <div style="font-size:16px;font-weight:700;color:${remaining>0?'#d97706':'#16a34a'};">${remaining.toLocaleString()}원</div>
+      </div>
+    </div>
+
+    <div id="settle-detail-${safeId}" style="display:none;border-bottom:1px solid #e5e7eb;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#f9fafb;">
+          <th style="padding:8px 14px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">배송일</th>
+          <th style="padding:8px 14px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">납품 내역</th>
+          <th style="padding:8px 14px;text-align:right;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">금액</th>
+        </tr></thead>
+        <tbody>
+          ${data.thisMonth.length === 0
+            ? `<tr><td colspan="3" style="padding:14px;text-align:center;color:#aaa;">이번달 납품 내역이 없어요.</td></tr>`
+            : data.thisMonth.sort(function(a,b){ return (a.deliveryDate||'')>(b.deliveryDate||'')?1:-1; }).map(function(o){
+              return `<tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:8px 14px;color:#666;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
+                <td style="padding:8px 14px;">${o.tteokType||'-'}</td>
+                <td style="padding:8px 14px;text-align:right;font-weight:600;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
+              </tr>`;
+            }).join('')}
+          ${prevCarryover > 0 ? `<tr style="background:#fef9c3;">
+            <td colspan="2" style="padding:8px 14px;font-weight:600;color:#92400e;">전월 이월</td>
+            <td style="padding:8px 14px;text-align:right;font-weight:600;color:#92400e;">+${prevCarryover.toLocaleString()}원</td>
+          </tr>` : ''}
+          <tr style="background:#f3f4f6;">
+            <td colspan="2" style="padding:10px 14px;font-weight:700;">총 청구액</td>
+            <td style="padding:10px 14px;text-align:right;font-weight:700;font-size:15px;">${totalBill.toLocaleString()}원</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="padding:14px 16px;border-bottom:1px solid #e5e7eb;">
+      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:8px;">입금 내역</div>
+      ${payments.length === 0
+        ? '<div style="font-size:13px;color:#aaa;margin-bottom:8px;">입금 내역이 없어요.</div>'
+        : payments.map(function(p, i){
+          return `<div style="display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:6px;">
+            <span style="color:#666;min-width:80px;">${p.date}</span>
+            <span style="flex:1;color:#444;">${p.memo||''}</span>
+            <span style="font-weight:600;color:#16a34a;">+${Number(p.amount).toLocaleString()}원</span>
+            <button onclick="deletePayment('${venueName}','${ym}',${i})" style="font-size:11px;padding:2px 8px;background:#fee2e2;color:#dc2626;border:none;border-radius:5px;cursor:pointer;">삭제</button>
+          </div>`;
+        }).join('')}
+      <div style="display:flex;gap:8px;margin-top:8px;padding-top:10px;border-top:1px solid #f0f0f0;flex-wrap:wrap;">
+        <input type="date" id="pay-date-${safeId}" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <input type="number" id="pay-amount-${safeId}" placeholder="입금액" style="width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+        <input type="text" id="pay-memo-${safeId}" placeholder="메모 (선택)" style="flex:1;min-width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <button onclick="addPayment('${venueName}','${ym}','${safeId}')" style="padding:7px 16px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 입금 등록</button>
+      </div>
+    </div>
+
+    <div style="padding:12px 16px;background:${remaining>0?'#fef9c3':'#f0fdf4'};display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;color:${remaining>0?'#92400e':'#166534'};font-weight:600;">${remaining>0?'미수 잔액 (다음달 이월)':'완납 ✅'}</span>
+      <span style="font-size:18px;font-weight:700;color:${remaining>0?'#d97706':'#16a34a'};">${remaining.toLocaleString()}원</span>
+    </div>
+  </div>`;
+}
+
+function toggleSettleVenueDetail(safeId) {
+  const el = document.getElementById('settle-detail-' + safeId);
+  const btn = document.getElementById('settle-toggle-' + safeId);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (btn) btn.textContent = open ? '납품내역 ▼' : '납품내역 ▲';
+}
+
+function addPayment(venueName, ym, safeId) {
+  const dateEl = document.getElementById('pay-date-' + safeId);
+  const amountEl = document.getElementById('pay-amount-' + safeId);
+  const memoEl = document.getElementById('pay-memo-' + safeId);
+  const date = dateEl.value;
+  const amount = parseInt(amountEl.value) || 0;
+  const memo = memoEl ? memoEl.value.trim() : '';
+  if (!date) { showToast('날짜를 입력해주세요.', 'error'); return; }
+  if (!amount) { showToast('입금액을 입력해주세요.', 'error'); return; }
+  const key = venueName + '_' + ym;
+  if (!paymentRecords[key]) paymentRecords[key] = [];
+  paymentRecords[key].push({ date, amount, memo });
+  savePaymentRecords();
+  showToast('✅ 입금 등록됐어요!', 'success');
+  runSettlement();
+}
+
+function deletePayment(venueName, ym, idx) {
+  if (!confirm('이 입금 내역을 삭제할까요?')) return;
+  const key = venueName + '_' + ym;
+  if (paymentRecords[key]) {
+    paymentRecords[key].splice(idx, 1);
+    savePaymentRecords();
+    runSettlement();
+  }
+}
+
+function toggleTaxIssued(venueName, ym, checked) {
+  if (!venueSettings[venueName]) venueSettings[venueName] = {};
+  venueSettings[venueName]['taxIssued_' + ym] = checked;
+  saveVenueSettings();
+  showToast(checked ? '✅ 발행완료 처리됐어요!' : '발행완료 취소됐어요.', 'success');
+}
+
+// 거래처 설정 저장 (세금계산서 여부)
+function saveVenueSettingItem(venueName, taxType) {
+  if (!venueSettings[venueName]) venueSettings[venueName] = {};
+  venueSettings[venueName].taxType = taxType;
+  saveVenueSettings();
+  showToast('✅ 거래처 설정 저장됐어요!', 'success');
+}
+
+function renderVenueTaxSettings() {
+  const el = document.getElementById('venueTaxSettingList');
+  if (!el) return;
+  // 장례식장 + 웨딩홀 + 기타업체 거래처 전부 수집
+  const venues = new Set();
+  funeralOrders.forEach(o => { if (o.funeralName) venues.add(o.funeralName); });
+  weddingOrders.forEach(o => { if (o.weddingName||o.hallName) venues.add(o.weddingName||o.hallName); });
+  (otherOrders||[]).forEach(o => { if (o.venueName) venues.add(o.venueName); });
+  otherVenues.forEach(v => venues.add(v.name));
+  if (venues.size === 0) { el.innerHTML = '<div style="color:#aaa;font-size:12px;">거래처 주문이 없어요.</div>'; return; }
+  el.innerHTML = Array.from(venues).sort().map(function(name) {
+    const s = venueSettings[name] || {};
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;flex-wrap:wrap;">
+      <span style="flex:1;font-size:13px;font-weight:700;">${name}</span>
+      <select onchange="saveVenueSettingItem('${name}',this.value)" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <option value="none" ${(s.taxType||'none')==='none'?'selected':''}>없음</option>
+        <option value="tax" ${s.taxType==='tax'?'selected':''}>세금계산서</option>
+        <option value="receipt" ${s.taxType==='receipt'?'selected':''}>영수증</option>
+      </select>
+    </div>`;
+  }).join('');
 }
 
 function initOtherSettings() {
   renderOtherVenueList();
   updateOtherVenueSelects();
   renderOtherVenuePrices();
+  renderVenueTaxSettings();
 }
 
 function initVenuePriceSettings() {
