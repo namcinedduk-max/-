@@ -2064,45 +2064,6 @@
       <button class="btn-small" onclick="openCustomerLinkModal()" style="margin-bottom:8px;margin-left:8px;background:#f59e0b;color:#fff;border:none;">📱 고객 주문링크 생성</button>
     </div>
 
-    </div>
-
-    <!-- 회사 정보 설정 -->
-    <div class="form-card" style="margin-top:16px;">
-      <h3>🏢 회사 정보 설정</h3>
-      <p style="font-size:12px;color:var(--brown-light);margin-bottom:12px;">거래명세표에 자동으로 들어갈 회사 정보예요.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        <div>
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">상호명</label>
-          <input type="text" id="company_name" placeholder="예: 남씨네떡집" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">대표자명</label>
-          <input type="text" id="company_ceo" placeholder="예: 홍길동" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">사업자번호</label>
-          <input type="text" id="company_regno" placeholder="예: 123-45-67890" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">전화번호</label>
-          <input type="text" id="company_tel" placeholder="예: 042-000-0000" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">업태</label>
-          <input type="text" id="company_type" placeholder="예: 제조업" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">종목</label>
-          <input type="text" id="company_item" placeholder="예: 떡류" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div style="grid-column:1/-1;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">주소</label>
-          <input type="text" id="company_addr" placeholder="예: 대전시 ○○구 ○○로 123" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
-        </div>
-      </div>
-      <button class="btn-small btn-primary" onclick="saveCompanyInfo()">💾 저장</button>
-    </div>
-
     <!-- 계좌번호 설정 -->
     <div class="form-card" style="margin-top:16px;">
       <h2>🏦 계좌번호 설정</h2>
@@ -2260,6 +2221,43 @@
   <!-- ==================== 단가 설정 패널 ==================== -->
   <div class="panel" id="panel-settings">
     <div class="form-card">
+      <!-- 회사 정보 설정 -->
+      <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:2px solid var(--brown-pale);">
+        <h3 style="margin-bottom:4px;">🏢 회사 정보 설정</h3>
+        <p style="font-size:12px;color:var(--brown-light);margin-bottom:12px;">거래명세표에 자동으로 들어갈 회사 정보예요.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">상호명</label>
+            <input type="text" id="company_name" placeholder="예: 남씨네떡집" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">대표자명</label>
+            <input type="text" id="company_ceo" placeholder="예: 홍길동" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">사업자번호</label>
+            <input type="text" id="company_regno" placeholder="예: 123-45-67890" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">전화번호</label>
+            <input type="text" id="company_tel" placeholder="예: 042-000-0000" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">업태</label>
+            <input type="text" id="company_type" placeholder="예: 제조업" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">종목</label>
+            <input type="text" id="company_item" placeholder="예: 떡류" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">주소</label>
+            <input type="text" id="company_addr" placeholder="예: 대전시 ○○구 ○○로 123" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+        </div>
+        <button class="btn-small btn-primary" onclick="saveCompanyInfo()">💾 저장</button>
+      </div>
+
       <h2>⚙️ 떡 단가 설정</h2>
       <p style="color:var(--brown-light);font-size:13px;margin-bottom:20px;">설정한 단가는 이 기기에 저장돼요. 떡 선택 후 수량 입력하면 금액이 자동 계산됩니다.</p>
 
