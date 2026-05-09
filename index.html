@@ -8571,8 +8571,8 @@ function saveEdit() {
         showToast(msg, 'success');
         loadOrdersFromSheet(true, true);
       }
-    }).catch(function() {
-      showToast('❌ 서버 연결 실패 - 다시 시도해주세요', 'error');
+    }).catch(function(err) {
+      showToast('❌ 서버 연결 실패: ' + (err.message || '알 수 없는 오류'), 'error');
     });
   } else {
     const msg = bundleSiblings.length > 0
@@ -9042,9 +9042,21 @@ function gasPost(body) {
     body: JSON.stringify(body),
     signal: controller.signal
   })
-  .then(function(r){ clearTimeout(timeout); return r.json(); })
-  .catch(function(err){
+  .then(function(r) {
     clearTimeout(timeout);
+    const contentType = r.headers.get('content-type') || '';
+    if (contentType.includes('application/json') || contentType.includes('text/plain')) {
+      return r.json();
+    }
+    // JSON이 아닌 응답(HTML 에러페이지 등)은 텍스트로 읽어서 에러 던지기
+    return r.text().then(function(txt) {
+      console.error('GAS 비정상 응답:', txt.substring(0, 200));
+      throw new Error('GAS 응답 오류: ' + txt.substring(0, 100));
+    });
+  })
+  .catch(function(err) {
+    clearTimeout(timeout);
+    console.error('gasPost 오류:', err);
     throw err;
   });
 }
