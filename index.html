@@ -9619,9 +9619,19 @@ function printInvoice(order, orderType) {
   const items = order.tteokItems && order.tteokItems.length > 0 ? order.tteokItems : [];
   const totalAmount = Number(order.priceTotal) || 0;
   const minRows = 10;
-  const itemRows = items.map(item =>
-    `<tr><td style="border:0.5px solid #999;padding:0;height:22px;font-size:10px;padding-left:4px;">${item.name||''}</td><td style="border:0.5px solid #999;text-align:center;font-size:10px;">${item.qty||''}</td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>`
-  ).join('');
+  const itemRows = items.map(item => {
+    const price = Number(item.price) || 0;
+    // 수량에서 숫자만 추출 (예: "5kg" → 5, "2세트" → 2)
+    const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
+    const unitPrice = (qtyNum > 0 && price > 0) ? Math.round(price / qtyNum) : 0;
+    const unitLabel = String(item.qty||'').replace(/[0-9.]/g,'').trim() || '';
+    return `<tr>
+      <td style="border:0.5px solid #999;padding:0;height:22px;font-size:10px;padding-left:4px;">${item.name||''}</td>
+      <td style="border:0.5px solid #999;text-align:center;font-size:10px;">${item.qty||''}</td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:10px;padding-right:3px;">${unitPrice > 0 ? unitPrice.toLocaleString() : ''}</td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:10px;padding-right:3px;font-weight:bold;">${price > 0 ? price.toLocaleString() : ''}</td>
+    </tr>`;
+  }).join('');
   const blankRows = Array(Math.max(0, minRows - items.length)).fill(
     '<tr><td style="border:0.5px solid #999;height:22px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
   ).join('');
