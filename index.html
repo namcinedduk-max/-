@@ -11134,6 +11134,13 @@ function updateSettleVenueSelect() {
   (otherOrders||[]).forEach(o => { if (o.venueName) venues.add(o.venueName); });
   (otherVenues||[]).forEach(v => { if (v.name) venues.add(v.name); });
   Object.keys(venueSettings||{}).forEach(v => venues.add(v));
+  // 충대 계열 고정 거래처 (주문 없어도 표시)
+  ['충대장례식장','대청장례식장','소비조합','충대본관영양','재활환자','재활직원'].forEach(v => venues.add(v));
+  // 등록된 웨딩홀 거래처도 포함
+  if (typeof extraVenues !== 'undefined') {
+    (extraVenues.funeral||[]).forEach(v => { if (v.name) venues.add(v.name); });
+    (extraVenues.wedding||[]).forEach(v => { if (v.name) venues.add(v.name); });
+  }
   const cur = sel.value;
   if (venues.size === 0) {
     sel.innerHTML = '<option value="">거래처 없음</option>';
@@ -11411,6 +11418,11 @@ function renderVenueTaxSettings() {
   weddingOrders.forEach(o => { if (o.weddingName||o.hallName) venues.add(o.weddingName||o.hallName); });
   (otherOrders||[]).forEach(o => { if (o.venueName) venues.add(o.venueName); });
   otherVenues.forEach(v => venues.add(v.name));
+  ['충대장례식장','대청장례식장','소비조합','충대본관영양','재활환자','재활직원'].forEach(v => venues.add(v));
+  if (typeof extraVenues !== 'undefined') {
+    (extraVenues.funeral||[]).forEach(v => { if (v.name) venues.add(v.name); });
+    (extraVenues.wedding||[]).forEach(v => { if (v.name) venues.add(v.name); });
+  }
   if (venues.size === 0) { el.innerHTML = '<div style="color:#aaa;font-size:12px;">거래처 주문이 없어요.</div>'; return; }
   el.innerHTML = Array.from(venues).sort().map(function(name) {
     const s = venueSettings[name] || {};
