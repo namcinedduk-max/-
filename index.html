@@ -2397,6 +2397,13 @@
             <input id="wedding-venue-manager" placeholder="담당자 이름" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
             <input id="wedding-venue-manager-tel" placeholder="담당자 전화번호" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);white-space:nowrap;">명세서 매수</label>
+            <select id="wedding-venue-copies" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+              <option value="2">2장 (웨딩홀보관용 / 우리보관용)</option>
+              <option value="3">3장 (웨딩홀보관용×2 / 우리보관용)</option>
+            </select>
+          </div>
           <button onclick="addVenueName('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
       </div>
@@ -9580,10 +9587,19 @@ function printInvoice(order, orderType) {
     venueName = order.weddingName || order.hallName || '';
     subInfo = order.floor ? order.floor + '층' : '';
     venueInfo = getVenueInfo(venueName);
-    copies = [
-      { label: '거 래 처 보 관 용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
-      { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
-    ];
+    const weddingCopies = venueInfo.copies || 2;
+    if (weddingCopies === 3) {
+      copies = [
+        { label: '웨딩홀 보 관 용', bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },
+        { label: '웨딩홀 보 관 용', bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },
+        { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+      ];
+    } else {
+      copies = [
+        { label: '거 래 처 보 관 용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+        { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+      ];
+    }
   } else {
     venueName = order.venueName || '';
     venueInfo = getVenueInfo(venueName);
@@ -11083,6 +11099,7 @@ function saveWeddingVenueEdit(idx, name) {
   obj.addr  = document.getElementById('we-addr-'  + idx).value.trim();
   obj.manager    = (document.getElementById('we-manager-'    + idx)||{}).value||'';
   obj.managerTel = (document.getElementById('we-managertel-' + idx)||{}).value||'';
+  obj.copies     = parseInt((document.getElementById('we-copies-' + idx)||{}).value||'2');
   list[idx] = obj;
   extraVenues.wedding = list;
   saveExtraVenues();
@@ -12052,7 +12069,8 @@ function addVenueName(type) {
     const addr = (document.getElementById('wedding-venue-addr') || {}).value || '';
     const manager = (document.getElementById('wedding-venue-manager') || {}).value || '';
     const managerTel = (document.getElementById('wedding-venue-manager-tel') || {}).value || '';
-    extraVenues.wedding.push({ name, regno, ceo, tel, addr, manager, managerTel });
+    const copies = parseInt((document.getElementById('wedding-venue-copies') || {}).value || '2');
+    extraVenues.wedding.push({ name, regno, ceo, tel, addr, manager, managerTel, copies });
     ['wedding-venue-regno','wedding-venue-ceo','wedding-venue-tel','wedding-venue-addr','wedding-venue-manager','wedding-venue-manager-tel'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
@@ -12129,6 +12147,7 @@ function renderVenueList() {
           const addr = typeof v === 'object' ? (v.addr||'') : '';
           const manager = typeof v === 'object' ? (v.manager||'') : '';
           const managerTel = typeof v === 'object' ? (v.managerTel||'') : '';
+          const copies = typeof v === 'object' ? (v.copies||2) : 2;
           return `<div style="border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--warm-white);margin-bottom:4px;">
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <span style="font-weight:700;font-size:13px;">${name}</span>
@@ -12146,6 +12165,13 @@ function renderVenueList() {
                 <input id="we-addr-${idx}" value="${addr}" placeholder="주소" style="grid-column:1/-1;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
                 <input id="we-manager-${idx}" value="${manager}" placeholder="담당자 이름" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
                 <input id="we-managertel-${idx}" value="${managerTel}" placeholder="담당자 전화" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+                <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;">
+                  <label style="font-size:12px;font-weight:700;color:var(--brown-mid);white-space:nowrap;">명세서 매수</label>
+                  <select id="we-copies-${idx}" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+                    <option value="2" ${copies==2?'selected':''}>2장 (웨딩홀보관용 / 우리보관용)</option>
+                    <option value="3" ${copies==3?'selected':''}>3장 (웨딩홀보관용×2 / 우리보관용)</option>
+                  </select>
+                </div>
               </div>
               <button onclick="saveWeddingVenueEdit(${idx},'${name}')" style="padding:5px 14px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">💾 저장</button>
             </div>
