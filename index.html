@@ -10144,7 +10144,25 @@ function openFuneralModal(id) {
       </select>
     </div>
     <div class="modal-detail-row"><span class="modal-detail-label">빈소 위치</span><input id="ef_binsoLocation" value="${o.binsoLocation||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
-    <div class="modal-detail-row"><span class="modal-detail-label">떡 종류</span><input id="ef_tteokType" value="${o.tteokType||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+      <span class="modal-detail-label">떡 종류</span>
+      <div style="width:100%;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <select id="ef_tteokSelect" onchange="efOnTteokSelectChange()" style="flex:2;min-width:100px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;"></select>
+          <input id="ef_tteokCustom" placeholder="직접입력" style="display:none;flex:2;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+          <div id="ef_qty_5kg_btns" style="display:none;gap:4px;display:none;">
+            <button onclick="efAddTteok('5kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">5kg</button>
+            <button onclick="efAddTteok('10kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">10kg</button>
+          </div>
+          <div id="ef_qty_kg_input" style="display:none;gap:4px;align-items:center;">
+            <input type="number" id="ef_tteokKg" placeholder="kg" style="width:70px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+            <span style="font-size:12px;">kg</span>
+            <button onclick="efAddTteok()" style="padding:6px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">+ 추가</button>
+          </div>
+        </div>
+        <div id="ef_tteokList" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+    </div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><input id="ef_deliveryDate" type="date" value="${delivDate}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
     <select id="ef_deliveryTime-type" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;cursor:pointer;" onchange="ef_deliveryTimeUpdate()">
@@ -10186,7 +10204,13 @@ function openFuneralModal(id) {
   `;
   document.getElementById('modalDeleteBtn').onclick = () => { deleteFuneralOrder(id); closeModal(); };
   document.getElementById('modalEditBtn').style.display = '';
-  document.getElementById('modalEditBtn').onclick = () => toggleFuneralEditMode();
+  document.getElementById('modalEditBtn').onclick = () => {
+    toggleFuneralEditMode();
+    initEditModalTteok(o, 'funeral');
+    // 거래처 변경 시 떡 목록 갱신
+    const fnSel = document.getElementById('ef_funeralName');
+    if (fnSel) fnSel.onchange = efOnFuneralNameChange;
+  };
   document.getElementById('modalSaveBtn').style.display = 'none';
   document.getElementById('modalSaveBtn').onclick = () => saveFuneralEdit();
   document.getElementById('detailModal').classList.add('open');
@@ -10206,6 +10230,139 @@ function calcFuneralEditTotal() {
   document.getElementById('ef_priceTotal').textContent = (p+d-dis).toLocaleString()+'원';
 }
 
+// ============================================================
+// 수정 모달 - 떡 편집 (장례식장/웨딩홀 공통)
+// ============================================================
+let editModalTteokItems = [];
+let editModalVenueType = 'funeral';
+
+function initEditModalTteok(order, venueType) {
+  editModalVenueType = venueType;
+  editModalTteokItems = order.tteokItems ? JSON.parse(JSON.stringify(order.tteokItems)) : [];
+  // 떡 선택 드롭다운 채우기
+  const venueName = venueType === 'funeral'
+    ? (document.getElementById('ef_funeralName') || {}).value || order.funeralName || ''
+    : (order.weddingName || order.hallName || '');
+  efUpdateTteokSelect(venueName, venueType);
+  efUpdateQtyUI(venueName, venueType);
+  efRenderTteokList();
+}
+
+function efUpdateTteokSelect(venueName, venueType) {
+  const sel = document.getElementById('ef_tteokSelect');
+  if (!sel) return;
+  let keys = [];
+  if (venueType === 'funeral') {
+    if (venueName === '대청장례식장') keys = Object.keys(venuePrices['daecheong'] || {});
+    else if (venueName === '충대장례식장') keys = Object.keys(venuePrices['chungdae'] || {});
+    else keys = Object.keys(venuePrices['chungdae_restaurant'] || {});
+  } else if (venueType === 'wedding') {
+    keys = Object.keys(venuePrices['wedding'] || {});
+  }
+  sel.innerHTML = '<option value="">-- 떡 선택 --</option>' +
+    keys.map(k => `<option value="${k}">${k}</option>`).join('') +
+    '<option value="직접입력">직접입력</option>';
+}
+
+function efUpdateQtyUI(venueName, venueType) {
+  const btn5kg = document.getElementById('ef_qty_5kg_btns');
+  const kgInput = document.getElementById('ef_qty_kg_input');
+  if (!btn5kg || !kgInput) return;
+  const is5kg = venueType === 'funeral' && ['충대장례식장','대청장례식장'].includes(venueName);
+  btn5kg.style.display = is5kg ? 'flex' : 'none';
+  kgInput.style.display = is5kg ? 'none' : 'flex';
+}
+
+function efOnTteokSelectChange() {
+  const sel = document.getElementById('ef_tteokSelect');
+  const custom = document.getElementById('ef_tteokCustom');
+  if (!sel) return;
+  if (sel.value === '직접입력') { custom.style.display = 'block'; custom.focus(); }
+  else { custom.style.display = 'none'; custom.value = ''; }
+}
+
+function efOnFuneralNameChange() {
+  const venueName = (document.getElementById('ef_funeralName') || {}).value || '';
+  efUpdateTteokSelect(venueName, 'funeral');
+  efUpdateQtyUI(venueName, 'funeral');
+  efCalcPrice();
+}
+
+function efAddTteok(fixedQty) {
+  const sel = document.getElementById('ef_tteokSelect');
+  const custom = document.getElementById('ef_tteokCustom');
+  const name = sel.value === '직접입력' ? custom.value.trim() : sel.value;
+  if (!name || name === '') { showToast('떡 종류를 선택해주세요.', 'error'); return; }
+  let qty = fixedQty || '';
+  if (!fixedQty) {
+    const kgEl = document.getElementById('ef_tteokKg');
+    if (kgEl && kgEl.value) { qty = kgEl.value + 'kg'; kgEl.value = ''; }
+  }
+  editModalTteokItems.push({ name, qty });
+  efRenderTteokList();
+  efCalcPrice();
+  sel.value = ''; if (custom) { custom.style.display = 'none'; custom.value = ''; }
+}
+
+function efRemoveTteok(idx) {
+  editModalTteokItems.splice(idx, 1);
+  efRenderTteokList();
+  efCalcPrice();
+}
+
+function efRenderTteokList() {
+  const list = document.getElementById('ef_tteokList');
+  if (!list) return;
+  if (editModalTteokItems.length === 0) { list.innerHTML = ''; return; }
+  list.innerHTML = editModalTteokItems.map((item, i) =>
+    `<div style="display:flex;align-items:center;gap:6px;background:#f9fafb;border:1px solid var(--border);border-radius:6px;padding:5px 8px;">
+      <span style="flex:1;font-size:12px;font-weight:700;">🍡 ${item.name}</span>
+      <input type="text" value="${item.qty||''}" onchange="editModalTteokItems[${i}].qty=this.value;efCalcPrice();"
+        style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center;">
+      <button onclick="efRemoveTteok(${i})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;">✕</button>
+    </div>`
+  ).join('');
+}
+
+function efCalcPrice() {
+  const venueName = editModalVenueType === 'funeral'
+    ? (document.getElementById('ef_funeralName') || {}).value || ''
+    : '';
+  let total = 0;
+  editModalTteokItems.forEach(item => {
+    const looked = (() => {
+      if (editModalVenueType === 'funeral') {
+        if (venueName === '대청장례식장') {
+          const p = (venuePrices['daecheong'] || {})[item.name];
+          if (p) {
+            const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 5;
+            let bp = qtyNum >= 10 && p.price10 ? p.price10 : (p.price5||0);
+            return bp;
+          }
+        } else if (venueName === '충대장례식장') {
+          const p = (venuePrices['chungdae'] || {})[item.name];
+          return p ? (p.price5||0) : 0;
+        } else {
+          const kgP = (venuePrices['chungdae_restaurant'] || {})[item.name] || 0;
+          const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
+          return kgP * qtyNum;
+        }
+      } else if (editModalVenueType === 'wedding') {
+        const kgP = (venuePrices['wedding'] || {})[item.name] || 0;
+        const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
+        return kgP * qtyNum;
+      }
+      return 0;
+    })();
+    total += looked || 0;
+  });
+  const el = document.getElementById('ef_priceProduct');
+  if (el && total > 0) {
+    el.value = total;
+    calcFuneralEditTotal();
+  }
+}
+
 function saveFuneralEdit() {
   const o = funeralOrders.find(x => String(x.id) === String(currentModalId));
   if (!o) return;
@@ -10216,7 +10373,10 @@ function saveFuneralEdit() {
     ...o,
     funeralName: document.getElementById('ef_funeralName').value,
     binsoLocation: document.getElementById('ef_binsoLocation').value,
-    tteokType: document.getElementById('ef_tteokType').value,
+    tteokType: editModalTteokItems.length > 0
+      ? editModalTteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', ')
+      : (document.getElementById('ef_tteokType') ? document.getElementById('ef_tteokType').value : o.tteokType),
+    tteokItems: editModalTteokItems.length > 0 ? JSON.parse(JSON.stringify(editModalTteokItems)) : o.tteokItems,
     deliveryDate: document.getElementById('ef_deliveryDate').value,
     deliveryTime: document.getElementById('ef_deliveryTime').value,
     priceProduct: p, priceDelivery: d, priceDiscount: dis, priceTotal: p+d-dis,
@@ -10950,6 +11110,25 @@ function openWeddingModal(id) {
       </select>
       <input type="time" id="ew_deliveryTime_val" style="display:none;">
     </div>
+    <div class="edit-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+      <label>떡 종류</label>
+      <div style="width:100%;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <select id="ef_tteokSelect" onchange="efOnTteokSelectChange()" style="flex:2;min-width:100px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;"></select>
+          <input id="ef_tteokCustom" placeholder="직접입력" style="display:none;flex:2;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+          <div id="ef_qty_5kg_btns" style="display:none;gap:4px;">
+            <button onclick="efAddTteok('5kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">5kg</button>
+            <button onclick="efAddTteok('10kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">10kg</button>
+          </div>
+          <div id="ef_qty_kg_input" style="display:none;gap:4px;align-items:center;">
+            <input type="number" id="ef_tteokKg" placeholder="kg" style="width:70px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+            <span style="font-size:12px;">kg</span>
+            <button onclick="efAddTteok()" style="padding:6px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">+ 추가</button>
+          </div>
+        </div>
+        <div id="ef_tteokList" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+    </div>
     <div class="edit-row"><label>총 금액</label><input type="number" id="ew_priceTotal" value="${o.priceTotal||0}"></div>
     <div class="edit-row"><label>결제 상태</label>
       <select id="ew_payStatus">
@@ -10976,6 +11155,8 @@ function openWeddingModal(id) {
   document.getElementById('modalDeleteBtn').onclick = () => { deleteWeddingOrder(id); closeModal(); };
   document.getElementById('modalSaveBtn').onclick = saveWeddingModalEdit;
   openModal();
+  // 떡 편집 초기화 (openModal 후에)
+  setTimeout(() => initEditModalTteok(o, 'wedding'), 50);
 }
 
 function toggleEwTimeInput(val) {
@@ -11000,6 +11181,11 @@ function saveWeddingModalEdit() {
   o.payStatus = document.getElementById('ew_payStatus').value;
   o.memo = document.getElementById('ew_memo').value.trim();
   o.staffName = document.getElementById('ew_staffName').value.trim();
+  // 떡 편집 반영
+  if (editModalTteokItems.length > 0) {
+    o.tteokItems = JSON.parse(JSON.stringify(editModalTteokItems));
+    o.tteokType = editModalTteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', ');
+  }
 
   localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
   if (gasUrl) gasPost({ action: 'update', sheet: 'wedding', data: o }).catch(() => {});
