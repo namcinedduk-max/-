@@ -2636,7 +2636,21 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
           <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">항목 *</label>
-          <input type="text" id="pur_item" placeholder="예: 찹쌀 100kg" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <input type="text" id="pur_item" placeholder="예: 찹쌀" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">수량</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="number" id="pur_qty" placeholder="0" min="0" step="0.1" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+            <select id="pur_unit" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+              <option value="kg">kg</option>
+              <option value="개">개</option>
+              <option value="박스">박스</option>
+              <option value="포">포</option>
+              <option value="L">L</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;">
           <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">분류</label>
@@ -2681,6 +2695,8 @@
               <th>거래처</th>
               <th>항목</th>
               <th>분류</th>
+              <th style="text-align:right;">수량</th>
+              <th style="text-align:right;">단가</th>
               <th style="text-align:right;">금액</th>
               <th>메모</th>
               <th></th>
@@ -10034,21 +10050,24 @@ function savePurchaseRecord() {
   const partner = document.getElementById('pur_partner').value;
   const item = document.getElementById('pur_item').value.trim();
   const type = document.getElementById('pur_type').value;
+  const qty = parseFloat(document.getElementById('pur_qty').value) || 0;
+  const unit = document.getElementById('pur_unit').value || 'kg';
   const amount = parseInt(document.getElementById('pur_amount').value) || 0;
   const memo = document.getElementById('pur_memo').value.trim();
   if (!partner) { showToast('거래처를 선택해주세요.', 'error'); return; }
   if (!item) { showToast('항목을 입력해주세요.', 'error'); return; }
   if (!amount) { showToast('금액을 입력해주세요.', 'error'); return; }
-  const record = { id: Date.now(), date: date, partner: partner, item: item, type: type, amount: amount, memo: memo };
+  const unitPrice = (qty > 0) ? Math.round(amount / qty) : 0;
+  const record = { id: Date.now(), date, partner, item, type, qty, unit, amount, unitPrice, memo };
   purchaseRecords.unshift(record);
   savePurchaseData();
   document.getElementById('pur_item').value = '';
+  document.getElementById('pur_qty').value = '';
   document.getElementById('pur_amount').value = '';
   document.getElementById('pur_memo').value = '';
   renderPurchaseTable();
   renderPurchaseSummary();
   showToast('✅ 매입 기록 추가됐어요!', 'success');
-  // GAS 저장
   if (gasUrl) {
     gasPost({ action: 'save', sheet: 'purchase', data: record }).catch(function(){});
   }
@@ -10084,11 +10103,15 @@ function renderPurchaseTable() {
     return;
   }
   tbody.innerHTML = filtered.map(function(r) {
+    const qtyStr = r.qty ? (r.qty + (r.unit||'kg')) : '-';
+    const unitPriceStr = r.unitPrice ? (r.unitPrice.toLocaleString() + '원/'+(r.unit||'kg')) : '-';
     return '<tr style="border-bottom:1px solid var(--border);">' +
       '<td style="padding:10px 12px;font-size:13px;">' + r.date + '</td>' +
       '<td style="padding:10px 12px;font-size:13px;font-weight:600;">' + r.partner + '</td>' +
       '<td style="padding:10px 12px;font-size:13px;">' + r.item + '</td>' +
       '<td style="padding:10px 12px;font-size:12px;"><span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:10px;">' + typeLabel(r.type) + '</span></td>' +
+      '<td style="padding:10px 12px;font-size:13px;text-align:right;">' + qtyStr + '</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:#888;text-align:right;">' + unitPriceStr + '</td>' +
       '<td style="padding:10px 12px;font-size:13px;font-weight:700;text-align:right;">' + (r.amount || 0).toLocaleString() + '원</td>' +
       '<td style="padding:10px 12px;font-size:12px;color:#888;">' + (r.memo || '') + '</td>' +
       '<td style="padding:10px 12px;"><button onclick="deletePurchaseRecord(' + r.id + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button></td>' +
