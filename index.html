@@ -9627,26 +9627,47 @@ function printInvoice(order, orderType) {
     if (type === 'funeral') {
       if (vname === '대청장례식장') {
         const p = (venuePrices['daecheong'] || {})[itemName];
-        if (p) unitPrice = p.price5 || 0;
-        if (unitPrice > 0 && daecheongRate > 0) unitPrice = Math.round(unitPrice * (1 - daecheongRate/100));
+        if (p) {
+          // 수량에서 숫자 추출 (5kg→5, 10kg→10)
+          const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 5;
+          let basePrice = 0;
+          if (qtyNum >= 10 && p.price10) basePrice = p.price10;
+          else basePrice = p.price5 || 0;
+          if (daecheongRate > 0) basePrice = Math.round(basePrice * (1 - daecheongRate/100));
+          // 5kg 단위 고정금액이므로 unitPrice 없이 amount만 반환
+          return { unitPrice: 0, amount: basePrice };
+        }
       } else if (vname === '충대장례식장') {
         const p = (venuePrices['chungdae'] || {})[itemName];
-        if (p) unitPrice = p.price5 || 0;
+        if (p) {
+          // 5kg 단위 고정금액
+          return { unitPrice: 0, amount: p.price5 || 0 };
+        }
       } else {
-        // 충대 식당류 (kg 단가)
-        unitPrice = (venuePrices['chungdae_restaurant'] || {})[itemName] || 0;
+        // 충대 식당류 (kg 단가 × 수량)
+        const kgPrice = (venuePrices['chungdae_restaurant'] || {})[itemName] || 0;
+        const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+        return { unitPrice: kgPrice, amount: kgPrice > 0 && qtyNum > 0 ? Math.round(kgPrice * qtyNum) : 0 };
       }
+      return { unitPrice: 0, amount: 0 };
     } else if (type === 'wedding') {
-      unitPrice = (venuePrices['wedding'] || {})[itemName] || 0;
+      // 웨딩홀은 kg당 단가
+      const kgPrice = (venuePrices['wedding'] || {})[itemName] || 0;
+      const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+      return { unitPrice: kgPrice, amount: kgPrice > 0 && qtyNum > 0 ? Math.round(kgPrice * qtyNum) : 0 };
     } else if (type === 'other') {
       const ov = (otherVenuePrices || {})[vname] || {};
       const op = ov[itemName];
-      if (op && typeof op === 'object') unitPrice = op.price5 || 0;
-      else unitPrice = Number(op) || 0;
+      const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+      if (op && typeof op === 'object') {
+        // 5kg 단위 고정금액
+        return { unitPrice: 0, amount: op.price5 || 0 };
+      } else {
+        const kgPrice = Number(op) || 0;
+        return { unitPrice: kgPrice, amount: kgPrice > 0 && qtyNum > 0 ? Math.round(kgPrice * qtyNum) : 0 };
+      }
     }
-
-    const amount = unitPrice > 0 && qtyNum > 0 ? Math.round(unitPrice * qtyNum) : 0;
-    return { unitPrice, amount };
+    return { unitPrice: 0, amount: 0 };
   }
 
   const itemRows = items.map((item) => {
