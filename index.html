@@ -11194,19 +11194,30 @@ function runSettlement() {
       return d && d.startsWith(targetYm);
     }
 
-    // 거래처별 집계
+    // 거래처별 집계 + 월별 맵 구성
     const venueMap = {};
+    // 월별 납품맵: venueName → { 'YYYY-MM': [orders] }
+    const venueMonthMap = {};
+
     allOrders.forEach(function(o) {
       if (!o._venue) return;
+      const orderYm = normalizeDateStr(String(o.deliveryDate||'')).slice(0,7);
+
+      // 월별 맵 구성 (이월 계산용)
+      if (!venueMonthMap[o._venue]) venueMonthMap[o._venue] = {};
+      if (orderYm) {
+        if (!venueMonthMap[o._venue][orderYm]) venueMonthMap[o._venue][orderYm] = [];
+        venueMonthMap[o._venue][orderYm].push(o);
+      }
+
       if (venueFilter && o._venue !== venueFilter) return;
-      if (!venueMap[o._venue]) venueMap[o._venue] = { type: o._type, thisMonth:[], prevMonth:[] };
+      if (!venueMap[o._venue]) venueMap[o._venue] = { type: o._type, thisMonth:[] };
       if (inMonth(o, ym)) venueMap[o._venue].thisMonth.push(o);
-      if (inMonth(o, prevYm)) venueMap[o._venue].prevMonth.push(o);
     });
 
     // venueFilter만 선택됐는데 주문이 없어도 표시
     if (venueFilter && !venueMap[venueFilter]) {
-      venueMap[venueFilter] = { type: 'other', thisMonth:[], prevMonth:[] };
+      venueMap[venueFilter] = { type: 'other', thisMonth:[] };
     }
 
     const entries = Object.entries(venueMap);
@@ -11216,7 +11227,7 @@ function runSettlement() {
     }
 
     resultEl.innerHTML = entries.map(function([venueName, data]) {
-      return renderVenueSettlement(venueName, data, ym, prevYm);
+      return renderVenueSettlement(venueName, data, ym, venueMonthMap[venueName] || {});
     }).join('<div style="height:20px;"></div>');
 
   }).catch(function() {
@@ -11228,27 +11239,38 @@ function getVenueTotal(orders) {
   return orders.reduce(function(s,o){ return s + (Number(o.priceTotal)||0); }, 0);
 }
 
-function getPrevCarryover(venueName, prevYm) {
-  // 전전월까지 누적 미수 계산
-  const key = venueName + '_' + prevYm;
-  const prevTotal = 0; // 실제론 전월 납품 합계 필요 - 여기선 입금기록에서 역산
-  const paid = (paymentRecords[key]||[]).reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
-  // 전월 이월 = 이전 이월 + 전월납품 - 전월입금 → 재귀 구조 대신 기록 기반으로
-  return 0; // 실제 구현에서 전월 미수잔액 사용
+// 특정 월의 미수 잔액 계산 (전월 이월 포함, 최대 12개월 소급)
+function calcCarryover(venueName, ym, allOrdersMap, depth) {
+  if (depth > 12) return 0; // 무한루프 방지
+  const [year, month] = ym.split('-').map(Number);
+  const prevDate = new Date(year, month - 2, 1);
+  const prevYm = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
+
+  // 전월 납품 합계
+  const prevOrders = allOrdersMap[prevYm] || [];
+  const prevTotal = getVenueTotal(prevOrders);
+
+  // 전월 입금 합계
+  const prevKey = venueName + '_' + prevYm;
+  const prevPaid = (paymentRecords[prevKey]||[]).reduce(function(s,p){ return s+(Number(p.amount)||0); }, 0);
+
+  // 전전월 이월
+  const prevCarryover = calcCarryover(venueName, prevYm, allOrdersMap, depth + 1);
+
+  // 전월 미수 = 전전월이월 + 전월납품 - 전월입금
+  const prevRemaining = Math.max(0, prevCarryover + prevTotal - prevPaid);
+
+  return prevRemaining;
 }
 
-function renderVenueSettlement(venueName, data, ym, prevYm) {
+function renderVenueSettlement(venueName, data, ym, allOrdersMap) {
   const thisTotal = getVenueTotal(data.thisMonth);
   const key = venueName + '_' + ym;
-  const prevKey = venueName + '_' + prevYm;
   const payments = paymentRecords[key] || [];
   const totalPaid = payments.reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
 
-  // 전월 미수 계산 (전월 납품 - 전월 입금)
-  // 전월 납품은 data.prevMonth로 계산
-  const prevTotal = getVenueTotal(data.prevMonth);
-  const prevPaid = (paymentRecords[prevKey]||[]).reduce(function(s,p){ return s + (Number(p.amount)||0); }, 0);
-  const prevCarryover = Math.max(0, prevTotal - prevPaid);
+  // 전월 이월 = 재귀 계산 (전전월 이월까지 포함)
+  const prevCarryover = calcCarryover(venueName, ym, allOrdersMap, 0);
 
   const totalBill = thisTotal + prevCarryover;
   const remaining = Math.max(0, totalBill - totalPaid);
