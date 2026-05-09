@@ -5723,7 +5723,7 @@ function switchSettingsTab(type) {
 }
 
 function renderPriceSettings() {
-  ['personal', 'funeral'].forEach(type => {
+  ['personal'].forEach(type => {
     const list = document.getElementById('priceList-' + type);
     if (!list) return;
     list.innerHTML = priceSettings[type].map((item, i) => `
