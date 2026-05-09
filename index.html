@@ -8565,7 +8565,7 @@ function filterByUnpaid() {
 let editTteokItems = [];
 
 function openModal(id) {
-  const o = orders.find(x => x.id === id);
+  const o = orders.find(x => String(x.id) === String(id));
   if (!o) return;
   // 고객신청 주문은 확인 모달로
   if (o.orderType === '고객신청') { openPendingModal(o); return; }
