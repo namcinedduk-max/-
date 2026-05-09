@@ -3054,15 +3054,8 @@ function loadTteokPriceSettings() {
         Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
         Object.assign(TTEOK_DB, d.tteokPriceDB);
         localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
-        // 현재 떡단가 탭이 열려있으면 즉시 재렌더링
         if (typeof renderTteokAllList === 'function') renderTteokAllList();
         if (typeof updateTteokSelects === 'function') updateTteokSelects();
-        // 저장 후 확인용 로그
-        gasGet({ action: 'getTteokSettings' }).then(function(check) {
-            const keys = check.data && check.data.tteokPriceDB ? Object.keys(check.data.tteokPriceDB) : [];
-            console.log('[단가저장 확인] GAS에서 읽힌 떡 목록:', keys);
-            console.log('[단가저장 확인] 총', keys.length, '개');
-          });
       } catch(e){ console.error('tteokPriceDB 로드 오류', e); } }
       if (d.priceSettings) { try {
         priceSettings = d.priceSettings;
@@ -3445,15 +3438,8 @@ function saveTteokPriceSettings() {
     };
     gasPost({ action: 'saveTteokSettings', data: settingsData })
       .then(function(res) {
-        if (res.success) {
-          showToast('✅ 구글 시트에 저장됐어요! 모든 기기에 적용돼요.', 'success');
-          // 저장 후 즉시 다시 불러와서 확인
-          gasGet({ action: 'getTteokSettings' }).then(function(check) {
-            const keys = check.data && check.data.tteokPriceDB ? Object.keys(check.data.tteokPriceDB) : [];
-            console.log('[단가저장 확인] GAS에서 읽힌 떡 목록:', keys);
-            console.log('[단가저장 확인] 총', keys.length, '개');
-          });
-        } else showToast('❌ 저장 실패', 'error');
+        if (res.success) showToast('✅ 구글 시트에 저장됐어요! 모든 기기에 적용돼요.', 'success');
+        else showToast('❌ 저장 실패', 'error');
       }).catch(function(){ showToast('❌ 저장 실패', 'error'); });
   } else {
     showToast('✅ 이 기기에 저장됐어요!', 'success');
@@ -4222,14 +4208,8 @@ function addTteokToGlobalList() {
     showToast('⏳ 저장 중...', '');
     gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER } })
       .then(function(res) {
-        if (res && res.success) {
-          showToast('✅ ' + name + ' 추가 및 저장됐어요!', 'success');
-          // 저장 직후 GAS에서 읽어서 확인
-          gasGet({ action: 'getTteokSettings' }).then(function(check) {
-            const keys = check.data && check.data.tteokPriceDB ? Object.keys(check.data.tteokPriceDB) : [];
-            console.log('[추가 확인] 저장 후 GAS 떡 목록:', keys.length, '개, ' + name + ' 있음:', keys.includes(name));
-          });
-        } else showToast('❌ GAS 저장 실패 - 단가 저장 버튼을 눌러주세요', 'error');
+        if (res && res.success) showToast('✅ ' + name + ' 추가 및 저장됐어요!', 'success');
+        else showToast('❌ GAS 저장 실패 - 단가 저장 버튼을 눌러주세요', 'error');
       }).catch(function(err) {
         showToast('❌ 저장 실패: ' + (err.message||''), 'error');
       });
@@ -8233,9 +8213,11 @@ function renderList() {
     chungdaeSec.style.display = 'block';
     chungdaeSec.innerHTML = `
       <div style="background:var(--warm-white);border:1.5px solid #bbf7d0;border-radius:12px;overflow:hidden;">
-        <div style="background:#f0fdf4;padding:10px 16px;font-size:13px;font-weight:700;color:#15803d;border-bottom:1px solid #bbf7d0;">🏥 충대 발주 (${chungdaeOrders.length}건)</div>
+        <div style="background:#f0fdf4;padding:10px 16px;font-size:13px;font-weight:700;color:#15803d;border-bottom:1px solid #bbf7d0;"><span>🏥 충대 식당 발주 (${chungdaeOrders.length}건)</span>
+          <button onclick="switchTab('funeralList')" style="font-size:11px;padding:3px 10px;background:#fff;border:1px solid #86efac;border-radius:6px;color:#166534;cursor:pointer;">목록 보기 →</button>
+        </div>
         ${chungdaeOrders.map(o => `
-          <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #e5e7eb;font-size:13px;" onclick="openFuneralModal && openFuneralModal(${o.id})" style="cursor:pointer;">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #e5e7eb;font-size:13px;" onclick="switchTab('funeralList')" style="cursor:pointer;">
             <span style="font-weight:700;min-width:80px;">${o.funeralName||'-'}</span>
             <span style="flex:1;color:var(--text-mid);">${o.tteokType||'-'}</span>
             <span style="color:#888;font-size:12px;">${normalizeDateStr(String(o.deliveryDate||''))}</span>
@@ -8260,14 +8242,22 @@ function renderList() {
     weddingSec.style.display = 'block';
     weddingSec.innerHTML = `
       <div style="background:var(--warm-white);border:1.5px solid #bfdbfe;border-radius:12px;overflow:hidden;">
-        <div style="background:#eff6ff;padding:10px 16px;font-size:13px;font-weight:700;color:#1d4ed8;border-bottom:1px solid #bfdbfe;">🏛 웨딩홀 발주 (${todayWeddingOrders.length}건)</div>
-        ${todayWeddingOrders.map(o => `
-          <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #e5e7eb;font-size:13px;cursor:pointer;">
-            <span style="font-weight:700;min-width:90px;">${o.weddingName||o.hallName||'-'}</span>
-            <span style="flex:1;color:var(--text-mid);">${o.tteokType||'-'}</span>
-            <span style="color:#888;font-size:12px;">${normalizeDateStr(String(o.deliveryDate||''))}</span>
-            <span style="font-weight:700;color:var(--brown-deep);">${(Number(o.priceTotal)||0).toLocaleString()}원</span>
-          </div>`).join('')}
+        <div style="background:#eff6ff;padding:10px 16px;font-size:13px;font-weight:700;color:#1d4ed8;border-bottom:1px solid #bfdbfe;display:flex;justify-content:space-between;align-items:center;">
+          <span>🏛 웨딩홀 발주 (${todayWeddingOrders.length}건)</span>
+          <button onclick="switchTab('weddingList')" style="font-size:11px;padding:3px 10px;background:#fff;border:1px solid #93c5fd;border-radius:6px;color:#1d4ed8;cursor:pointer;">목록 보기 →</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;background:#fff;">
+          ${todayWeddingOrders.map(o => {
+            const items = (o.tteokItems && o.tteokItems.length > 0)
+              ? o.tteokItems.map(t => `<div style="font-size:12px;color:var(--text-mid);padding:1px 0;">${t.name}${t.qty ? ' <span style="color:#9ca3af;">'+t.qty+'</span>' : ''}</div>`).join('')
+              : String(o.tteokType||'-').split(',').map(t => `<div style="font-size:12px;color:var(--text-mid);padding:1px 0;">${t.trim()}</div>`).join('');
+            return `<div onclick="switchTab('weddingList')" style="cursor:pointer;border-right:1px solid #e0e7ff;border-bottom:1px solid #e0e7ff;padding:10px 14px;min-width:130px;flex:1;">
+              <div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:5px;">${o.weddingName||o.hallName||'-'}${o.floor ? ' <span style="font-size:11px;font-weight:400;color:#6b7280;">'+o.floor+'층</span>' : ''}</div>
+              ${items}
+              <div style="font-size:11px;color:#9ca3af;margin-top:5px;">${normalizeDateStr(String(o.deliveryDate||''))} · ${(Number(o.priceTotal)||0).toLocaleString()}원</div>
+            </div>`;
+          }).join('')}
+        </div>
       </div>`;
   } else {
     weddingSec.style.display = 'none';
@@ -8287,10 +8277,11 @@ function renderList() {
       otherSec.style.display = 'block';
       otherSec.innerHTML = `
         <table style="width:100%;border-collapse:collapse;margin-top:4px;">
-          <thead><tr><th colspan="4" style="background:#0891b2;color:#fff;padding:8px 12px;border-radius:8px 8px 0 0;text-align:left;">🏢 기타업체 발주 (${filteredOtherOrders.length}건)</th></tr></thead>
+          <thead><tr><th colspan="4" style="background:#0891b2;color:#fff;padding:8px 12px;border-radius:8px 8px 0 0;text-align:left;"><th colspan="3" style="background:#0891b2;color:#fff;padding:8px 12px;border-radius:8px 8px 0 0;text-align:left;">🏢 기타업체 발주 (${filteredOtherOrders.length}건)</th>
+          <th style="background:#0891b2;padding:8px 12px;border-radius:0 8px 0 0;text-align:right;"><button onclick="switchTab('otherList')" style="font-size:11px;padding:3px 10px;background:#fff;border:none;border-radius:6px;color:#0891b2;cursor:pointer;">목록 보기 →</button></th></tr></thead>
           <tbody>
           ${filteredOtherOrders.map(o => `
-            <tr style="border-bottom:1px solid var(--border);">
+            <tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="switchTab('otherList')">
               <td style="padding:8px 12px;font-weight:700;">${o.venueName||'-'}</td>
               <td style="padding:8px 12px;font-size:12px;">${o.tteokType||'-'}</td>
               <td style="padding:8px 12px;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
