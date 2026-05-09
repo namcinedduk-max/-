@@ -10893,14 +10893,15 @@ function renderWeddingList() {
       <td>${o.floor || ''}</td>
       <td style="${o.memo ? 'color:var(--accent-red);font-weight:700;' : ''}">${o.memo || ''}</td>
       <td style="font-size:12px;">${o.tteokType || ''}</td>
-      <td>${o.deliveryDate || ''}</td>
-      <td>${o.deliveryTime || ''}</td>
+      <td>${normalizeDateStr(String(o.deliveryDate || ''))}</td>
+      <td>${normalizeTimeStr(o.deliveryTime) || ''}</td>
       <td style="font-weight:700;">${Number(o.priceTotal || 0).toLocaleString()}원</td>
       <td>${statusBadge(o.payStatus)}</td>
       <td>${o.staffName || ''}</td>
       <td>
+      <td style="white-space:nowrap;">
+        <button onclick="openWeddingModal('${o.id}')" style="background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">✏️ 수정</button>
         <button onclick="printInvoice(weddingOrders.find(x=>String(x.id)===String('${o.id}')), 'wedding')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
-        <button onclick="deleteWeddingOrder('${o.id}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
       </td>
     </tr>`).join('');
 }
@@ -10915,6 +10916,96 @@ function clearWeddingFilter() {
   const fd = document.getElementById('wFilterDate'); if (fd) fd.value = '';
   const fs = document.getElementById('wSearchInput'); if (fs) fs.value = '';
   renderWeddingList();
+}
+
+function openWeddingModal(id) {
+  const o = weddingOrders.find(x => String(x.id) === String(id));
+  if (!o) return;
+  currentModalId = id;
+  currentModalType = 'wedding';
+  const delivDate = normalizeDateStr(String(o.deliveryDate||''));
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-info-grid">
+      <span class="modal-label">접수 시각</span><span>${o.createdAt||'-'}</span>
+      <span class="modal-label">웨딩홀</span><span>${o.weddingName||o.hallName||'-'}</span>
+      <span class="modal-label">층</span><span>${o.floor||'-'}</span>
+      <span class="modal-label">떡 종류</span><span>${o.tteokItems ? o.tteokItems.map(t=>t.name+(t.qty?' '+t.qty:'')).join(', ') : (o.tteokType||'-')}</span>
+      <span class="modal-label">배송 일자</span><span>${delivDate}</span>
+      <span class="modal-label">배송 시간</span><span>${normalizeTimeStr(o.deliveryTime)||'-'}</span>
+      <span class="modal-label">총 금액</span><span>${(Number(o.priceTotal)||0).toLocaleString()}원</span>
+      <span class="modal-label">메모</span><span>${o.memo||'-'}</span>
+      <span class="modal-label">결제 상태</span><span>${o.payStatus||'-'}</span>
+      <span class="modal-label">담당 직원</span><span>${o.staffName||'-'}</span>
+    </div>`;
+  document.getElementById('modalEditContent').innerHTML = `
+    <div class="edit-row"><label>웨딩홀</label><input id="ew_weddingName" value="${o.weddingName||o.hallName||''}"></div>
+    <div class="edit-row"><label>층</label><input id="ew_floor" value="${o.floor||''}"></div>
+    <div class="edit-row"><label>배송 일자</label><input type="date" id="ew_deliveryDate" value="${delivDate}"></div>
+    <div class="edit-row"><label>배송 시간</label>
+      <select id="ew_deliveryTime_type" onchange="toggleEwTimeInput(this.value)">
+        <option value="">선택</option>
+        <option value="오전중">오전중</option>
+        <option value="오후중">오후중</option>
+        <option value="직접">시간지정</option>
+      </select>
+      <input type="time" id="ew_deliveryTime_val" style="display:none;">
+    </div>
+    <div class="edit-row"><label>총 금액</label><input type="number" id="ew_priceTotal" value="${o.priceTotal||0}"></div>
+    <div class="edit-row"><label>결제 상태</label>
+      <select id="ew_payStatus">
+        <option value="입금대기" ${o.payStatus==='입금대기'?'selected':''}>입금대기</option>
+        <option value="결제완료" ${o.payStatus==='결제완료'?'selected':''}>결제완료</option>
+        <option value="미수금" ${o.payStatus==='미수금'?'selected':''}>미수금</option>
+      </select>
+    </div>
+    <div class="edit-row"><label>메모</label><input id="ew_memo" value="${(o.memo||'').replace(/"/g,'&quot;')}"></div>
+    <div class="edit-row"><label>담당 직원</label><input id="ew_staffName" value="${o.staffName||''}"></div>`;
+
+  // 배송시간 설정
+  const tVal = normalizeTimeStr(o.deliveryTime)||'';
+  const tSel = document.getElementById('ew_deliveryTime_type');
+  const tInput = document.getElementById('ew_deliveryTime_val');
+  if (tVal === '오전중' || tVal === '오후중') {
+    tSel.value = tVal;
+  } else if (tVal) {
+    tSel.value = '직접';
+    tInput.style.display = '';
+    tInput.value = tVal;
+  }
+
+  document.getElementById('modalDeleteBtn').onclick = () => { deleteWeddingOrder(id); closeModal(); };
+  document.getElementById('modalSaveBtn').onclick = saveWeddingModalEdit;
+  openModal();
+}
+
+function toggleEwTimeInput(val) {
+  const el = document.getElementById('ew_deliveryTime_val');
+  if (el) el.style.display = val === '직접' ? '' : 'none';
+}
+
+function saveWeddingModalEdit() {
+  const id = currentModalId;
+  const o = weddingOrders.find(x => String(x.id) === String(id));
+  if (!o) return;
+  const tType = document.getElementById('ew_deliveryTime_type').value;
+  const tVal = document.getElementById('ew_deliveryTime_val').value;
+  const deliveryTime = tType === '직접' ? tVal : tType;
+
+  o.weddingName = document.getElementById('ew_weddingName').value.trim();
+  o.hallName = o.weddingName;
+  o.floor = document.getElementById('ew_floor').value.trim();
+  o.deliveryDate = document.getElementById('ew_deliveryDate').value;
+  o.deliveryTime = deliveryTime;
+  o.priceTotal = parseInt(document.getElementById('ew_priceTotal').value) || 0;
+  o.payStatus = document.getElementById('ew_payStatus').value;
+  o.memo = document.getElementById('ew_memo').value.trim();
+  o.staffName = document.getElementById('ew_staffName').value.trim();
+
+  localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
+  if (gasUrl) gasPost({ action: 'update', sheet: 'wedding', data: o }).catch(() => {});
+  closeModal();
+  renderWeddingList();
+  showToast('✅ 수정됐어요!', 'success');
 }
 
 function deleteWeddingOrder(id) {
