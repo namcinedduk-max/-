@@ -5806,8 +5806,13 @@ function updateVenueTteokSelect(selectId, venueType) {
       sel.innerHTML = base + opts;
     }
   } else if (keys.length === 0) {
-    const defaults = ['백설기','인절미','시루떡','송편','절편','찰떡','영양떡','콩떡','팥떡','무지개떡','두텁떡'];
-    sel.innerHTML = base + defaults.map(n => `<option value="${n}">${n}</option>`).join('') + custom;
+    // 장례식장 미선택이거나 단가 미등록 시 — 기본 떡 목록 대신 안내 문구
+    const venueName = document.getElementById('f_funeralName') ? document.getElementById('f_funeralName').value : '';
+    if (!venueName) {
+      sel.innerHTML = `<option value="">위에서 장례식장을 먼저 선택해주세요</option>`;
+    } else {
+      sel.innerHTML = base + `<option value="" disabled>단가 설정에서 먼저 등록해주세요</option>` + custom;
+    }
   } else {
     sel.innerHTML = base + opts + custom;
   }
