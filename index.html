@@ -1351,7 +1351,7 @@
         <!-- 장례식장 정보 -->
         <div class="form-group">
           <label>장례식장 이름 <span class="required">*</span></label>
-          <select id="f_funeralName" onchange="updateVenueTteokSelect('f_tteokSelect','funeral'); calcFuneralTotal();">
+          <select id="f_funeralName" onchange="updateVenueTteokSelect('f_tteokSelect','funeral'); updateFuneralQtyUI(); calcFuneralTotal();">
             <option value="">-- 선택 --</option>
             <optgroup label="충대장례식장">
               <option value="충대장례식장">충대장례식장</option>
@@ -1397,8 +1397,20 @@
                 <option value="두텁떡">두텁떡</option>
               </select>
               <input type="text" id="f_tteokCustom" placeholder="직접 입력" style="display:none;">
-              <input type="text" id="f_tteokQty" placeholder="수량 (예: 2개)">
-              <button class="btn-add-tteok" type="button" onclick="addFuneralTteokItem()">+ 추가</button>
+              <!-- 충대/대청: 5kg단위 버튼, 식당계열: kg직접입력 -->
+              <div id="f_qty_5kg_btns" style="display:none;gap:6px;align-items:center;">
+                <button type="button" onclick="addFuneralTteokItem('5kg')" style="padding:7px 14px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">5kg</button>
+                <button type="button" onclick="addFuneralTteokItem('10kg')" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">10kg</button>
+                <button type="button" onclick="addFuneralTteokItem('15kg')" style="padding:7px 12px;background:#6b7280;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">15kg</button>
+                <button type="button" onclick="addFuneralTteokItem('20kg')" style="padding:7px 12px;background:#6b7280;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">20kg</button>
+              </div>
+              <div id="f_qty_kg_input" style="display:none;gap:6px;align-items:center;">
+                <input type="number" id="f_tteokKg" placeholder="kg" min="0" step="0.5" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+                <span style="font-size:13px;font-weight:700;color:var(--brown-mid);">kg</span>
+                <button class="btn-add-tteok" type="button" onclick="addFuneralTteokItem()">+ 추가</button>
+              </div>
+              <input type="text" id="f_tteokQty" placeholder="수량 (예: 2개)" style="display:none;">
+              <button class="btn-add-tteok" type="button" id="f_tteok_default_btn" onclick="addFuneralTteokItem()" style="display:none;">+ 추가</button>
             </div>
           </div>
         </div>
@@ -2062,10 +2074,8 @@
           </div>
         </div>
 
-        <!-- 대청장례식장 단가 -->
-        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-bottom:20px;">
-          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 대청장례식장</div>
-          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">상주한테 받는 금액 기준으로 입력. 수수료 공제 후 실수령액이 자동 계산돼요.</p>
+🏥 대청장례식장</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">상주한테 받는 금액 기준으로 입력. 5kg/10kg 각각 가격을 등록하면 주문 시 자동 계산돼요.</p>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;">
             <span style="font-size:13px;font-weight:700;color:#92400e;">대청 수수료율</span>
             <input id="daecheong-rate" type="number" placeholder="예: 25" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:center;">
@@ -2073,11 +2083,18 @@
             <button onclick="saveDaecheongRate()" style="padding:6px 14px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">저장</button>
             <span id="daecheong-rate-saved" style="font-size:12px;color:green;display:none;">✅ 저장됨</span>
           </div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 60px;gap:6px;align-items:center;margin-bottom:6px;padding:0 4px;">
+            <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">떡 이름</span>
+            <span style="font-size:11px;font-weight:700;color:#2563eb;text-align:center;">5kg 가격</span>
+            <span style="font-size:11px;font-weight:700;color:#16a34a;text-align:center;">10kg 가격</span>
+            <span></span>
+          </div>
           <div id="priceList-daecheong" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <input id="daecheong-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <input id="daecheong-new-price" type="number" placeholder="상주가격 (원)" style="width:110px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <button onclick="addVenuePrice('daecheong')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px auto;gap:8px;align-items:center;">
+            <input id="daecheong-new-name" placeholder="떡 이름 *" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="daecheong-new-price5" type="number" placeholder="5kg(원)" style="padding:8px 6px;border:1.5px solid #3b82f6;border-radius:8px;font-size:13px;text-align:right;">
+            <input id="daecheong-new-price10" type="number" placeholder="10kg(원)" style="padding:8px 6px;border:1.5px solid #16a34a;border-radius:8px;font-size:13px;text-align:right;">
+            <button onclick="addDaecheongPrice()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">+ 추가</button>
           </div>
         </div>
 
@@ -5841,18 +5858,45 @@ function calcVenuePrice(type) {
   }
 
   const prices = venuePrices[priceKey] || {};
-  if (Object.keys(prices).length === 0) return; // 단가 미설정이면 스킵
+  if (Object.keys(prices).length === 0) return;
+
+  const isDaecheong = (priceKey === 'daecheong');
 
   let total = 0;
   items.forEach(item => {
-    const unitPrice = prices[item.name];
-    if (!unitPrice || !item.qty) return;
+    const priceVal = prices[item.name];
+    if (!priceVal || !item.qty) return;
     const qtyStr = String(item.qty).trim();
-    // 소수점 포함 숫자 파싱 (예: 0.5, 1.5kg, 2개, 0.5판)
-    const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
-    if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
+
+    if (isDaecheong && typeof priceVal === 'object') {
+      // 대청: 5kg/10kg 고정 가격
+      if (qtyStr === '10kg') {
+        total += priceVal.price10 || 0;
+      } else if (qtyStr === '5kg') {
+        total += priceVal.price5 || 0;
+      } else if (qtyStr === '15kg') {
+        // 15kg = 10kg + 5kg
+        total += (priceVal.price10 || 0) + (priceVal.price5 || 0);
+      } else if (qtyStr === '20kg') {
+        // 20kg = 10kg × 2
+        total += (priceVal.price10 || 0) * 2;
+      } else {
+        // 그 외 kg 숫자면 5kg 단가 기준으로 계산
+        const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
+        if (numMatch) {
+          const kg = parseFloat(numMatch[1]);
+          const units5 = Math.floor(kg / 5);
+          total += units5 * (priceVal.price5 || 0);
+        }
+      }
+    } else {
+      // 충대/웨딩: 기존 숫자×단가 방식
+      const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
+      const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
+      if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
+    }
   });
-  total = Math.round(total); // 소수점 계산 오차 정리
+  total = Math.round(total);
 
   if (total > 0) {
     if (type === 'funeral') {
@@ -7461,6 +7505,37 @@ function resetForm() {
 let funeralTteokItems = [];
 let selectedFuneralPay = '';
 
+// 장례식장 종류에 따라 수량 입력 UI 전환
+function updateFuneralQtyUI() {
+  const venueName = document.getElementById('f_funeralName').value;
+  const chungdaeMain = ['충대장례식장', '대청장례식장'];
+  const restaurantVenues = ['충대본관영양', '소비조합', '재활환자', '재활직원'];
+  const btn5kg = document.getElementById('f_qty_5kg_btns');
+  const kgInput = document.getElementById('f_qty_kg_input');
+  const oldQty = document.getElementById('f_tteokQty');
+  const oldBtn = document.getElementById('f_tteok_default_btn');
+
+  if (chungdaeMain.includes(venueName)) {
+    // 충대/대청: 5kg 단위 버튼
+    if (btn5kg) btn5kg.style.display = 'flex';
+    if (kgInput) kgInput.style.display = 'none';
+    if (oldQty) oldQty.style.display = 'none';
+    if (oldBtn) oldBtn.style.display = 'none';
+  } else if (restaurantVenues.includes(venueName) || venueName) {
+    // 식당 계열 or 기타: kg 직접입력
+    if (btn5kg) btn5kg.style.display = 'none';
+    if (kgInput) kgInput.style.display = 'flex';
+    if (oldQty) oldQty.style.display = 'none';
+    if (oldBtn) oldBtn.style.display = 'none';
+  } else {
+    // 미선택: 기본
+    if (btn5kg) btn5kg.style.display = 'none';
+    if (kgInput) kgInput.style.display = 'none';
+    if (oldQty) oldQty.style.display = 'block';
+    if (oldBtn) oldBtn.style.display = 'block';
+  }
+}
+
 function onFuneralTteokSelectChange() {
   const sel = document.getElementById('f_tteokSelect');
   const custom = document.getElementById('f_tteokCustom');
@@ -7468,18 +7543,34 @@ function onFuneralTteokSelectChange() {
   else { custom.style.display = 'none'; custom.value = ''; }
 }
 
-function addFuneralTteokItem() {
+function addFuneralTteokItem(fixedQty) {
   const sel = document.getElementById('f_tteokSelect');
   const custom = document.getElementById('f_tteokCustom');
-  const qty = document.getElementById('f_tteokQty').value.trim();
   const name = sel.value === '직접입력' ? custom.value.trim() : sel.value;
   if (!name) { showToast('떡 종류를 선택하거나 입력해주세요.', 'error'); return; }
-  funeralTteokItems.push({ name, qty: qty || '' });
+
+  let qty = '';
+  if (fixedQty) {
+    // 5kg/10kg 버튼 클릭
+    qty = fixedQty;
+  } else {
+    // kg 직접 입력
+    const kgEl = document.getElementById('f_tteokKg');
+    const qtyEl = document.getElementById('f_tteokQty');
+    if (kgEl && kgEl.style.display !== 'none' && kgEl.closest('#f_qty_kg_input') && kgEl.closest('#f_qty_kg_input').style.display !== 'none') {
+      qty = kgEl.value ? kgEl.value + 'kg' : '';
+      kgEl.value = '';
+    } else if (qtyEl) {
+      qty = qtyEl.value.trim();
+      qtyEl.value = '';
+    }
+  }
+
+  funeralTteokItems.push({ name, qty });
   renderFuneralTteokList();
   sel.value = ''; custom.style.display = 'none'; custom.value = '';
-  document.getElementById('f_tteokQty').value = '';
-  calcPriceFromTteok('funeral');
   calcVenuePrice('funeral');
+  calcPriceFromTteok('funeral');
 }
 
 function removeFuneralTteokItem(idx) {
@@ -9903,7 +9994,27 @@ function saveVenuePriceData() {
   localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
 }
 
+// 대청 전용: 5kg/10kg 이중 가격 등록
+function addDaecheongPrice() {
+  const nameEl = document.getElementById('daecheong-new-name');
+  const price5El = document.getElementById('daecheong-new-price5');
+  const price10El = document.getElementById('daecheong-new-price10');
+  const name = nameEl.value.trim();
+  const price5 = parseInt(price5El.value) || 0;
+  const price10 = parseInt(price10El.value) || 0;
+  if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
+  if (!price5 && !price10) { showToast('5kg 또는 10kg 가격을 입력해주세요.', 'error'); return; }
+  if (!venuePrices['daecheong']) venuePrices['daecheong'] = {};
+  venuePrices['daecheong'][name] = { price5, price10 };
+  nameEl.value = ''; price5El.value = ''; price10El.value = '';
+  saveVenuePriceData();
+  renderVenuePrices('daecheong');
+  updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  showToast('✅ 단가 등록됐어요!', 'success');
+}
+
 function addVenuePrice(venue) {
+  if (venue === 'daecheong') { addDaecheongPrice(); return; }
   const nameEl = document.getElementById(venue + '-new-name');
   const priceEl = document.getElementById(venue + '-new-price');
   const name = nameEl.value.trim();
@@ -9913,12 +10024,10 @@ function addVenuePrice(venue) {
   if (!venuePrices[venue]) venuePrices[venue] = {};
   venuePrices[venue][name] = price;
   nameEl.value = ''; priceEl.value = '';
-  saveVenuePriceData(); // 즉시 저장
+  saveVenuePriceData();
   renderVenuePrices(venue);
-  // 장례식장/웨딩홀 떡 select도 즉시 업데이트
   if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
   if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
-  // 별도 단가 거래처인 경우도 떡 select 업데이트
   if (extraVenues.funeral && extraVenues.funeral.some(v => v.name === venue && v.group === 'own')) {
     updateVenueTteokSelect('f_tteokSelect', 'funeral');
   }
@@ -9943,13 +10052,35 @@ function renderVenuePrices(venue) {
     el.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px 0;">등록된 단가가 없어요.</div>';
     return;
   }
-  el.innerHTML = entries.map(([name, price]) => `
-    <div style="display:flex;align-items:center;gap:10px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;">
-      <span style="flex:2;font-size:13px;font-weight:700;">${name}</span>
-      <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(price).toLocaleString()}원</span>
-      ${venue === 'daecheong' ? `<span style="font-size:11px;color:#92400e;background:#fef9c3;padding:2px 7px;border-radius:6px;">실수령 ${Math.round(price*(1-daecheongRate/100)).toLocaleString()}원</span>` : ''}
-      <button onclick="removeVenuePrice('${venue}','${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
-    </div>`).join('');
+  if (venue === 'daecheong') {
+    el.innerHTML = entries.map(([name, val]) => {
+      const p5 = typeof val === 'object' ? (val.price5 || 0) : val;
+      const p10 = typeof val === 'object' ? (val.price10 || 0) : 0;
+      const r5 = daecheongRate > 0 ? Math.round(p5*(1-daecheongRate/100)) : null;
+      const r10 = daecheongRate > 0 ? Math.round(p10*(1-daecheongRate/100)) : null;
+      return `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;">
+        <span style="font-size:13px;font-weight:700;">${name}</span>
+        <div style="text-align:center;min-width:80px;">
+          <div style="font-size:12px;color:#2563eb;font-weight:700;">5kg: ${Number(p5).toLocaleString()}원</div>
+          ${r5 !== null ? `<div style="font-size:11px;color:#888;">실수령 ${r5.toLocaleString()}원</div>` : ''}
+        </div>
+        <div style="text-align:center;min-width:80px;">
+          <div style="font-size:12px;color:#16a34a;font-weight:700;">10kg: ${Number(p10).toLocaleString()}원</div>
+          ${r10 !== null ? `<div style="font-size:11px;color:#888;">실수령 ${r10.toLocaleString()}원</div>` : ''}
+        </div>
+        <button onclick="removeVenuePrice('daecheong','${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
+      </div>`;
+    }).join('');
+  } else {
+    el.innerHTML = entries.map(([name, price]) => {
+      const p = typeof price === 'object' ? (price.price5 || 0) : price;
+      return `<div style="display:flex;align-items:center;gap:10px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;">
+        <span style="flex:2;font-size:13px;font-weight:700;">${name}</span>
+        <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(p).toLocaleString()}원</span>
+        <button onclick="removeVenuePrice('${venue}','${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
+      </div>`;
+    }).join('');
+  }
 }
 
 function saveDaecheongRate() {
