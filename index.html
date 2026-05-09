@@ -2059,6 +2059,7 @@
       </div>
       <p style="font-size:12px;color:var(--brown-light);margin-bottom:8px;">연결 후, 주문 접수 시 자동으로 구글 시트에 기록됩니다.</p>
       <button class="btn-small btn-primary" onclick="testConnection()" style="margin-bottom:8px;">🔌 연결 테스트</button>
+      <button class="btn-small" onclick="diagnosGAS()" style="margin-bottom:8px;background:#f59e0b;color:#fff;border:none;">🔍 상세 진단</button>
       <button class="btn-small" onclick="testPending()" style="margin-bottom:8px;margin-left:8px;background:#7c3aed;color:#fff;border:none;">🧪 대기주문 확인</button>
       <button class="btn-small" onclick="openCustomerLinkModal()" style="margin-bottom:8px;margin-left:8px;background:#f59e0b;color:#fff;border:none;">📱 고객 주문링크 생성</button>
     </div>
@@ -6326,6 +6327,16 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOrdersFromSheet(true);
     loadFuneralOrdersFromSheet(true);
     loadWeddingOrdersFromSheet(true);
+    // 거래처도 앱 시작 시 미리 불러오기
+    gasGet({ action: 'getPartners' }).then(function(data) {
+      if (data.success && data.partners) {
+        purchasePartners = data.partners.map(function(p) {
+          return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
+        });
+        localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
+        if (typeof updatePartnerSelect === 'function') updatePartnerSelect();
+      }
+    }).catch(function(){});
   }
   initExtraVenues();
   startClock();
@@ -9409,6 +9420,35 @@ function gasGet(params) {
   });
 }
 
+function diagnosGAS() {
+  if (!gasUrl) { alert('GAS URL이 설정되지 않았어요.'); return; }
+  const results = [];
+  const log = function(msg) { results.push(msg); console.log('[GAS진단]', msg); };
+  log('URL: ' + gasUrl.slice(0,80));
+  gasGet({ action: 'ping' })
+    .then(function(d) {
+      log('✅ GET ping: ' + JSON.stringify(d));
+      return gasGet({ action: 'getTteokSettings' });
+    })
+    .then(function(d) {
+      const keys = d.data ? Object.keys(d.data) : [];
+      log('✅ getTteokSettings: 키 ' + keys.length + '개');
+      return gasPost({ action: 'saveTteokSettings', data: { _test: 'ok' } });
+    })
+    .then(function(d) {
+      log('✅ POST 저장: ' + JSON.stringify(d));
+      return gasGet({ action: 'getPartners' });
+    })
+    .then(function(d) {
+      log('✅ getPartners: ' + (d.partners||[]).length + '개');
+      alert('[GAS 진단 완료] ' + results.join(' | '));
+    })
+    .catch(function(err) {
+      log('❌ 실패: ' + err.message);
+      alert('[GAS 진단 실패] ' + results.join(' | ') + ' | 오류: ' + err.message);
+    });
+}
+
 function gasPost(body) {
   const controller = new AbortController();
   const timeout = setTimeout(function(){ controller.abort(); }, 30000); // 30초 타임아웃
@@ -10165,29 +10205,39 @@ function initPurchaseTab() {
   renderPurchaseSummary();
 
   if (gasUrl) {
-    // 거래처 불러오기
-    gasGet({ action: 'getPartners' }).then(function(data) {
-      if (data.success && data.partners) {
-        // 완전 교체 (잘못된 캐시 방지)
-        purchasePartners = data.partners.map(function(p) {
-          return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
-        });
-        savePurchaseData();
-        updatePartnerSelect();
-        renderPartnerList();
-      }
-    }).catch(function(){});
+    // 거래처 불러오기 (항상 GAS에서 최신 데이터로 교체)
+    gasGet({ action: 'getPartners' })
+      .then(function(data) {
+        if (data.success && data.partners) {
+          purchasePartners = data.partners.map(function(p) {
+            return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
+          });
+          localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
+          updatePartnerSelect();
+          renderPartnerList();
+        } else {
+          console.error('[거래처] GAS 응답 실패:', data);
+        }
+      }).catch(function(err) {
+        console.error('[거래처] 불러오기 오류:', err);
+        showToast('거래처 불러오기 실패: ' + err.message, 'error');
+      });
 
-    // 매입기록 불러오기 (완전 교체)
-    gasGet({ action: 'getPurchases' }).then(function(data) {
-      if (data.success && data.records) {
-        purchaseRecords = data.records;
-        purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
-        localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
-        renderPurchaseTable();
-        renderPurchaseSummary();
-      }
-    }).catch(function(){});
+    // 매입기록 불러오기
+    gasGet({ action: 'getPurchases' })
+      .then(function(data) {
+        if (data.success && data.records) {
+          purchaseRecords = data.records;
+          purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+          localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
+          renderPurchaseTable();
+          renderPurchaseSummary();
+        } else {
+          console.error('[매입기록] GAS 응답 실패:', data);
+        }
+      }).catch(function(err) {
+        console.error('[매입기록] 불러오기 오류:', err);
+      });
   }
 }
 
