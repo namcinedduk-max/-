@@ -9620,9 +9620,9 @@ function printInvoice(order, orderType) {
         <tr>
           <td style="border:0.5px solid #999;padding:3px 5px;width:50%;vertical-align:top;">
             <div style="color:#888;font-size:7px;margin-bottom:1px;">공 급 자</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:1px;">
               <div style="font-weight:bold;font-size:10px;">${company}</div>
-              ${sealImg ? `<img src="${sealImg}" style="height:28px;opacity:0.9;">` : ''}
+              ${sealImg ? `<img src="${sealImg}" style="height:26px;opacity:0.9;flex-shrink:0;">` : ''}
             </div>
             <div style="font-size:7px;color:#555;">사업자: ${regno}</div>
             <div style="font-size:7px;color:#555;">대표: ${ceo} | 업태: ${bizType} / ${bizItem}</div>
