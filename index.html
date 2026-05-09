@@ -9999,18 +9999,25 @@ function savePartner() {
   if (purchasePartners.find(function(p) { return p.name === name; })) {
     showToast('이미 있는 거래처예요.', 'error'); return;
   }
-  purchasePartners.push({ id: Date.now(), name: name, type: type, phone: phone, memo: memo });
+  const newPartner = { id: Date.now(), name, type, phone, memo };
+  purchasePartners.push(newPartner);
   savePurchaseData();
   document.getElementById('part_name').value = '';
   document.getElementById('part_phone').value = '';
   document.getElementById('part_memo').value = '';
   renderPartnerList();
   updatePartnerSelect();
-  showToast('✅ ' + name + ' 거래처 추가됐어요!', 'success');
-  // GAS 저장
   if (gasUrl) {
-    const pid = purchasePartners[purchasePartners.length - 1].id;
-    gasPost({ action: 'save', sheet: 'partner', data: { id: pid, name: name, type: type, phone: phone, memo: memo } }).catch(function(){});
+    showToast('⏳ 저장 중...', '');
+    gasPost({ action: 'save', sheet: 'partner', data: newPartner })
+      .then(function(res) {
+        if (res && res.success) showToast('✅ ' + name + ' 거래처 추가됐어요!', 'success');
+        else showToast('❌ GAS 저장 실패', 'error');
+      }).catch(function(err) {
+        showToast('❌ 저장 실패: ' + (err.message||''), 'error');
+      });
+  } else {
+    showToast('✅ ' + name + ' 거래처 추가됐어요!', 'success');
   }
 }
 
