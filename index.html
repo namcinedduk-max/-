@@ -2856,6 +2856,22 @@ function loadTteokPriceSettings() {
       }
       if (d.koreaPresets) { try { window.KOREA_PRESETS = d.koreaPresets; } catch(e){} }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
+      // ✅ 웨딩홀/장례식장 단가 구글 시트 동기화 (수정됨)
+      if (d.venuePrices) {
+        try {
+          venuePrices = d.venuePrices;
+          localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
+          if (typeof initVenuePriceSettings === 'function') initVenuePriceSettings();
+        } catch(e) {}
+      }
+      if (d.daecheongRate !== undefined) {
+        try {
+          daecheongRate = parseFloat(d.daecheongRate) || 0;
+          localStorage.setItem('daecheongRate', String(daecheongRate));
+          var rateEl = document.getElementById('daecheong-rate');
+          if (rateEl) rateEl.value = daecheongRate || '';
+        } catch(e) {}
+      }
       if (d.orderCategories) { 
         try { 
           window.ORDER_CATEGORIES = d.orderCategories;
