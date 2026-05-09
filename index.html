@@ -8552,13 +8552,10 @@ function saveEdit() {
   });
 
   updateStats(); renderList();
-  const msg = bundleSiblings.length > 0
-    ? `✅ 수정되었습니다! (묶음 ${bundleSiblings.length + 1}건 동기화)`
-    : '✅ 수정되었습니다!';
-  showToast(msg, 'success');
+  showToast('⏳ 저장 중...', '');
   closeModal();
 
-  // 백그라운드에서 GAS 저장
+  // GAS 저장 완료 후 토스트
   if (gasUrl) {
     const saves = [
       gasPost({ action: 'update', data: updated }),
@@ -8566,15 +8563,22 @@ function saveEdit() {
     ];
     Promise.all(saves).then(function(results) {
       if (results[0] && results[0].success === false) {
-        showToast('⚠️ 서버 저장 실패 - 💾 장부 저장 버튼을 눌러 재시도해주세요', 'error');
+        showToast('❌ 저장 실패 - 다시 시도해주세요', 'error');
       } else {
-        // 성공 시 시트와 재동기화 (캐시 강제 갱신)
+        const msg = bundleSiblings.length > 0
+          ? `✅ 저장됐어요! (묶음 ${bundleSiblings.length + 1}건 동기화)`
+          : '✅ 저장됐어요!';
+        showToast(msg, 'success');
         loadOrdersFromSheet(true, true);
       }
     }).catch(function() {
-      // 네트워크 오류여도 로컬 데이터는 유지 (되돌리지 않음)
-      showToast('⚠️ 서버 연결 실패 - 로컬엔 저장됐어요. 나중에 다시 시도해주세요', 'error');
+      showToast('❌ 서버 연결 실패 - 다시 시도해주세요', 'error');
     });
+  } else {
+    const msg = bundleSiblings.length > 0
+      ? `✅ 저장됐어요! (묶음 ${bundleSiblings.length + 1}건 동기화)`
+      : '✅ 저장됐어요!';
+    showToast(msg, 'success');
   }
 }
 
@@ -9031,7 +9035,7 @@ function gasGet(params) {
 
 function gasPost(body) {
   const controller = new AbortController();
-  const timeout = setTimeout(function(){ controller.abort(); }, 25000); // 25초 타임아웃
+  const timeout = setTimeout(function(){ controller.abort(); }, 30000); // 30초 타임아웃
   return fetch(gasUrl, {
     method: 'POST',
     headers: {'Content-Type': 'text/plain'},
@@ -9521,15 +9525,16 @@ function sendToFuneralSheet(order) {
 }
 
 function sendToSheet(order) {
-  // 낙관적 업데이트 - 즉시 화면에 추가
   orders.unshift(order);
   updateStats(); renderList();
   resetForm();
-  showToast('✅ 주문이 접수되었습니다!', 'success');
+  showToast('⏳ 저장 중...', '');
   if (!gasUrl) { showToast('⚠️ 구글 시트 미연결. 로컬에만 저장됩니다.', ''); return; }
   gasPost({ action: 'save', data: order })
     .then(data => {
-      if (!data.success) {
+      if (data.success) {
+        showToast('✅ 주문 접수 완료!', 'success');
+      } else {
         orders = orders.filter(o => String(o.id) !== String(order.id));
         updateStats(); renderList();
         showToast('❌ 저장 실패: ' + (data.error || ''), 'error');
@@ -9538,7 +9543,7 @@ function sendToSheet(order) {
     .catch(() => {
       orders = orders.filter(o => String(o.id) !== String(order.id));
       updateStats(); renderList();
-      showToast('❌ 시트 저장 실패', 'error');
+      showToast('❌ 시트 저장 실패 - 다시 시도해주세요', 'error');
     });
 }
 
