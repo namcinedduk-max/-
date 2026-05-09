@@ -4222,8 +4222,14 @@ function addTteokToGlobalList() {
     showToast('⏳ 저장 중...', '');
     gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER } })
       .then(function(res) {
-        if (res && res.success) showToast('✅ ' + name + ' 추가 및 저장됐어요!', 'success');
-        else showToast('❌ GAS 저장 실패 - 단가 저장 버튼을 눌러주세요', 'error');
+        if (res && res.success) {
+          showToast('✅ ' + name + ' 추가 및 저장됐어요!', 'success');
+          // 저장 직후 GAS에서 읽어서 확인
+          gasGet({ action: 'getTteokSettings' }).then(function(check) {
+            const keys = check.data && check.data.tteokPriceDB ? Object.keys(check.data.tteokPriceDB) : [];
+            console.log('[추가 확인] 저장 후 GAS 떡 목록:', keys.length, '개, ' + name + ' 있음:', keys.includes(name));
+          });
+        } else showToast('❌ GAS 저장 실패 - 단가 저장 버튼을 눌러주세요', 'error');
       }).catch(function(err) {
         showToast('❌ 저장 실패: ' + (err.message||''), 'error');
       });
