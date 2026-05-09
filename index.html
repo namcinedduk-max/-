@@ -4197,9 +4197,13 @@ function addTteokToGlobalList() {
   document.getElementById('newTteok-global-boxunit').value = '';
   document.getElementById('newTteok-global-note').value = '';
 
+  // 즉시 저장
+  localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER } }).catch(() => {});
+
   renderTteokAllList();
-  renderOrderCatSettings(); // 미배정에도 반영
-  showToast('✅ ' + name + ' 추가됐어요!', 'success');
+  renderOrderCatSettings();
+  showToast('✅ ' + name + ' 추가됐어요! (자동 저장됨)', 'success');
 }
 
 
@@ -4210,6 +4214,10 @@ function deleteTteokFromGlobalList(name) {
   window.ORDER_CATEGORIES.forEach(function(cat) {
     cat.items = cat.items.filter(function(n){ return n !== name; });
   });
+  // 즉시 저장
+  localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER, orderCategories: window.ORDER_CATEGORIES } }).catch(() => {});
+
   renderTteokAllList();
   renderOrderCatSettings();
   showToast('🗑 ' + name + ' 삭제됐어요.', 'error');
