@@ -5928,9 +5928,10 @@ function calcVenuePrice(type) {
           total += units5 * (priceVal.price5 || 0);
         }
       }
-    } else if (isChungdae && typeof priceVal === 'object') {
+    } else if (isChungdae) {
       // 충대: 5kg 고정가격, 10kg=×2, 15kg=×3, 20kg=×4
-      const p5 = priceVal.price5 || 0;
+      // 기존 숫자 형식도 price5로 처리
+      const p5 = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
       if (qtyStr === '5kg') {
         total += p5;
       } else if (qtyStr === '10kg') {
