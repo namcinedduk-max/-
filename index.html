@@ -2079,6 +2079,18 @@
           </div>
         </div>
 
+        <!-- 충대식당 단가 (본관영양/소비조합/재활환자/재활직원) -->
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:4px;">🍽️ 충대 식당</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">본관영양 · 소비조합 · 재활환자 · 재활직원 공통 단가. kg당 단가로 등록해요.</p>
+          <div id="priceList-chungdae_restaurant" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 100px auto;gap:8px;align-items:center;">
+            <input id="chungdae_restaurant-new-name" placeholder="떡 이름 *" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="chungdae_restaurant-new-price" type="number" placeholder="원/kg" style="padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+            <button onclick="addVenuePrice('chungdae_restaurant')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+
         <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-bottom:20px;">
           <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 대청장례식장</div>
           <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">상주한테 받는 금액 기준으로 입력. 5kg/10kg 각각 가격을 등록하면 주문 시 자동 계산돼요.</p>
@@ -2883,6 +2895,7 @@ function loadTteokPriceSettings() {
       if (d.venuePrices) {
         try {
           venuePrices = d.venuePrices;
+          if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
           localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
           if (typeof initVenuePriceSettings === 'function') initVenuePriceSettings();
         } catch(e) {}
@@ -5791,10 +5804,15 @@ function updateVenueTteokSelect(selectId, venueType) {
     const venueName = document.getElementById('f_funeralName')
       ? document.getElementById('f_funeralName').value : '';
     const chungdaeExtra = (extraVenues.funeral||[]).filter(v=>v.group==='chungdae').map(v=>v.name);
-    const chungdaeVenues = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'].concat(chungdaeExtra);
+    const restaurantVenueNames = ['충대본관영양','소비조합','재활환자','재활직원'];
+    const chungdaeMainVenues = ['충대장례식장'].concat(chungdaeExtra);
     const daecheongExtra = (extraVenues.funeral||[]).filter(v=>v.group==='daecheong').map(v=>v.name);
     const ownVenue = (extraVenues.funeral||[]).find(v=>v.group==='own' && v.name===venueName);
-    const priceKey = ownVenue ? venueName : (chungdaeVenues.includes(venueName) ? 'chungdae' : 'daecheong');
+    let priceKey;
+    if (ownVenue) priceKey = venueName;
+    else if (chungdaeMainVenues.includes(venueName)) priceKey = 'chungdae';
+    else if (restaurantVenueNames.includes(venueName)) priceKey = 'chungdae_restaurant';
+    else priceKey = 'daecheong';
     keys = Object.keys(venuePrices[priceKey] || {});
   } else {
     keys = Object.keys(venuePrices['wedding'] || {});
@@ -5872,8 +5890,11 @@ function calcVenuePrice(type) {
   // 충대 계열은 chungdae 단가, 대청은 daecheong 단가, 웨딩홀은 wedding 단가
   let priceKey = 'wedding';
   if (type === 'funeral') {
-    const chungdaeVenues = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'];
-    priceKey = chungdaeVenues.includes(venueName) ? 'chungdae' : 'daecheong';
+    const restaurantVenueNames = ['충대본관영양','소비조합','재활환자','재활직원'];
+    const chungdaeMainVenues = ['충대장례식장'];
+    if (restaurantVenueNames.includes(venueName)) priceKey = 'chungdae_restaurant';
+    else if (chungdaeMainVenues.includes(venueName)) priceKey = 'chungdae';
+    else priceKey = 'daecheong';
   }
 
   const prices = venuePrices[priceKey] || {};
@@ -5881,6 +5902,7 @@ function calcVenuePrice(type) {
 
   const isDaecheong = (priceKey === 'daecheong');
   const isChungdae = (priceKey === 'chungdae');
+  const isRestaurant = (priceKey === 'chungdae_restaurant');
 
   let total = 0;
   items.forEach(item => {
@@ -5924,8 +5946,13 @@ function calcVenuePrice(type) {
           total += units5 * p5;
         }
       }
+    } else if (isRestaurant) {
+      // 충대식당: kg당 단가 × kg수량 (0.1kg 단위 가능)
+      const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
+      const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
+      if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
     } else {
-      // 웨딩/식당: kg당 단가 × kg수량
+      // 웨딩/기타: kg당 단가 × kg수량
       const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
       const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
       if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
@@ -10025,7 +10052,8 @@ function printWeddingOrders() {
 // ============================================================
 // 장례식장 / 웨딩홀 단가 설정
 // ============================================================
-let venuePrices = JSON.parse(localStorage.getItem('venuePrices') || '{"chungdae":{},"daecheong":{},"wedding":{}}');
+let venuePrices = JSON.parse(localStorage.getItem('venuePrices') || '{"chungdae":{},"chungdae_restaurant":{},"daecheong":{},"wedding":{}}');
+if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
 let daecheongRate = parseFloat(localStorage.getItem('daecheongRate') || '0');
 
 function saveVenuePriceData() {
@@ -10060,12 +10088,12 @@ function addVenuePrice(venue) {
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
   if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
   if (!venuePrices[venue]) venuePrices[venue] = {};
-  // 충대는 5kg 고정가격 객체로 저장
+  // 충대는 5kg 고정가격 객체로 저장, 식당/웨딩은 kg당 단가 숫자로 저장
   venuePrices[venue][name] = venue === 'chungdae' ? { price5: price } : price;
   nameEl.value = ''; priceEl.value = '';
   saveVenuePriceData();
   renderVenuePrices(venue);
-  if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  if (venue === 'chungdae' || venue === 'chungdae_restaurant' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
   if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
   if (extraVenues.funeral && extraVenues.funeral.some(v => v.name === venue && v.group === 'own')) {
     updateVenueTteokSelect('f_tteokSelect', 'funeral');
@@ -10078,7 +10106,7 @@ function removeVenuePrice(venue, name) {
   // 구글 시트에도 즉시 반영
   if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { venuePrices, daecheongRate } }).catch(() => {});
   renderVenuePrices(venue);
-  if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  if (venue === 'chungdae' || venue === 'chungdae_restaurant' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
   if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
   if (extraVenues.funeral && extraVenues.funeral.some(v => v.name === venue && v.group === 'own')) {
     updateVenueTteokSelect('f_tteokSelect', 'funeral');
@@ -10201,7 +10229,7 @@ function saveVenuePriceEdit(venue, name, eid) {
   saveVenuePriceData();
   if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { venuePrices, daecheongRate } }).catch(() => {});
   renderVenuePrices(venue);
-  if (venue === 'chungdae' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
+  if (venue === 'chungdae' || venue === 'chungdae_restaurant' || venue === 'daecheong') updateVenueTteokSelect('f_tteokSelect', 'funeral');
   if (venue === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
   showToast('✅ 단가가 수정됐어요!', 'success');
 }
@@ -10231,7 +10259,7 @@ function saveWeddingPrices() {
 function initVenuePriceSettings() {
   const rateEl = document.getElementById('daecheong-rate');
   if (rateEl) rateEl.value = daecheongRate || '';
-  ['chungdae', 'daecheong', 'wedding'].forEach(v => renderVenuePrices(v));
+  ['chungdae', 'chungdae_restaurant', 'daecheong', 'wedding'].forEach(v => renderVenuePrices(v));
   renderVenueList();
   renderExtraFuneralPriceSections();
 }
