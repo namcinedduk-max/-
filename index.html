@@ -2658,8 +2658,8 @@
           <select id="pur_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
             <option value="material">원재료</option>
             <option value="packaging">포장재</option>
+            <option value="utility">공과금(전기/가스)</option>
             <option value="delivery">퀵/배송비</option>
-            <option value="labor">인건비</option>
             <option value="etc">기타</option>
           </select>
         </div>
@@ -2681,8 +2681,8 @@
           <option value="">전체 분류</option>
           <option value="material">원재료</option>
           <option value="packaging">포장재</option>
+          <option value="utility">공과금(전기/가스)</option>
           <option value="delivery">퀵/배송비</option>
-          <option value="labor">인건비</option>
           <option value="etc">기타</option>
         </select>
         <span style="font-size:13px;color:#888;" id="pur_totalLabel"></span>
@@ -2720,8 +2720,8 @@
           <select id="part_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
             <option value="material">원재료</option>
             <option value="packaging">포장재</option>
+            <option value="utility">공과금(전기/가스)</option>
             <option value="delivery">퀵/배송비</option>
-            <option value="labor">인건비</option>
             <option value="etc">기타</option>
           </select>
         </div>
@@ -10026,7 +10026,7 @@ function onPurPartnerChange() {
 }
 
 function typeLabel(type) {
-  const map = { material: '원재료', packaging: '포장재', delivery: '퀵/배송비', labor: '인건비', etc: '기타' };
+  const map = { material: '원재료', packaging: '포장재', utility: '공과금', delivery: '퀵/배송비', etc: '기타' };
   return map[type] || type;
 }
 
