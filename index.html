@@ -8558,22 +8558,22 @@ function saveEdit() {
   showToast(msg, 'success');
   closeModal();
 
-  // 백그라운드에서 GAS 저장 (실패해도 화면은 유지, 다음 새로고침 시 반영)
+  // 백그라운드에서 GAS 저장
   if (gasUrl) {
     const saves = [
       gasPost({ action: 'update', data: updated }),
       ...sibUpdates.map(s => gasPost({ action: 'update', data: s }))
     ];
     Promise.all(saves).then(function(results) {
-      if (results[0] && !results[0].success) {
-        showToast('⚠️ 서버 저장 실패 - 새로고침 시 원래대로 돌아갈 수 있어요', 'error');
-        // 실패 시 원래 데이터로 복구
-        const ridx = orders.findIndex(x => String(x.id) === String(o.id));
-        if (ridx > -1) orders[ridx] = o;
-        updateStats(); renderList();
+      if (results[0] && results[0].success === false) {
+        showToast('⚠️ 서버 저장 실패 - 💾 장부 저장 버튼을 눌러 재시도해주세요', 'error');
+      } else {
+        // 성공 시 시트와 재동기화 (캐시 강제 갱신)
+        loadOrdersFromSheet(true, true);
       }
     }).catch(function() {
-      showToast('⚠️ 서버 연결 실패 - 새로고침 시 원래대로 돌아갈 수 있어요', 'error');
+      // 네트워크 오류여도 로컬 데이터는 유지 (되돌리지 않음)
+      showToast('⚠️ 서버 연결 실패 - 로컬엔 저장됐어요. 나중에 다시 시도해주세요', 'error');
     });
   }
 }
@@ -9031,7 +9031,7 @@ function gasGet(params) {
 
 function gasPost(body) {
   const controller = new AbortController();
-  const timeout = setTimeout(function(){ controller.abort(); }, 12000); // 12초 타임아웃
+  const timeout = setTimeout(function(){ controller.abort(); }, 25000); // 25초 타임아웃
   return fetch(gasUrl, {
     method: 'POST',
     headers: {'Content-Type': 'text/plain'},
@@ -9382,8 +9382,14 @@ function saveFuneralEdit() {
   gasFuneralPost({ action: 'update', data: { ...updated, isFuneral: true } })
     .then(data => {
       if (data.success) {
-        showToast('✅ 수정되었습니다.', 'success');
+        // 로컬도 즉시 반영
+        const idx = funeralOrders.findIndex(x => String(x.id) === String(updated.id));
+        if (idx > -1) funeralOrders[idx] = updated;
+        updateFuneralStats(); renderFuneralList();
         closeModal();
+        showToast('✅ 수정되었습니다.', 'success');
+        // 시트에서 최신 데이터 재동기화
+        loadFuneralOrdersFromSheet(true, true);
       } else {
         const idx2 = funeralOrders.findIndex(x => String(x.id) === String(updated.id));
         if (idx2 > -1) funeralOrders[idx2] = o;
@@ -9408,7 +9414,10 @@ function deleteFuneralOrder(id) {
   if (!gasUrl) { showToast('🗑 삭제되었습니다.', 'error'); return; }
   gasFuneralPost({ action: 'delete', id: String(id) })
     .then(data => {
-      if (data.success) { showToast('🗑 삭제되었습니다.', 'error'); }
+      if (data.success) {
+        showToast('🗑 삭제되었습니다.', 'error');
+        loadFuneralOrdersFromSheet(true, true);
+      }
       else {
         funeralOrders = backup; updateFuneralStats(); renderFuneralList();
         showToast('❌ 삭제 실패. 다시 시도해주세요.', 'error');
