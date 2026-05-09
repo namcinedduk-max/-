@@ -2065,16 +2065,22 @@
         <!-- 충대장례식장 단가 -->
         <div style="margin-bottom:20px;">
           <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 충대장례식장</div>
-          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">품목별 고정단가 설정. 주문 접수 시 자동 표시돼요.</p>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">5kg 고정 가격으로 등록. 10kg은 5kg×2로 자동 계산돼요.</p>
+          <div style="display:grid;grid-template-columns:1fr 80px 60px;gap:6px;align-items:center;margin-bottom:6px;padding:0 4px;">
+            <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">떡 이름</span>
+            <span style="font-size:11px;font-weight:700;color:#2563eb;text-align:center;">5kg 가격</span>
+            <span></span>
+          </div>
           <div id="priceList-chungdae" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <input id="chungdae-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <input id="chungdae-new-price" type="number" placeholder="단가 (원)" style="width:110px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <div style="display:grid;grid-template-columns:1fr 80px auto;gap:8px;align-items:center;">
+            <input id="chungdae-new-name" placeholder="떡 이름 *" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="chungdae-new-price" type="number" placeholder="5kg(원)" style="padding:8px 6px;border:1.5px solid #3b82f6;border-radius:8px;font-size:13px;text-align:right;">
             <button onclick="addVenuePrice('chungdae')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
           </div>
         </div>
 
-🏥 대청장례식장</div>
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏥 대청장례식장</div>
           <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">상주한테 받는 금액 기준으로 입력. 5kg/10kg 각각 가격을 등록하면 주문 시 자동 계산돼요.</p>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;">
             <span style="font-size:13px;font-weight:700;color:#92400e;">대청 수수료율</span>
@@ -5874,6 +5880,7 @@ function calcVenuePrice(type) {
   if (Object.keys(prices).length === 0) return;
 
   const isDaecheong = (priceKey === 'daecheong');
+  const isChungdae = (priceKey === 'chungdae');
 
   let total = 0;
   items.forEach(item => {
@@ -5882,19 +5889,16 @@ function calcVenuePrice(type) {
     const qtyStr = String(item.qty).trim();
 
     if (isDaecheong && typeof priceVal === 'object') {
-      // 대청: 5kg/10kg 고정 가격
+      // 대청: 5kg/10kg 각각 다른 고정 가격
       if (qtyStr === '10kg') {
         total += priceVal.price10 || 0;
       } else if (qtyStr === '5kg') {
         total += priceVal.price5 || 0;
       } else if (qtyStr === '15kg') {
-        // 15kg = 10kg + 5kg
         total += (priceVal.price10 || 0) + (priceVal.price5 || 0);
       } else if (qtyStr === '20kg') {
-        // 20kg = 10kg × 2
         total += (priceVal.price10 || 0) * 2;
       } else {
-        // 그 외 kg 숫자면 5kg 단가 기준으로 계산
         const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
         if (numMatch) {
           const kg = parseFloat(numMatch[1]);
@@ -5902,8 +5906,26 @@ function calcVenuePrice(type) {
           total += units5 * (priceVal.price5 || 0);
         }
       }
+    } else if (isChungdae && typeof priceVal === 'object') {
+      // 충대: 5kg 고정가격, 10kg=×2, 15kg=×3, 20kg=×4
+      const p5 = priceVal.price5 || 0;
+      if (qtyStr === '5kg') {
+        total += p5;
+      } else if (qtyStr === '10kg') {
+        total += p5 * 2;
+      } else if (qtyStr === '15kg') {
+        total += p5 * 3;
+      } else if (qtyStr === '20kg') {
+        total += p5 * 4;
+      } else {
+        const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
+        if (numMatch) {
+          const units5 = Math.floor(parseFloat(numMatch[1]) / 5);
+          total += units5 * p5;
+        }
+      }
     } else {
-      // 충대/웨딩: 기존 숫자×단가 방식
+      // 웨딩/식당: kg당 단가 × kg수량
       const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
       const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
       if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
@@ -10038,7 +10060,8 @@ function addVenuePrice(venue) {
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
   if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
   if (!venuePrices[venue]) venuePrices[venue] = {};
-  venuePrices[venue][name] = price;
+  // 충대는 5kg 고정가격 객체로 저장
+  venuePrices[venue][name] = venue === 'chungdae' ? { price5: price } : price;
   nameEl.value = ''; priceEl.value = '';
   saveVenuePriceData();
   renderVenuePrices(venue);
@@ -10070,7 +10093,34 @@ function renderVenuePrices(venue) {
     el.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px 0;">등록된 단가가 없어요.</div>';
     return;
   }
-  if (venue === 'daecheong') {
+
+  if (venue === 'chungdae') {
+    el.innerHTML = entries.map(([name, val]) => {
+      const p5 = typeof val === 'object' ? (val.price5 || 0) : val;
+      const p10 = p5 * 2;
+      const eid = 'edit-chungdae-' + name.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+      return `<div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="flex:1;font-size:13px;font-weight:700;min-width:80px;">${name}</span>
+          <div style="text-align:center;min-width:80px;">
+            <div style="font-size:12px;color:#2563eb;font-weight:700;">5kg: ${Number(p5).toLocaleString()}원</div>
+            <div style="font-size:11px;color:#888;">10kg: ${Number(p10).toLocaleString()}원</div>
+          </div>
+          <button onclick="toggleVenueEdit('${eid}')" style="padding:4px 10px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">✏️ 수정</button>
+          <button onclick="removeVenuePrice('chungdae','${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700;">삭제</button>
+        </div>
+        <div id="${eid}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="font-size:11px;font-weight:700;color:#2563eb;white-space:nowrap;">5kg 가격</div>
+            <input type="number" id="${eid}-price" value="${p5}" style="flex:1;padding:7px 10px;border:1.5px solid #3b82f6;border-radius:8px;font-size:13px;text-align:right;">
+            <span style="font-size:12px;color:#888;white-space:nowrap;">원 (10kg은 자동 ×2)</span>
+            <button onclick="saveVenuePriceEdit('chungdae','${name}','${eid}')" style="padding:7px 14px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 저장</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+  } else if (venue === 'daecheong') {
     el.innerHTML = entries.map(([name, val]) => {
       const p5 = typeof val === 'object' ? (val.price5 || 0) : val;
       const p10 = typeof val === 'object' ? (val.price10 || 0) : 0;
@@ -10106,6 +10156,7 @@ function renderVenuePrices(venue) {
         </div>
       </div>`;
     }).join('');
+
   } else {
     el.innerHTML = entries.map(([name, price]) => {
       const p = typeof price === 'object' ? (price.price5 || 0) : price;
@@ -10140,6 +10191,9 @@ function saveVenuePriceEdit(venue, name, eid) {
     const p5 = parseInt(document.getElementById(eid + '-p5').value) || 0;
     const p10 = parseInt(document.getElementById(eid + '-p10').value) || 0;
     venuePrices['daecheong'][name] = { price5: p5, price10: p10 };
+  } else if (venue === 'chungdae') {
+    const p5 = parseInt(document.getElementById(eid + '-price').value) || 0;
+    venuePrices['chungdae'][name] = { price5: p5 };
   } else {
     const p = parseInt(document.getElementById(eid + '-price').value) || 0;
     venuePrices[venue][name] = p;
