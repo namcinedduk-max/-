@@ -2362,10 +2362,14 @@
           <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:6px;">💒 웨딩홀 거래처 관리</div>
           <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">추가한 거래처는 웨딩홀 주문 입력 시 선택 목록에 표시돼요.</p>
           <div id="venueList-wedding" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <input id="wedding-venue-name" placeholder="거래처 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <button onclick="addVenueName('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <input id="wedding-venue-name" placeholder="거래처 이름 *" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="wedding-venue-regno" placeholder="사업자번호" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="wedding-venue-ceo" placeholder="대표자명" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="wedding-venue-tel" placeholder="전화번호" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="wedding-venue-addr" placeholder="주소" style="grid-column:1/-1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           </div>
+          <button onclick="addVenueName('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
       </div>
 
@@ -2378,14 +2382,18 @@
           <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏢 업체 목록 관리</div>
           <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">등록한 업체는 기타업체 주문 입력 시 선택 목록에 표시돼요.</p>
           <div id="otherVenueList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input id="other-venue-new-name" placeholder="업체명 *" style="flex:2;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <input id="other-venue-new-name" placeholder="업체명 *" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
             <select id="other-venue-new-type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
               <option value="kg">kg 단위</option>
               <option value="5kg">5kg 단위</option>
             </select>
-            <button onclick="addOtherVenue()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+            <input id="other-venue-new-regno" placeholder="사업자번호" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="other-venue-new-ceo" placeholder="대표자명" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="other-venue-new-tel" placeholder="전화번호" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="other-venue-new-addr" placeholder="주소" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           </div>
+          <button onclick="addOtherVenue()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
 
         <!-- 업체별 단가 -->
@@ -9456,6 +9464,7 @@ function getCompanyInfo() {
 // 거래명세표 출력
 // ============================================================
 function printInvoice(order, orderType) {
+  if (!order) { showToast('주문 정보를 찾을 수 없어요.', 'error'); return; }
   const c = getCompanyInfo();
   const company = c.name || '남씨네떡집';
   const ceo = c.ceo || '';
@@ -9465,14 +9474,20 @@ function printInvoice(order, orderType) {
   const bizType = c.type || '';
   const bizItem = c.item || '';
 
-  // 거래처명 / 보관용 라벨 결정
-  let venueName = '';
-  let subInfo = '';
-  let copies = [];
+  function getVenueInfo(name) {
+    const wv = (extraVenues.wedding || []).find(v => (typeof v === 'object' ? v.name : v) === name);
+    if (wv && typeof wv === 'object') return wv;
+    const ov = (otherVenues || []).find(v => v.name === name);
+    if (ov) return ov;
+    return {};
+  }
+
+  let venueName = '', subInfo = '', copies = [], venueInfo = {};
 
   if (orderType === 'funeral') {
     venueName = order.funeralName || '';
     subInfo = order.binsoLocation || '';
+    venueInfo = getVenueInfo(venueName);
     if (venueName === '대청장례식장') {
       copies = [
         { label: '상 주 보 관 용', bg: '#f5f5f5', color: '#333', border: '#ccc' },
@@ -9488,124 +9503,117 @@ function printInvoice(order, orderType) {
   } else if (orderType === 'wedding') {
     venueName = order.weddingName || order.hallName || '';
     subInfo = order.floor ? order.floor + '층' : '';
+    venueInfo = getVenueInfo(venueName);
     copies = [
       { label: '거 래 처 보 관 용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
       { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
     ];
   } else {
     venueName = order.venueName || '';
-    subInfo = '';
+    venueInfo = getVenueInfo(venueName);
     copies = [
       { label: '거 래 처 보 관 용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
       { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
     ];
   }
 
-  // 품목 행 생성
+  const venueRegno = venueInfo.regno || '';
+  const venueCeo = venueInfo.ceo || '';
+  const venueTel = venueInfo.tel || '';
+
   const items = order.tteokItems && order.tteokItems.length > 0 ? order.tteokItems : [];
   const totalAmount = Number(order.priceTotal) || 0;
-  const minRows = 8;
-  const itemRows = items.map(item => `
-    <tr>
-      <td style="border:0.5px solid #999;padding:4px 5px;">${item.name||''}</td>
-      <td style="border:0.5px solid #999;padding:4px 5px;text-align:center;">${item.qty||''}</td>
-      <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;"></td>
-      <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;"></td>
-    </tr>`).join('');
+  const minRows = 7;
+  const itemRows = items.map(item =>
+    `<tr><td style="border:0.5px solid #999;padding:4px 5px;">${item.name||''}</td><td style="border:0.5px solid #999;padding:4px 5px;text-align:center;">${item.qty||''}</td><td style="border:0.5px solid #999;padding:4px 5px;"></td><td style="border:0.5px solid #999;padding:4px 5px;"></td></tr>`
+  ).join('');
+  const blankRows = Array(Math.max(0, minRows - items.length)).fill(
+    '<tr><td style="border:0.5px solid #999;padding:5px;">&nbsp;</td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td></tr>'
+  ).join('');
 
-  const emptyRows = Math.max(0, minRows - items.length);
-  const blankRows = Array(emptyRows).fill('<tr><td style="border:0.5px solid #999;padding:5px;">&nbsp;</td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td></tr>').join('');
-
-  // 명세서 1장 HTML 생성
   const makeSlip = (copy) => `
-    <div style="padding:14px 12px;flex:1;min-width:0;">
-      <div style="text-align:center;margin-bottom:10px;">
-        <div style="font-size:15px;font-weight:bold;letter-spacing:3px;margin-bottom:5px;">거 래 명 세 표</div>
-        <div style="font-size:10px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 10px;display:inline-block;color:${copy.color};">${copy.label}</div>
+    <div style="padding:10px 8px;box-sizing:border-box;width:100%;">
+      <div style="text-align:center;margin-bottom:7px;">
+        <div style="font-size:13px;font-weight:bold;letter-spacing:3px;margin-bottom:3px;">거 래 명 세 표</div>
+        <span style="font-size:9px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 8px;color:${copy.color};">${copy.label}</span>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:8px;">
+      <table style="width:100%;border-collapse:collapse;font-size:8px;margin-bottom:5px;">
         <tr>
-          <td style="border:0.5px solid #999;padding:3px 5px;width:50%;">
-            <div style="color:#666;font-size:8px;margin-bottom:2px;">공 급 자</div>
-            <div style="font-weight:bold;font-size:10px;">${company}</div>
-            <div style="color:#555;font-size:8px;">사업자: ${regno}</div>
-            <div style="color:#555;font-size:8px;">대표: ${ceo}</div>
-            <div style="color:#555;font-size:8px;">업태: ${bizType} / 종목: ${bizItem}</div>
-            <div style="color:#555;font-size:8px;">전화: ${tel}</div>
-            <div style="color:#555;font-size:8px;">${addr}</div>
+          <td style="border:0.5px solid #999;padding:3px 4px;width:50%;vertical-align:top;">
+            <div style="color:#888;font-size:7px;">공 급 자</div>
+            <div style="font-weight:bold;font-size:9px;">${company}</div>
+            <div style="color:#555;font-size:7px;">사업자: ${regno} | 대표: ${ceo}</div>
+            <div style="color:#555;font-size:7px;">업태: ${bizType} / 종목: ${bizItem}</div>
+            <div style="color:#555;font-size:7px;">전화: ${tel}</div>
+            <div style="color:#555;font-size:7px;">${addr}</div>
           </td>
-          <td style="border:0.5px solid #999;padding:3px 5px;width:50%;border-left:none;">
-            <div style="color:#666;font-size:8px;margin-bottom:2px;">공급받는자</div>
-            <div style="font-weight:bold;font-size:10px;">${venueName}</div>
-            ${subInfo ? `<div style="color:#555;font-size:8px;">${subInfo}</div>` : ''}
-            <div style="color:#555;font-size:8px;margin-top:6px;">납품일: ${order.deliveryDate||''}</div>
-            ${order.deliveryTime ? `<div style="color:#555;font-size:8px;">시간: ${order.deliveryTime}</div>` : ''}
+          <td style="border:0.5px solid #999;padding:3px 4px;width:50%;border-left:none;vertical-align:top;">
+            <div style="color:#888;font-size:7px;">공급받는자</div>
+            <div style="font-weight:bold;font-size:9px;">${venueName}${subInfo ? ' / ' + subInfo : ''}</div>
+            ${venueRegno ? `<div style="color:#555;font-size:7px;">사업자: ${venueRegno}</div>` : ''}
+            ${venueCeo ? `<div style="color:#555;font-size:7px;">대표: ${venueCeo}</div>` : ''}
+            ${venueTel ? `<div style="color:#555;font-size:7px;">전화: ${venueTel}</div>` : ''}
+            <div style="color:#555;font-size:7px;margin-top:3px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
           </td>
         </tr>
       </table>
-      <table style="width:100%;border-collapse:collapse;font-size:9px;">
-        <thead>
-          <tr style="background:#f0f0f0;">
-            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:35%;">품 목</th>
-            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:15%;">수량</th>
-            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:25%;">단 가</th>
-            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:25%;">금 액</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemRows}
-          ${blankRows}
-        </tbody>
-        <tfoot>
-          <tr style="background:#f5f5f5;">
-            <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;">합 계</td>
-            <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;">${totalAmount.toLocaleString()}</td>
-          </tr>
-        </tfoot>
+      <table style="width:100%;border-collapse:collapse;font-size:8px;">
+        <thead><tr style="background:#f0f0f0;">
+          <th style="border:0.5px solid #999;padding:3px;width:35%;">품 목</th>
+          <th style="border:0.5px solid #999;padding:3px;width:15%;">수량</th>
+          <th style="border:0.5px solid #999;padding:3px;width:25%;">단 가</th>
+          <th style="border:0.5px solid #999;padding:3px;width:25%;">금 액</th>
+        </tr></thead>
+        <tbody>${itemRows}${blankRows}</tbody>
+        <tfoot><tr style="background:#f5f5f5;">
+          <td colspan="3" style="border:0.5px solid #999;padding:3px;text-align:right;font-weight:bold;">합 계</td>
+          <td style="border:0.5px solid #999;padding:3px;text-align:right;font-weight:bold;">${totalAmount.toLocaleString()}</td>
+        </tr></tfoot>
       </table>
-      ${order.memo ? `<div style="font-size:8px;color:#666;margin-top:5px;">메모: ${order.memo}</div>` : ''}
-      <div style="margin-top:16px;text-align:right;font-size:9px;color:#666;">
-        공급자 (인) ________________
+      <div style="margin-top:5px;border:0.5px solid #ddd;padding:3px 5px;min-height:22px;">
+        <div style="font-size:7px;color:#aaa;">메 모</div>
+        <div style="font-size:8px;">${order.memo||''}</div>
       </div>
+      <div style="margin-top:6px;text-align:right;font-size:8px;color:#666;">공급자 (인) ________________</div>
     </div>`;
 
-  // 3장이면 가로 3등분, 2장이면 가로 2등분
   const is3 = copies.length === 3;
-  const slipStyle = is3
-    ? 'display:flex;flex-direction:row;'
-    : 'display:flex;flex-direction:row;';
+  let slipsHtml = '';
 
-  const dividers = copies.map((copy, i) => {
-    const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
-    return `<div style="flex:1;min-width:0;${borderRight}">${makeSlip(copy)}</div>`;
-  }).join('');
+  if (is3) {
+    // 대청 3장: A4 가로 꽉차게 세로 3등분 (각 행이 세로 1/3)
+    slipsHtml = copies.map((copy, i) => {
+      const border = i < 2 ? 'border-bottom:1px dashed #aaa;' : '';
+      return `<div style="width:100%;${border}">${makeSlip(copy)}</div>`;
+    }).join('');
+  } else {
+    // 2장: 가로 반반
+    slipsHtml = `<div style="display:flex;">` +
+      copies.map((copy, i) => {
+        const border = i === 0 ? 'border-right:1px dashed #aaa;' : '';
+        return `<div style="flex:1;min-width:0;${border}">${makeSlip(copy)}</div>`;
+      }).join('') + `</div>`;
+  }
 
-  const cutLabel = is3 ? '✂ 절취선 — A4 가로 3등분 절취' : '✂ 절취선 — A4 세로 반으로 절취';
+  const cutLabel = is3 ? '✂ 절취선 — A4 가로 꽉차게 세로 3등분 절취' : '✂ 절취선 — A4 세로 반으로 절취';
 
   const html = `<!DOCTYPE html>
-<html><head>
-<meta charset="UTF-8">
-<title>거래명세표 - ${venueName}</title>
+<html><head><meta charset="UTF-8"><title>거래명세표 - ${venueName}</title>
 <style>
-  @page { size: A4; margin: 8mm; }
-  body { margin:0; padding:0; font-family: '맑은 고딕', sans-serif; }
-  .page { width:100%; }
-  .slips { display:flex; flex-direction:row; width:100%; border:0.5px solid #ccc; }
-  .cut-line { text-align:center; font-size:9px; color:#999; padding:4px; border-top:1px dashed #aaa; margin-top:0; }
-</style>
-</head>
+  @page { size: A4 portrait; margin: 6mm; }
+  body { margin:0; padding:0; font-family:'맑은 고딕','Apple SD Gothic Neo',sans-serif; }
+</style></head>
 <body>
-  <div class="page">
-    <div class="slips">${dividers}</div>
-    <div class="cut-line">${cutLabel}</div>
-  </div>
-  <script>window.onload = function(){ window.print(); }<\/script>
+  <div style="border:0.5px solid #ccc;width:100%;box-sizing:border-box;">${slipsHtml}</div>
+  <div style="text-align:center;font-size:9px;color:#999;padding:4px;border-top:1px dashed #aaa;">${cutLabel}</div>
+  <script>window.onload=function(){window.print();}<\/script>
 </body></html>`;
 
   const win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
 }
+
 
 
 function saveBankInfo() {
@@ -10981,14 +10989,20 @@ function saveOtherVenueData() {
 function addOtherVenue() {
   const name = document.getElementById('other-venue-new-name').value.trim();
   const type = document.getElementById('other-venue-new-type').value;
+  const regno = (document.getElementById('other-venue-new-regno') || {}).value || '';
+  const ceo = (document.getElementById('other-venue-new-ceo') || {}).value || '';
+  const tel = (document.getElementById('other-venue-new-tel') || {}).value || '';
+  const addr = (document.getElementById('other-venue-new-addr') || {}).value || '';
   if (!name) { showToast('업체명을 입력해주세요.', 'error'); return; }
   if (otherVenues.find(v => v.name === name)) { showToast('이미 있는 업체예요.', 'error'); return; }
-  otherVenues.push({ name, type });
+  otherVenues.push({ name, type, regno, ceo, tel, addr });
   if (!otherVenuePrices[name]) otherVenuePrices[name] = {};
   saveOtherVenueData();
   renderOtherVenueList();
   updateOtherVenueSelects();
-  document.getElementById('other-venue-new-name').value = '';
+  ['other-venue-new-name','other-venue-new-regno','other-venue-new-ceo','other-venue-new-tel','other-venue-new-addr'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(() => {});
   showToast('✅ 업체 등록됐어요!', 'success');
 }
@@ -11876,19 +11890,28 @@ function addVenueName(type) {
 
   if (type === 'funeral') {
     const groupSel = document.getElementById('funeral-venue-group');
-    const group = groupSel ? groupSel.value : 'own'; // own = 별도 단가
+    const group = groupSel ? groupSel.value : 'own';
     if (!extraVenues.funeral) extraVenues.funeral = [];
     if (extraVenues.funeral.some(v => v.name === name)) { showToast('이미 등록된 거래처예요.', 'error'); return; }
     extraVenues.funeral.push({ name, group });
-    // 별도 단가 방식이면 venuePrices에 빈 객체 생성
     if (group === 'own' && !venuePrices[name]) {
       venuePrices[name] = {};
       saveVenuePriceData();
     }
   } else {
     if (!extraVenues.wedding) extraVenues.wedding = [];
-    if (extraVenues.wedding.includes(name)) { showToast('이미 등록된 거래처예요.', 'error'); return; }
-    extraVenues.wedding.push(name);
+    // 기존 문자열 배열을 객체 배열로 자동 변환
+    extraVenues.wedding = extraVenues.wedding.map(v => typeof v === 'string' ? { name: v } : v);
+    if (extraVenues.wedding.some(v => v.name === name)) { showToast('이미 등록된 거래처예요.', 'error'); return; }
+    const regno = (document.getElementById('wedding-venue-regno') || {}).value || '';
+    const ceo = (document.getElementById('wedding-venue-ceo') || {}).value || '';
+    const tel = (document.getElementById('wedding-venue-tel') || {}).value || '';
+    const addr = (document.getElementById('wedding-venue-addr') || {}).value || '';
+    extraVenues.wedding.push({ name, regno, ceo, tel, addr });
+    // 입력 초기화
+    ['wedding-venue-regno','wedding-venue-ceo','wedding-venue-tel','wedding-venue-addr'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
   }
 
   saveExtraVenues();
