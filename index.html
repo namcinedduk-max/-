@@ -11097,15 +11097,24 @@ function savePaymentRecords() {
 
 function initSettlementTab() {
   setSettleThisMonth(0);
-  updateSettleVenueSelect();
-  // GAS에서 입금내역/거래처설정 불러오기
+
   if (gasUrl) {
-    gasGet({ action: 'getTteokSettings' }).then(function(data) {
-      if (!data.success) return;
-      const d = data.data || {};
-      if (d.venueSettings) { venueSettings = d.venueSettings; localStorage.setItem('venueSettings', JSON.stringify(venueSettings)); }
-      if (d.paymentRecords) { paymentRecords = d.paymentRecords; localStorage.setItem('paymentRecords', JSON.stringify(paymentRecords)); }
-    }).catch(() => {});
+    // 모든 주문 + 설정 병렬 로드 후 select 채우기
+    Promise.all([
+      loadFuneralOrdersFromSheet(true),
+      loadWeddingOrdersFromSheet(true),
+      loadOtherOrdersFromSheet(true),
+      gasGet({ action: 'getTteokSettings' }).then(function(data) {
+        if (!data.success) return;
+        const d = data.data || {};
+        if (d.venueSettings) { venueSettings = d.venueSettings; localStorage.setItem('venueSettings', JSON.stringify(venueSettings)); }
+        if (d.paymentRecords) { paymentRecords = d.paymentRecords; localStorage.setItem('paymentRecords', JSON.stringify(paymentRecords)); }
+      }).catch(() => {})
+    ]).then(function() {
+      updateSettleVenueSelect();
+    });
+  } else {
+    updateSettleVenueSelect();
   }
 }
 
@@ -11119,14 +11128,17 @@ function setSettleThisMonth(offset) {
 function updateSettleVenueSelect() {
   const sel = document.getElementById('settle-venue');
   if (!sel) return;
-  // 모든 거래처 수집
   const venues = new Set();
   funeralOrders.forEach(o => { if (o.funeralName) venues.add(o.funeralName); });
   weddingOrders.forEach(o => { if (o.weddingName||o.hallName) venues.add(o.weddingName||o.hallName); });
   (otherOrders||[]).forEach(o => { if (o.venueName) venues.add(o.venueName); });
-  // 거래처 설정에 있는 것도 포함
-  Object.keys(venueSettings).forEach(v => venues.add(v));
+  (otherVenues||[]).forEach(v => { if (v.name) venues.add(v.name); });
+  Object.keys(venueSettings||{}).forEach(v => venues.add(v));
   const cur = sel.value;
+  if (venues.size === 0) {
+    sel.innerHTML = '<option value="">거래처 없음</option>';
+    return;
+  }
   sel.innerHTML = '<option value="">전체</option>' +
     Array.from(venues).sort().map(v => `<option value="${v}">${v}</option>`).join('');
   if (cur) sel.value = cur;
