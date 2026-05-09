@@ -5851,6 +5851,14 @@ function calcPriceFromTteok(type) {
 // 장례식장/웨딩홀 단가 자동계산
 function calcVenuePrice(type) {
   const items = type === 'funeral' ? funeralTteokItems : weddingTteokItems;
+
+  // 항목이 없으면 금액 0으로 초기화
+  if (items.length === 0) {
+    if (type === 'funeral') { document.getElementById('f_priceProduct').value = 0; calcFuneralTotal(); }
+    else { document.getElementById('w_priceProduct').value = 0; calcWeddingTotal(); }
+    return;
+  }
+
   const venueName = type === 'funeral'
     ? document.getElementById('f_funeralName').value
     : document.getElementById('w_weddingName').value;
@@ -7581,6 +7589,8 @@ function addFuneralTteokItem(fixedQty) {
 function removeFuneralTteokItem(idx) {
   funeralTteokItems.splice(idx, 1);
   renderFuneralTteokList();
+  calcVenuePrice('funeral');
+  calcPriceFromTteok('funeral');
 }
 
 function renderFuneralTteokList() {
@@ -9770,6 +9780,7 @@ function addWeddingTteokItem() {
 function removeWeddingTteokItem(i) {
   weddingTteokItems.splice(i, 1);
   renderWeddingTteokList();
+  calcVenuePrice('wedding');
 }
 
 function renderWeddingTteokList() {
