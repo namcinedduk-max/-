@@ -10145,9 +10145,9 @@ function initPurchaseTab() {
         renderPartnerList();
       }
     }).catch(function(){});
-    gasGet({ action: 'getOrders', sheet: 'purchase' }).then(function(data) {
-      if (data.success && data.orders && data.orders.length > 0) {
-        data.orders.forEach(function(r) {
+    gasGet({ action: 'getPurchases' }).then(function(data) {
+      if (data.success && data.records && data.records.length > 0) {
+        data.records.forEach(function(r) {
           if (!purchaseRecords.find(function(lr) { return String(lr.id) === String(r.id); })) {
             purchaseRecords.push(r);
           }
