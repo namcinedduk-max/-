@@ -2256,6 +2256,18 @@
           </div>
         </div>
         <button class="btn-small btn-primary" onclick="saveCompanyInfo()">💾 저장</button>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🔏 직인 이미지</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">PNG 투명배경 권장. 명세서 서명란에 자동으로 들어가요.</p>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <input type="file" id="companySealFile" accept="image/*" onchange="saveCompanySeal(this)" style="font-size:12px;">
+            <span id="companySealStatus" style="font-size:12px;color:var(--brown-mid);"></span>
+            <button onclick="clearCompanySeal()" style="padding:5px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;cursor:pointer;">삭제</button>
+          </div>
+          <div id="companySealPreview" style="display:none;margin-top:10px;">
+            <img id="prevSeal" style="height:60px;border:1px solid var(--border);border-radius:6px;padding:4px;background:#fff;">
+          </div>
+        </div>
       </div>
 
       <h2>⚙️ 떡 단가 설정</h2>
@@ -6361,6 +6373,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadLabelImgSettings();
   loadQuickFeeTable();
   loadCompanyInfo();
+  loadCompanySeal();
   loadTteokPriceSettings();
   initDoeTteokSel();
   loadOrderCategories();
@@ -9440,6 +9453,48 @@ function saveCompanyInfo() {
   showToast('✅ 회사 정보 저장됐어요!', 'success');
 }
 
+function saveCompanySeal(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      localStorage.setItem('companySeal', e.target.result);
+      document.getElementById('companySealStatus').textContent = '✅ 저장됨';
+      document.getElementById('prevSeal').src = e.target.result;
+      document.getElementById('companySealPreview').style.display = '';
+      showToast('✅ 직인 이미지 저장됐어요!', 'success');
+    } catch(err) {
+      showToast('❌ 이미지가 너무 커요. 더 작은 이미지를 사용해주세요.', 'error');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearCompanySeal() {
+  localStorage.removeItem('companySeal');
+  document.getElementById('companySealStatus').textContent = '';
+  document.getElementById('companySealFile').value = '';
+  document.getElementById('companySealPreview').style.display = 'none';
+  showToast('🗑 직인 이미지 삭제됐어요.', '');
+}
+
+function loadCompanySeal() {
+  const src = localStorage.getItem('companySeal');
+  if (src) {
+    const statusEl = document.getElementById('companySealStatus');
+    const previewEl = document.getElementById('companySealPreview');
+    const imgEl = document.getElementById('prevSeal');
+    if (statusEl) statusEl.textContent = '✅ 저장됨';
+    if (imgEl) imgEl.src = src;
+    if (previewEl) previewEl.style.display = '';
+  }
+}
+
+function getCompanySeal() {
+  return localStorage.getItem('companySeal') || '';
+}
+
 function loadCompanyInfo() {
   const saved = localStorage.getItem('companyInfo');
   if (!saved) return;
@@ -9531,6 +9586,11 @@ function printInvoice(order, orderType) {
     '<tr><td style="border:0.5px solid #999;padding:5px;">&nbsp;</td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td></tr>'
   ).join('');
 
+  const sealImg = getCompanySeal();
+  const sealHtml = sealImg
+    ? `<img src="${sealImg}" style="height:36px;vertical-align:middle;margin-left:6px;opacity:0.85;">`
+    : '________________';
+
   const makeSlip = (copy) => `
     <div style="padding:10px 8px;box-sizing:border-box;width:100%;">
       <div style="text-align:center;margin-bottom:7px;">
@@ -9574,7 +9634,7 @@ function printInvoice(order, orderType) {
         <div style="font-size:7px;color:#aaa;">메 모</div>
         <div style="font-size:8px;">${order.memo||''}</div>
       </div>
-      <div style="margin-top:6px;text-align:right;font-size:8px;color:#666;">공급자 (인) ________________</div>
+      <div style="margin-top:6px;text-align:right;font-size:8px;color:#666;">공급자 (인) ${sealHtml}</div>
     </div>`;
 
   const is3 = copies.length === 3;
