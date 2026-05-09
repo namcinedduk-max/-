@@ -2842,6 +2842,12 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ── 단가/거래처 데이터 (전역 선언)
+let venuePrices = JSON.parse(localStorage.getItem('venuePrices') || '{"chungdae":{},"chungdae_restaurant":{},"daecheong":{},"wedding":{}}');
+if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
+let otherVenuePrices = JSON.parse(localStorage.getItem('otherVenuePrices') || '{}');
+let extraVenues = JSON.parse(localStorage.getItem('extraVenues') || '{"funeral":[],"wedding":[]}');
+
 
 
 
@@ -9546,6 +9552,7 @@ function getCompanyInfo() {
 // ============================================================
 // 거래명세표 출력
 // ============================================================
+if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
 function printInvoice(order, orderType) {
   if (!order) { showToast('주문 정보를 찾을 수 없어요.', 'error'); return; }
   const c = getCompanyInfo();
@@ -10357,10 +10364,9 @@ function efCalcPrice() {
     total += looked || 0;
   });
   const el = document.getElementById('ef_priceProduct');
-  if (el && total > 0) {
-    el.value = total;
-    calcFuneralEditTotal();
-  }
+  const ewEl = document.getElementById('ew_priceProduct');
+  if (el && total > 0) { el.value = total; calcFuneralEditTotal(); }
+  if (ewEl && total > 0) { ewEl.value = total; calcWeddingEditTotal(); }
 }
 
 function saveFuneralEdit() {
@@ -11084,34 +11090,38 @@ function openWeddingModal(id) {
   currentModalId = id;
   currentModalType = 'wedding';
   const delivDate = normalizeDateStr(String(o.deliveryDate||''));
+
+  // 보기 모드
   document.getElementById('modalContent').innerHTML = `
-    <div class="modal-info-grid">
-      <span class="modal-label">접수 시각</span><span>${o.createdAt||'-'}</span>
-      <span class="modal-label">웨딩홀</span><span>${o.weddingName||o.hallName||'-'}</span>
-      <span class="modal-label">층</span><span>${o.floor||'-'}</span>
-      <span class="modal-label">떡 종류</span><span>${o.tteokItems ? o.tteokItems.map(t=>t.name+(t.qty?' '+t.qty:'')).join(', ') : (o.tteokType||'-')}</span>
-      <span class="modal-label">배송 일자</span><span>${delivDate}</span>
-      <span class="modal-label">배송 시간</span><span>${normalizeTimeStr(o.deliveryTime)||'-'}</span>
-      <span class="modal-label">총 금액</span><span>${(Number(o.priceTotal)||0).toLocaleString()}원</span>
-      <span class="modal-label">메모</span><span>${o.memo||'-'}</span>
-      <span class="modal-label">결제 상태</span><span>${o.payStatus||'-'}</span>
-      <span class="modal-label">담당 직원</span><span>${o.staffName||'-'}</span>
-    </div>`;
+    <div class="modal-detail-row"><span class="modal-detail-label">접수 시각</span><span>${o.createdAt||'-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">웨딩홀</span><span>${o.weddingName||o.hallName||'-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">층/홀</span><span>${o.floor||'-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">떡 종류</span><span>${o.tteokItems ? o.tteokItems.map(t=>t.name+(t.qty?' '+t.qty:'')).join(', ') : (o.tteokType||'-')}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><span>${delivDate}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><span>${normalizeTimeStr(o.deliveryTime)||'-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span>${(Number(o.priceTotal)||0).toLocaleString()}원</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">메모</span><span style="${o.memo?'color:var(--accent-red);font-weight:700;':''}">${o.memo||'-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span><span>${o.payStatus||'-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span><span>${o.staffName||'-'}</span></div>`;
+
+  // 수정 모드
   document.getElementById('modalEditContent').innerHTML = `
-    <div class="edit-row"><label>웨딩홀</label><input id="ew_weddingName" value="${o.weddingName||o.hallName||''}"></div>
-    <div class="edit-row"><label>층</label><input id="ew_floor" value="${o.floor||''}"></div>
-    <div class="edit-row"><label>배송 일자</label><input type="date" id="ew_deliveryDate" value="${delivDate}"></div>
-    <div class="edit-row"><label>배송 시간</label>
-      <select id="ew_deliveryTime_type" onchange="toggleEwTimeInput(this.value)">
-        <option value="">선택</option>
-        <option value="오전중">오전중</option>
-        <option value="오후중">오후중</option>
-        <option value="직접">시간지정</option>
-      </select>
-      <input type="time" id="ew_deliveryTime_val" style="display:none;">
+    <div class="modal-detail-row"><span class="modal-detail-label">웨딩홀</span><input id="ew_weddingName" value="${o.weddingName||o.hallName||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">층/홀</span><input id="ew_floor" value="${o.floor||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><input type="date" id="ew_deliveryDate" value="${delivDate}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span>
+      <div style="display:flex;gap:6px;flex:1;flex-wrap:wrap;">
+        <select id="ew_deliveryTime_type" onchange="toggleEwTimeInput(this.value)" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+          <option value="">선택</option>
+          <option value="오전중">오전중</option>
+          <option value="오후중">오후중</option>
+          <option value="직접">시간지정</option>
+        </select>
+        <input type="time" id="ew_deliveryTime_val" style="display:none;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+      </div>
     </div>
-    <div class="edit-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
-      <label>떡 종류</label>
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+      <span class="modal-detail-label">떡 종류</span>
       <div style="width:100%;">
         <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
           <select id="ef_tteokSelect" onchange="efOnTteokSelectChange()" style="flex:2;min-width:100px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;"></select>
@@ -11120,7 +11130,7 @@ function openWeddingModal(id) {
             <button onclick="efAddTteok('5kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">5kg</button>
             <button onclick="efAddTteok('10kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">10kg</button>
           </div>
-          <div id="ef_qty_kg_input" style="display:none;gap:4px;align-items:center;">
+          <div id="ef_qty_kg_input" style="display:flex;gap:4px;align-items:center;">
             <input type="number" id="ef_tteokKg" placeholder="kg" style="width:70px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
             <span style="font-size:12px;">kg</span>
             <button onclick="efAddTteok()" style="padding:6px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">+ 추가</button>
@@ -11129,34 +11139,46 @@ function openWeddingModal(id) {
         <div id="ef_tteokList" style="display:flex;flex-direction:column;gap:4px;"></div>
       </div>
     </div>
-    <div class="edit-row"><label>총 금액</label><input type="number" id="ew_priceTotal" value="${o.priceTotal||0}"></div>
-    <div class="edit-row"><label>결제 상태</label>
-      <select id="ew_payStatus">
-        <option value="입금대기" ${o.payStatus==='입금대기'?'selected':''}>입금대기</option>
-        <option value="결제완료" ${o.payStatus==='결제완료'?'selected':''}>결제완료</option>
-        <option value="미수금" ${o.payStatus==='미수금'?'selected':''}>미수금</option>
+    <div class="modal-detail-row"><span class="modal-detail-label">상품금액</span><input id="ew_priceProduct" type="number" value="${o.priceProduct||o.priceTotal||0}" oninput="calcWeddingEditTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송비</span><input id="ew_priceDelivery" type="number" value="${o.priceDelivery||0}" oninput="calcWeddingEditTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
+    <div class="modal-detail-row"><span class="modal-detail-label">할인</span><input id="ew_priceDiscount" type="number" value="${o.priceDiscount||0}" oninput="calcWeddingEditTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
+    <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span id="ew_priceTotal_display" style="font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span>
+      <select id="ew_payStatus" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+        <option value="입금대기" ${o.payStatus==='입금대기'?'selected':''}>⏳ 입금대기</option>
+        <option value="결제완료" ${o.payStatus==='결제완료'?'selected':''}>✅ 결제완료</option>
+        <option value="부분결제" ${o.payStatus==='부분결제'?'selected':''}>🔸 부분결제</option>
+        <option value="미수금" ${o.payStatus==='미수금'?'selected':''}>🔴 미수금</option>
       </select>
     </div>
-    <div class="edit-row"><label>메모</label><input id="ew_memo" value="${(o.memo||'').replace(/"/g,'&quot;')}"></div>
-    <div class="edit-row"><label>담당 직원</label><input id="ew_staffName" value="${o.staffName||''}"></div>`;
+    <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ew_memo" value="${(o.memo||'').replace(/"/g,'&quot;')}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
+      <select id="ew_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+        <option value="직원1" ${o.staffName==='직원1'?'selected':''}>직원 1</option>
+        <option value="직원2" ${o.staffName==='직원2'?'selected':''}>직원 2</option>
+        <option value="직원3" ${o.staffName==='직원3'?'selected':''}>직원 3</option>
+      </select>
+    </div>`;
 
   // 배송시간 설정
   const tVal = normalizeTimeStr(o.deliveryTime)||'';
   const tSel = document.getElementById('ew_deliveryTime_type');
   const tInput = document.getElementById('ew_deliveryTime_val');
-  if (tVal === '오전중' || tVal === '오후중') {
-    tSel.value = tVal;
-  } else if (tVal) {
-    tSel.value = '직접';
-    tInput.style.display = '';
-    tInput.value = tVal;
-  }
+  if (tVal === '오전중' || tVal === '오후중') { tSel.value = tVal; }
+  else if (tVal) { tSel.value = '직접'; tInput.style.display = ''; tInput.value = tVal; }
 
   document.getElementById('modalDeleteBtn').onclick = () => { deleteWeddingOrder(id); closeModal(); };
+  document.getElementById('modalEditBtn').style.display = '';
+  document.getElementById('modalEditBtn').onclick = () => {
+    document.getElementById('modalContent').style.display = 'none';
+    document.getElementById('modalEditContent').style.display = 'block';
+    document.getElementById('modalEditBtn').style.display = 'none';
+    document.getElementById('modalSaveBtn').style.display = '';
+    initEditModalTteok(o, 'wedding');
+  };
+  document.getElementById('modalSaveBtn').style.display = 'none';
   document.getElementById('modalSaveBtn').onclick = saveWeddingModalEdit;
-  openModal();
-  // 떡 편집 초기화 (openModal 후에)
-  setTimeout(() => initEditModalTteok(o, 'wedding'), 50);
+  document.getElementById('detailModal').classList.add('open');
 }
 
 function toggleEwTimeInput(val) {
@@ -11164,24 +11186,34 @@ function toggleEwTimeInput(val) {
   if (el) el.style.display = val === '직접' ? '' : 'none';
 }
 
+function calcWeddingEditTotal() {
+  const p = parseInt(document.getElementById('ew_priceProduct').value)||0;
+  const d = parseInt(document.getElementById('ew_priceDelivery').value)||0;
+  const dis = parseInt(document.getElementById('ew_priceDiscount').value)||0;
+  const el = document.getElementById('ew_priceTotal_display');
+  if (el) el.textContent = (p+d-dis).toLocaleString() + '원';
+}
+
 function saveWeddingModalEdit() {
   const id = currentModalId;
   const o = weddingOrders.find(x => String(x.id) === String(id));
   if (!o) return;
-  const tType = document.getElementById('ew_deliveryTime_type').value;
-  const tVal = document.getElementById('ew_deliveryTime_val').value;
+  const tType = (document.getElementById('ew_deliveryTime_type')||{}).value || '';
+  const tVal = (document.getElementById('ew_deliveryTime_val')||{}).value || '';
   const deliveryTime = tType === '직접' ? tVal : tType;
+  const p = parseInt((document.getElementById('ew_priceProduct')||{}).value)||0;
+  const d = parseInt((document.getElementById('ew_priceDelivery')||{}).value)||0;
+  const dis = parseInt((document.getElementById('ew_priceDiscount')||{}).value)||0;
 
-  o.weddingName = document.getElementById('ew_weddingName').value.trim();
+  o.weddingName = (document.getElementById('ew_weddingName')||{}).value?.trim() || o.weddingName;
   o.hallName = o.weddingName;
-  o.floor = document.getElementById('ew_floor').value.trim();
-  o.deliveryDate = document.getElementById('ew_deliveryDate').value;
+  o.floor = (document.getElementById('ew_floor')||{}).value?.trim() || '';
+  o.deliveryDate = (document.getElementById('ew_deliveryDate')||{}).value || o.deliveryDate;
   o.deliveryTime = deliveryTime;
-  o.priceTotal = parseInt(document.getElementById('ew_priceTotal').value) || 0;
-  o.payStatus = document.getElementById('ew_payStatus').value;
-  o.memo = document.getElementById('ew_memo').value.trim();
-  o.staffName = document.getElementById('ew_staffName').value.trim();
-  // 떡 편집 반영
+  o.priceProduct = p; o.priceDelivery = d; o.priceDiscount = dis; o.priceTotal = p+d-dis;
+  o.payStatus = (document.getElementById('ew_payStatus')||{}).value || o.payStatus;
+  o.memo = (document.getElementById('ew_memo')||{}).value?.trim() || '';
+  o.staffName = (document.getElementById('ew_staffName')||{}).value || o.staffName;
   if (editModalTteokItems.length > 0) {
     o.tteokItems = JSON.parse(JSON.stringify(editModalTteokItems));
     o.tteokType = editModalTteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', ');
@@ -11218,7 +11250,6 @@ function printWeddingOrders() {
 // ============================================================
 // 장례식장 / 웨딩홀 단가 설정
 // ============================================================
-let venuePrices = JSON.parse(localStorage.getItem('venuePrices') || '{"chungdae":{},"chungdae_restaurant":{},"daecheong":{},"wedding":{}}');
 if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
 let daecheongRate = parseFloat(localStorage.getItem('daecheongRate') || '0');
 
@@ -11429,7 +11460,6 @@ let otherOrders = [];
 let otherTteokItems = [];
 let otherVenues = JSON.parse(localStorage.getItem('otherVenues') || '[]');
 // otherVenues: [{name:'유치원', type:'kg'}, {name:'롯데호텔', type:'5kg'}, ...]
-let otherVenuePrices = JSON.parse(localStorage.getItem('otherVenuePrices') || '{}');
 // otherVenuePrices: { '유치원': { '떡볶이': 5000, ... }, '롯데호텔': { '백설기': { price5: 60000 }, ... } }
 
 function saveOtherVenueData() {
@@ -12391,7 +12421,6 @@ function confirmNewTteok(name) {
 
 // ============ 거래처 관리 ============
 // { funeral: [{name, group}], wedding: [name] }
-let extraVenues = JSON.parse(localStorage.getItem('extraVenues') || '{"funeral":[],"wedding":[]}');
 
 function saveExtraVenues() {
   localStorage.setItem('extraVenues', JSON.stringify(extraVenues));
