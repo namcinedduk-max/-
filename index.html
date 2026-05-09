@@ -9575,97 +9575,93 @@ function printInvoice(order, orderType) {
   const venueRegno = venueInfo.regno || '';
   const venueCeo = venueInfo.ceo || '';
   const venueTel = venueInfo.tel || '';
+  const sealImg = getCompanySeal();
+  const sealHtml = sealImg
+    ? `<img src="${sealImg}" style="height:32px;vertical-align:middle;margin-left:4px;opacity:0.9;">`
+    : '________________';
 
   const items = order.tteokItems && order.tteokItems.length > 0 ? order.tteokItems : [];
   const totalAmount = Number(order.priceTotal) || 0;
-  const minRows = 7;
+  const minRows = 8;
   const itemRows = items.map(item =>
-    `<tr><td style="border:0.5px solid #999;padding:4px 5px;">${item.name||''}</td><td style="border:0.5px solid #999;padding:4px 5px;text-align:center;">${item.qty||''}</td><td style="border:0.5px solid #999;padding:4px 5px;"></td><td style="border:0.5px solid #999;padding:4px 5px;"></td></tr>`
+    `<tr><td style="border:0.5px solid #999;padding:3px 4px;font-size:9px;">${item.name||''}</td><td style="border:0.5px solid #999;padding:3px 4px;text-align:center;font-size:9px;">${item.qty||''}</td><td style="border:0.5px solid #999;padding:3px 4px;font-size:9px;"></td><td style="border:0.5px solid #999;padding:3px 4px;font-size:9px;"></td></tr>`
   ).join('');
   const blankRows = Array(Math.max(0, minRows - items.length)).fill(
-    '<tr><td style="border:0.5px solid #999;padding:5px;">&nbsp;</td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td></tr>'
+    '<tr><td style="border:0.5px solid #999;padding:5px;font-size:9px;">&nbsp;</td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td></tr>'
   ).join('');
 
-  const sealImg = getCompanySeal();
-  const sealHtml = sealImg
-    ? `<img src="${sealImg}" style="height:36px;vertical-align:middle;margin-left:6px;opacity:0.85;">`
-    : '________________';
-
+  // 3장/2장 모두 A4 가로(landscape) 기준 나란히
+  // 3장: 각 슬립이 1/3 너비 | 2장: 각 슬립이 1/2 너비
   const makeSlip = (copy) => `
-    <div style="padding:10px 8px;box-sizing:border-box;width:100%;">
-      <div style="text-align:center;margin-bottom:7px;">
+    <div style="flex:1;min-width:0;padding:10px 8px;box-sizing:border-box;overflow:hidden;">
+      <div style="text-align:center;margin-bottom:8px;">
         <div style="font-size:13px;font-weight:bold;letter-spacing:3px;margin-bottom:3px;">거 래 명 세 표</div>
         <span style="font-size:9px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 8px;color:${copy.color};">${copy.label}</span>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:8px;margin-bottom:5px;">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
         <tr>
-          <td style="border:0.5px solid #999;padding:3px 4px;width:50%;vertical-align:top;">
-            <div style="color:#888;font-size:7px;">공 급 자</div>
+          <td style="border:0.5px solid #999;padding:3px 4px;width:50%;vertical-align:top;font-size:8px;">
+            <div style="color:#888;font-size:7px;margin-bottom:1px;">공 급 자</div>
             <div style="font-weight:bold;font-size:9px;">${company}</div>
-            <div style="color:#555;font-size:7px;">사업자: ${regno} | 대표: ${ceo}</div>
-            <div style="color:#555;font-size:7px;">업태: ${bizType} / 종목: ${bizItem}</div>
-            <div style="color:#555;font-size:7px;">전화: ${tel}</div>
-            <div style="color:#555;font-size:7px;">${addr}</div>
+            <div style="font-size:7px;color:#555;">사업자: ${regno}</div>
+            <div style="font-size:7px;color:#555;">대표: ${ceo} | 업태: ${bizType} / ${bizItem}</div>
+            <div style="font-size:7px;color:#555;">전화: ${tel}</div>
+            <div style="font-size:7px;color:#555;">${addr}</div>
           </td>
-          <td style="border:0.5px solid #999;padding:3px 4px;width:50%;border-left:none;vertical-align:top;">
-            <div style="color:#888;font-size:7px;">공급받는자</div>
+          <td style="border:0.5px solid #999;border-left:none;padding:3px 4px;width:50%;vertical-align:top;font-size:8px;">
+            <div style="color:#888;font-size:7px;margin-bottom:1px;">공급받는자</div>
             <div style="font-weight:bold;font-size:9px;">${venueName}${subInfo ? ' / ' + subInfo : ''}</div>
-            ${venueRegno ? `<div style="color:#555;font-size:7px;">사업자: ${venueRegno}</div>` : ''}
-            ${venueCeo ? `<div style="color:#555;font-size:7px;">대표: ${venueCeo}</div>` : ''}
-            ${venueTel ? `<div style="color:#555;font-size:7px;">전화: ${venueTel}</div>` : ''}
-            <div style="color:#555;font-size:7px;margin-top:3px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
+            ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
+            ${venueCeo ? `<div style="font-size:7px;color:#555;">대표: ${venueCeo}</div>` : ''}
+            ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
+            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
           </td>
         </tr>
       </table>
-      <table style="width:100%;border-collapse:collapse;font-size:8px;">
+      <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:#f0f0f0;">
-          <th style="border:0.5px solid #999;padding:3px;width:35%;">품 목</th>
-          <th style="border:0.5px solid #999;padding:3px;width:15%;">수량</th>
-          <th style="border:0.5px solid #999;padding:3px;width:25%;">단 가</th>
-          <th style="border:0.5px solid #999;padding:3px;width:25%;">금 액</th>
+          <th style="border:0.5px solid #999;padding:3px;font-size:8px;text-align:center;width:36%;">품 목</th>
+          <th style="border:0.5px solid #999;padding:3px;font-size:8px;text-align:center;width:14%;">수량</th>
+          <th style="border:0.5px solid #999;padding:3px;font-size:8px;text-align:center;width:25%;">단 가</th>
+          <th style="border:0.5px solid #999;padding:3px;font-size:8px;text-align:center;width:25%;">금 액</th>
         </tr></thead>
         <tbody>${itemRows}${blankRows}</tbody>
         <tfoot><tr style="background:#f5f5f5;">
-          <td colspan="3" style="border:0.5px solid #999;padding:3px;text-align:right;font-weight:bold;">합 계</td>
-          <td style="border:0.5px solid #999;padding:3px;text-align:right;font-weight:bold;">${totalAmount.toLocaleString()}</td>
+          <td colspan="3" style="border:0.5px solid #999;padding:3px 4px;text-align:right;font-weight:bold;font-size:8px;">합 계</td>
+          <td style="border:0.5px solid #999;padding:3px 4px;text-align:right;font-weight:bold;font-size:8px;">${totalAmount.toLocaleString()}</td>
         </tr></tfoot>
       </table>
-      <div style="margin-top:5px;border:0.5px solid #ddd;padding:3px 5px;min-height:22px;">
+      <div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;min-height:20px;">
         <div style="font-size:7px;color:#aaa;">메 모</div>
         <div style="font-size:8px;">${order.memo||''}</div>
       </div>
-      <div style="margin-top:6px;text-align:right;font-size:8px;color:#666;">공급자 (인) ${sealHtml}</div>
+      <div style="margin-top:6px;text-align:right;font-size:8px;color:#666;">
+        공급자 (인) ${sealHtml}
+      </div>
     </div>`;
 
-  const is3 = copies.length === 3;
-  let slipsHtml = '';
+  // 모든 경우 A4 가로(landscape) 기준 나란히 배치
+  const dividers = copies.map((copy, i) => {
+    const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
+    return `<div style="flex:1;min-width:0;${borderRight}">${makeSlip(copy)}</div>`;
+  }).join('');
 
-  if (is3) {
-    // 대청 3장: A4 가로 꽉차게 세로 3등분 (각 행이 세로 1/3)
-    slipsHtml = copies.map((copy, i) => {
-      const border = i < 2 ? 'border-bottom:1px dashed #aaa;' : '';
-      return `<div style="width:100%;${border}">${makeSlip(copy)}</div>`;
-    }).join('');
-  } else {
-    // 2장: 가로 반반
-    slipsHtml = `<div style="display:flex;">` +
-      copies.map((copy, i) => {
-        const border = i === 0 ? 'border-right:1px dashed #aaa;' : '';
-        return `<div style="flex:1;min-width:0;${border}">${makeSlip(copy)}</div>`;
-      }).join('') + `</div>`;
-  }
-
-  const cutLabel = is3 ? '✂ 절취선 — A4 가로 꽉차게 세로 3등분 절취' : '✂ 절취선 — A4 세로 반으로 절취';
+  const cutLabel = copies.length === 3
+    ? '✂ 절취선 — A4 가로 3등분 절취'
+    : '✂ 절취선 — A4 가로 반으로 절취';
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>거래명세표 - ${venueName}</title>
 <style>
-  @page { size: A4 portrait; margin: 6mm; }
-  body { margin:0; padding:0; font-family:'맑은 고딕','Apple SD Gothic Neo',sans-serif; }
+  @page { size: A4 landscape; margin: 5mm; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:0; font-family:'맑은 고딕','Apple SD Gothic Neo',sans-serif; width:100%; }
+  .wrap { display:flex; flex-direction:row; width:100%; border:0.5px solid #ccc; height:calc(100vh - 20px); }
+  .cut { text-align:center; font-size:9px; color:#999; padding:3px; border-top:1px dashed #aaa; }
 </style></head>
 <body>
-  <div style="border:0.5px solid #ccc;width:100%;box-sizing:border-box;">${slipsHtml}</div>
-  <div style="text-align:center;font-size:9px;color:#999;padding:4px;border-top:1px dashed #aaa;">${cutLabel}</div>
+  <div class="wrap">${dividers}</div>
+  <div class="cut">${cutLabel}</div>
   <script>window.onload=function(){window.print();}<\/script>
 </body></html>`;
 
@@ -9673,6 +9669,7 @@ function printInvoice(order, orderType) {
   win.document.write(html);
   win.document.close();
 }
+
 
 
 
