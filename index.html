@@ -9922,6 +9922,11 @@ function sendToSheet(order) {
 // ============ 매입 관리 ============
 let purchasePartners = JSON.parse(localStorage.getItem('purchasePartners') || '[]');
 let purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
+// 잘못 저장된 개인주문 데이터 자동 정리 (receiverName이 있으면 주문데이터)
+if (purchaseRecords.some(function(r){ return r.receiverName !== undefined; })) {
+  purchaseRecords = [];
+  localStorage.removeItem('purchaseRecords');
+}
 
 function savePurchaseData() {
   localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
@@ -10118,10 +10123,8 @@ function renderPurchaseSummary() {
 }
 
 function initPurchaseTab() {
-  // 오늘 날짜 기본값
   const dateEl = document.getElementById('pur_date');
   if (dateEl && !dateEl.value) dateEl.value = getLocalDateStr();
-  // 이번 달 필터 기본값
   const monthEl = document.getElementById('pur_filterMonth');
   if (monthEl && !monthEl.value) {
     const now = new Date();
@@ -10130,30 +10133,27 @@ function initPurchaseTab() {
   updatePartnerSelect();
   renderPurchaseTable();
   renderPurchaseSummary();
-  // GAS에서 거래처/매입 기록 불러오기
+
   if (gasUrl) {
-    gasGet({ action: 'getOrders', sheet: 'partner' }).then(function(data) {
-      if (data.success && data.orders && data.orders.length > 0) {
-        // GAS 데이터와 로컬 데이터 병합 (중복 제거)
-        data.orders.forEach(function(p) {
-          if (!purchasePartners.find(function(lp) { return lp.name === p.name; })) {
-            purchasePartners.push({ id: p.id || Date.now(), name: p.name, type: p.type || 'etc', phone: p.phone || '' });
-          }
+    // 거래처 불러오기
+    gasGet({ action: 'getPartners' }).then(function(data) {
+      if (data.success && data.partners) {
+        // 완전 교체 (잘못된 캐시 방지)
+        purchasePartners = data.partners.map(function(p) {
+          return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
         });
         savePurchaseData();
         updatePartnerSelect();
         renderPartnerList();
       }
     }).catch(function(){});
+
+    // 매입기록 불러오기 (완전 교체)
     gasGet({ action: 'getPurchases' }).then(function(data) {
-      if (data.success && data.records && data.records.length > 0) {
-        data.records.forEach(function(r) {
-          if (!purchaseRecords.find(function(lr) { return String(lr.id) === String(r.id); })) {
-            purchaseRecords.push(r);
-          }
-        });
+      if (data.success && data.records) {
+        purchaseRecords = data.records;
         purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
-        savePurchaseData();
+        localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
         renderPurchaseTable();
         renderPurchaseSummary();
       }
