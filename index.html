@@ -3439,8 +3439,15 @@ function saveTteokPriceSettings() {
     };
     gasPost({ action: 'saveTteokSettings', data: settingsData })
       .then(function(res) {
-        if (res.success) showToast('✅ 구글 시트에 저장됐어요! 모든 기기에 적용돼요.', 'success');
-        else showToast('❌ 저장 실패', 'error');
+        if (res.success) {
+          showToast('✅ 구글 시트에 저장됐어요! 모든 기기에 적용돼요.', 'success');
+          // 저장 후 즉시 다시 불러와서 확인
+          gasGet({ action: 'getTteokSettings' }).then(function(check) {
+            const keys = check.data && check.data.tteokPriceDB ? Object.keys(check.data.tteokPriceDB) : [];
+            console.log('[단가저장 확인] GAS에서 읽힌 떡 목록:', keys);
+            console.log('[단가저장 확인] 총', keys.length, '개');
+          });
+        } else showToast('❌ 저장 실패', 'error');
       }).catch(function(){ showToast('❌ 저장 실패', 'error'); });
   } else {
     showToast('✅ 이 기기에 저장됐어요!', 'success');
