@@ -731,6 +731,7 @@
         <button class="tab-btn active" onclick="switchTab('order')">개인</button>
         <button class="tab-btn" onclick="switchTab('funeral')">장례식장</button>
         <button class="tab-btn" onclick="switchTab('wedding')">웨딩홀</button>
+        <button class="tab-btn" onclick="switchTab('other')">기타업체</button>
       </div>
     </div>
     <div class="tab-group">
@@ -739,6 +740,7 @@
         <button class="tab-btn" onclick="switchTab('list')">개인 <span id="pendingBadge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:2px;">0</span></button>
         <button class="tab-btn" onclick="switchTab('funeralList')">장례식장</button>
         <button class="tab-btn" onclick="switchTab('weddingList')">웨딩홀</button>
+        <button class="tab-btn" onclick="switchTab('otherList')">기타업체</button>
       </div>
     </div>
     <div class="tab-group">
@@ -1572,6 +1574,7 @@
     <!-- 충대 발주 / 웨딩홀 발주 섹션 -->
     <div id="chungdaeSection" style="display:none;margin-top:20px;"></div>
     <div id="weddingSection" style="display:none;margin-top:12px;"></div>
+    <div id="otherSection" style="display:none;margin-top:12px;"></div>
   </div>
 
   <!-- ==================== 장례식장 주문 목록 패널 ==================== -->
@@ -1841,6 +1844,150 @@
     </div>
   </div>
 
+  <!-- ==================== 기타업체 접수 패널 ==================== -->
+  <div class="panel" id="panel-other">
+    <div class="form-card">
+      <h2>🏢 기타업체 주문 접수</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>업체명 <span class="required">*</span></label>
+          <select id="ot_venueName" onchange="updateOtherVenueTteokSelect(); updateOtherQtyUI(); calcOtherTotal();">
+            <option value="">-- 선택 --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>담당직원</label>
+          <select id="ot_staffName">
+            <option value="">-- 선택 --</option>
+            <option value="직원1">직원 1</option>
+            <option value="직원2">직원 2</option>
+            <option value="직원3">직원 3</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>배송일 <span class="required">*</span></label>
+          <input type="date" id="ot_deliveryDate">
+        </div>
+        <div class="form-group">
+          <label>배송시간</label>
+          <input type="text" id="ot_deliveryTime" placeholder="예: 오전 10시">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>떡 종류 / 수량</label>
+          <div class="tteok-list" id="ot_tteokList"></div>
+          <div class="tteok-add-row">
+            <div class="tteok-add-row-inputs">
+              <select id="ot_tteokSelect" onchange="onOtherTteokSelectChange()">
+                <option value="">위에서 업체를 먼저 선택해주세요</option>
+              </select>
+              <input type="text" id="ot_tteokCustom" placeholder="직접 입력" style="display:none;">
+              <div id="ot_qty_5kg_btns" style="display:none;gap:6px;align-items:center;">
+                <button type="button" onclick="addOtherTteokItem('5kg')" style="padding:7px 14px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">5kg</button>
+                <button type="button" onclick="addOtherTteokItem('10kg')" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">10kg</button>
+                <button type="button" onclick="addOtherTteokItem('15kg')" style="padding:7px 12px;background:#6b7280;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">15kg</button>
+                <button type="button" onclick="addOtherTteokItem('20kg')" style="padding:7px 12px;background:#6b7280;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">20kg</button>
+              </div>
+              <div id="ot_qty_kg_input" style="display:none;gap:6px;align-items:center;">
+                <input type="number" id="ot_tteokKg" placeholder="kg" min="0" step="0.1" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+                <span style="font-size:13px;font-weight:700;">kg</span>
+                <button type="button" onclick="addOtherTteokItem()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+              </div>
+              <input type="text" id="ot_tteokQty" placeholder="수량" style="display:none;">
+              <button type="button" id="ot_tteok_default_btn" onclick="addOtherTteokItem()" style="display:none;padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>상품금액</label>
+          <input type="number" id="ot_priceProduct" placeholder="0" oninput="calcOtherTotal()">
+        </div>
+        <div class="form-group">
+          <label>배송비</label>
+          <input type="number" id="ot_priceDelivery" placeholder="0" oninput="calcOtherTotal()">
+        </div>
+        <div class="form-group">
+          <label>할인</label>
+          <input type="number" id="ot_priceDiscount" placeholder="0" oninput="calcOtherTotal()">
+        </div>
+        <div class="form-group">
+          <label>총금액</label>
+          <div class="price-display" id="ot_priceTotal">0 원</div>
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>결제상태</label>
+          <div class="pay-btn-group">
+            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'미수금')">미수금</button>
+            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'완료')">완료</button>
+            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'선불')">선불</button>
+          </div>
+          <input type="hidden" id="ot_payStatus" value="미수금">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>메모</label>
+          <textarea id="ot_memo" rows="2" placeholder="메모를 입력하세요"></textarea>
+        </div>
+      </div>
+      <button class="btn-submit" onclick="submitOtherOrder()">✅ 기타업체 주문 접수 완료</button>
+    </div>
+  </div>
+
+  <!-- ==================== 기타업체 주문 목록 패널 ==================== -->
+  <div class="panel" id="panel-otherList">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">오늘 기타업체 주문</div>
+        <div class="stat-value" id="otstat-today">0</div>
+        <div class="stat-sub">건</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">오늘 매출</div>
+        <div class="stat-value" id="otstat-sales">0</div>
+        <div class="stat-sub">원</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">전체 주문</div>
+        <div class="stat-value" id="otstat-total">0</div>
+        <div class="stat-sub">건</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">미수금</div>
+        <div class="stat-value" id="otstat-unpaid">0</div>
+        <div class="stat-sub">원</div>
+      </div>
+    </div>
+    <div class="list-controls">
+      <div class="filter-date-group">
+        <input type="date" id="otFilterDate" onchange="renderOtherList()">
+      </div>
+      <select id="otFilterVenue" onchange="renderOtherList()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <option value="">전체 업체</option>
+      </select>
+      <input type="text" class="search-input" id="otSearchInput" placeholder="🔍 업체명, 떡 종류 검색..." oninput="renderOtherList()">
+      <button class="btn-small btn-secondary" onclick="clearOtherFilter()">전체보기</button>
+      <button class="btn-small" onclick="loadOtherOrdersFromSheet()">🔄 새로고침</button>
+      <button class="btn-small btn-success" onclick="window.print()">🖨️ 출력/PDF</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>배송일</th>
+            <th>업체명</th>
+            <th>떡 종류</th>
+            <th>금액</th>
+            <th>결제</th>
+            <th>담당</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="otherTableBody"></tbody>
+      </table>
+      <div class="empty-state" id="otherEmptyState">
+        <p>기타업체 주문 내역이 없습니다.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== 생산계획 패널 ==================== -->
   <div class="panel" id="panel-production">
     <div class="form-card">
@@ -2052,6 +2199,7 @@
         <button class="settings-tab-btn active" id="stab-personal" onclick="switchSettingsTab('personal')">👤 개인고객 단가</button>
         <button class="settings-tab-btn" id="stab-funeral" onclick="switchSettingsTab('funeral')">🏛️ 장례식장 단가</button>
         <button class="settings-tab-btn" id="stab-wedding-price" onclick="switchSettingsTab('wedding-price')">💒 웨딩홀 단가</button>
+        <button class="settings-tab-btn" id="stab-other-price" onclick="switchSettingsTab('other-price')">🏢 기타업체 단가</button>
         <button class="settings-tab-btn" id="stab-quickfee" onclick="switchSettingsTab('quickfee')">📦 퀵비 요금표</button>
         <button class="settings-tab-btn" id="stab-tteokprice" onclick="switchSettingsTab('tteokprice')">🍡 떡 단가</button>
       </div>
@@ -2159,6 +2307,42 @@
             <button onclick="addVenueName('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
           </div>
         </div>
+      </div>
+
+      <!-- 기타업체 단가 설정 -->
+      <div id="settings-other-price" style="display:none;margin-top:8px;">
+        <p style="font-size:12px;color:var(--brown-light);margin-bottom:16px;">업체를 먼저 등록한 후 업체별 떡 단가를 설정하세요.</p>
+
+        <!-- 업체 목록 관리 -->
+        <div style="margin-bottom:24px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">🏢 업체 목록 관리</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">등록한 업체는 기타업체 주문 입력 시 선택 목록에 표시돼요.</p>
+          <div id="otherVenueList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input id="other-venue-new-name" placeholder="업체명 *" style="flex:2;min-width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <select id="other-venue-new-type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+              <option value="kg">kg 단위</option>
+              <option value="5kg">5kg 단위</option>
+            </select>
+            <button onclick="addOtherVenue()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+
+        <!-- 업체별 단가 -->
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">💰 업체별 단가 설정</div>
+          <select id="other-price-venue-select" onchange="renderOtherVenuePrices()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:12px;">
+            <option value="">-- 업체 선택 --</option>
+          </select>
+          <div id="priceList-other" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+          <div id="other-price-add-form" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input id="other-new-tteok-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input id="other-new-tteok-price" type="number" placeholder="단가(원)" style="width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+            <span id="other-price-unit-label" style="font-size:12px;color:var(--brown-mid);white-space:nowrap;">/kg</span>
+            <button onclick="addOtherVenuePrice()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+          </div>
+        </div>
+        <button class="btn-submit" onclick="saveOtherPrices()" style="margin-top:20px;">💾 기타업체 단가 저장</button>
       </div>
 
       <div id="settings-tteokprice" style="display:none;margin-top:8px;">
@@ -2898,6 +3082,19 @@ function loadTteokPriceSettings() {
           if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
           localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
           if (typeof initVenuePriceSettings === 'function') initVenuePriceSettings();
+        } catch(e) {}
+      }
+      if (d.otherVenues) {
+        try {
+          otherVenues = d.otherVenues;
+          localStorage.setItem('otherVenues', JSON.stringify(otherVenues));
+          updateOtherVenueSelects();
+        } catch(e) {}
+      }
+      if (d.otherVenuePrices) {
+        try {
+          otherVenuePrices = d.otherVenuePrices;
+          localStorage.setItem('otherVenuePrices', JSON.stringify(otherVenuePrices));
         } catch(e) {}
       }
       if (d.daecheongRate !== undefined) {
@@ -5728,7 +5925,7 @@ let currentSettingsTab = 'personal';
 
 function switchSettingsTab(type) {
   currentSettingsTab = type;
-  const tabs = ['personal', 'funeral', 'wedding-price', 'quickfee', 'tteokprice'];
+  const tabs = ['personal', 'funeral', 'wedding-price', 'other-price', 'quickfee', 'tteokprice'];
   tabs.forEach(t => {
     const content = document.getElementById('settings-' + t);
     const btn = document.getElementById('stab-' + t);
@@ -5738,7 +5935,7 @@ function switchSettingsTab(type) {
   if (type === 'quickfee') renderQuickFeeList();
   if (type === 'tteokprice') { renderTteokPriceList(); renderOrderCatSettings(); }
   if (type === 'funeral' || type === 'wedding-price') initVenuePriceSettings();
-
+  if (type === 'other-price') initOtherSettings();
 }
 
 function renderPriceSettings() {
@@ -7092,7 +7289,12 @@ function switchTab(tab) {
   if (tab === 'order') { setTimeout(renderOrderCategoryButtons, 50); }
   const btn = event.target.closest('.tab-btn');
   if (btn) btn.classList.add('active');
-  if (tab === 'list') { if (gasUrl) loadOrdersFromSheet(false); else { updateStats(); renderList(); } }
+  if (tab === 'list') {
+    if (gasUrl) {
+      loadOrdersFromSheet(false);
+      loadOtherOrdersFromSheet(true);
+    } else { updateStats(); renderList(); }
+  }
   if (tab === 'funeralList') { if (gasUrl) loadFuneralOrdersFromSheet(false); else { updateFuneralStats(); renderFuneralList(); } }
   if (tab === 'production') {
     document.getElementById('prodDate').value = getLocalDateStr();
@@ -7128,8 +7330,12 @@ function switchTab(tab) {
     }
     document.getElementById('g_deliveryDate').value = getLocalDateStr();
   }
-  if (tab === 'purchase') {
-    initPurchaseTab();
+  if (tab === 'otherList') { loadOtherOrdersFromSheet(true); }
+  if (tab === 'other') {
+    const d = document.getElementById('ot_deliveryDate');
+    if (d && !d.value) d.value = getLocalDateStr();
+    updateOtherVenueSelects();
+  }
   }
   if (tab === 'wedding') {
     const d = document.getElementById('w_deliveryDate');
@@ -7980,6 +8186,36 @@ function renderList() {
       </div>`;
   } else {
     weddingSec.style.display = 'none';
+  }
+
+  // ── 기타업체 발주 섹션 ─────────────────────────────────────────
+  const filteredOtherOrders = (typeof otherOrders !== 'undefined' ? otherOrders : []).filter(o => {
+    if (filterDate) {
+      const d = filterType === 'delivery' ? normalizeDateStr(String(o.deliveryDate||'')) : normalizeDateStr(String(o.createdAt||''));
+      return d === filterDate;
+    }
+    return true;
+  });
+  const otherSec = document.getElementById('otherSection');
+  if (otherSec) {
+    if (filteredOtherOrders.length > 0) {
+      otherSec.style.display = 'block';
+      otherSec.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;margin-top:4px;">
+          <thead><tr><th colspan="4" style="background:#0891b2;color:#fff;padding:8px 12px;border-radius:8px 8px 0 0;text-align:left;">🏢 기타업체 발주 (${filteredOtherOrders.length}건)</th></tr></thead>
+          <tbody>
+          ${filteredOtherOrders.map(o => `
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px 12px;font-weight:700;">${o.venueName||'-'}</td>
+              <td style="padding:8px 12px;font-size:12px;">${o.tteokType||'-'}</td>
+              <td style="padding:8px 12px;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
+              <td style="padding:8px 12px;text-align:right;font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+    } else {
+      otherSec.style.display = 'none';
+    }
   }
 }
 
@@ -10281,6 +10517,444 @@ function saveWeddingPrices() {
   saveVenuePriceData();
   if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { venuePrices } }).catch(() => {});
   showToast('✅ 웨딩홀 단가 저장됐어요!', 'success');
+}
+
+// ============================================================
+// 기타업체 데이터
+// ============================================================
+let otherOrders = [];
+let otherTteokItems = [];
+let otherVenues = JSON.parse(localStorage.getItem('otherVenues') || '[]');
+// otherVenues: [{name:'유치원', type:'kg'}, {name:'롯데호텔', type:'5kg'}, ...]
+let otherVenuePrices = JSON.parse(localStorage.getItem('otherVenuePrices') || '{}');
+// otherVenuePrices: { '유치원': { '떡볶이': 5000, ... }, '롯데호텔': { '백설기': { price5: 60000 }, ... } }
+
+function saveOtherVenueData() {
+  localStorage.setItem('otherVenues', JSON.stringify(otherVenues));
+  localStorage.setItem('otherVenuePrices', JSON.stringify(otherVenuePrices));
+}
+
+// ── 업체 추가
+function addOtherVenue() {
+  const name = document.getElementById('other-venue-new-name').value.trim();
+  const type = document.getElementById('other-venue-new-type').value;
+  if (!name) { showToast('업체명을 입력해주세요.', 'error'); return; }
+  if (otherVenues.find(v => v.name === name)) { showToast('이미 있는 업체예요.', 'error'); return; }
+  otherVenues.push({ name, type });
+  if (!otherVenuePrices[name]) otherVenuePrices[name] = {};
+  saveOtherVenueData();
+  renderOtherVenueList();
+  updateOtherVenueSelects();
+  document.getElementById('other-venue-new-name').value = '';
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(() => {});
+  showToast('✅ 업체 등록됐어요!', 'success');
+}
+
+function removeOtherVenue(name) {
+  if (!confirm(`'${name}' 업체를 삭제할까요?`)) return;
+  otherVenues = otherVenues.filter(v => v.name !== name);
+  delete otherVenuePrices[name];
+  saveOtherVenueData();
+  renderOtherVenueList();
+  updateOtherVenueSelects();
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(() => {});
+}
+
+function renderOtherVenueList() {
+  const el = document.getElementById('otherVenueList');
+  if (!el) return;
+  if (otherVenues.length === 0) {
+    el.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px 0;">등록된 업체가 없어요.</div>';
+    return;
+  }
+  el.innerHTML = otherVenues.map(v => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;">
+      <span style="flex:1;font-size:13px;font-weight:700;">${v.name}</span>
+      <span style="font-size:11px;color:#888;background:#f3f4f6;padding:2px 8px;border-radius:10px;">${v.type === '5kg' ? '5kg단위' : 'kg단위'}</span>
+      <button onclick="removeOtherVenue('${v.name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
+    </div>`).join('');
+  // 업체별 단가 선택 select 업데이트
+  const sel = document.getElementById('other-price-venue-select');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">-- 업체 선택 --</option>' +
+      otherVenues.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
+    if (cur) sel.value = cur;
+  }
+}
+
+// ── 업체별 단가 추가/렌더
+function addOtherVenuePrice() {
+  const venue = document.getElementById('other-price-venue-select').value;
+  const name = document.getElementById('other-new-tteok-name').value.trim();
+  const price = parseInt(document.getElementById('other-new-tteok-price').value) || 0;
+  if (!venue) { showToast('업체를 선택해주세요.', 'error'); return; }
+  if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
+  if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
+  const venueInfo = otherVenues.find(v => v.name === venue);
+  if (!otherVenuePrices[venue]) otherVenuePrices[venue] = {};
+  otherVenuePrices[venue][name] = venueInfo && venueInfo.type === '5kg' ? { price5: price } : price;
+  document.getElementById('other-new-tteok-name').value = '';
+  document.getElementById('other-new-tteok-price').value = '';
+  saveOtherVenueData();
+  renderOtherVenuePrices();
+  showToast('✅ 단가 등록됐어요!', 'success');
+}
+
+function removeOtherVenuePrice(venue, name) {
+  delete otherVenuePrices[venue][name];
+  saveOtherVenueData();
+  renderOtherVenuePrices();
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(() => {});
+}
+
+function renderOtherVenuePrices() {
+  const venue = document.getElementById('other-price-venue-select') ? document.getElementById('other-price-venue-select').value : '';
+  const el = document.getElementById('priceList-other');
+  const addForm = document.getElementById('other-price-add-form');
+  if (!el) return;
+  if (!venue) { el.innerHTML = '<div style="color:#aaa;font-size:12px;">업체를 선택하면 단가 목록이 표시돼요.</div>'; if (addForm) addForm.style.display = 'none'; return; }
+  if (addForm) addForm.style.display = 'flex';
+  const venueInfo = otherVenues.find(v => v.name === venue);
+  const is5kg = venueInfo && venueInfo.type === '5kg';
+  const unitLabel = document.getElementById('other-price-unit-label');
+  if (unitLabel) unitLabel.textContent = is5kg ? '/5kg' : '/kg';
+  const prices = otherVenuePrices[venue] || {};
+  const entries = Object.entries(prices);
+  if (entries.length === 0) { el.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px 0;">등록된 단가가 없어요.</div>'; return; }
+  el.innerHTML = entries.map(([tteok, val]) => {
+    const p = typeof val === 'object' ? (val.price5 || 0) : val;
+    const eid = 'edit-other-' + venue.replace(/[^a-zA-Z0-9가-힣]/g,'_') + '-' + tteok.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+    return `<div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:4px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="flex:1;font-size:13px;font-weight:700;">${tteok}</span>
+        <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(p).toLocaleString()}원${is5kg ? '/5kg' : '/kg'}</span>
+        <button onclick="toggleVenueEdit('${eid}')" style="padding:4px 10px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">✏️ 수정</button>
+        <button onclick="removeOtherVenuePrice('${venue}','${tteok}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700;">삭제</button>
+      </div>
+      <div id="${eid}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" id="${eid}-price" value="${p}" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+          <span style="font-size:13px;color:var(--brown-mid);white-space:nowrap;">원${is5kg ? '/5kg' : '/kg'}</span>
+          <button onclick="saveOtherVenuePriceEdit('${venue}','${tteok}','${eid}','${is5kg}')" style="padding:7px 14px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 저장</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveOtherVenuePriceEdit(venue, tteok, eid, is5kg) {
+  const p = parseInt(document.getElementById(eid + '-price').value) || 0;
+  otherVenuePrices[venue][tteok] = (is5kg === 'true') ? { price5: p } : p;
+  saveOtherVenueData();
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(() => {});
+  renderOtherVenuePrices();
+  showToast('✅ 단가 수정됐어요!', 'success');
+}
+
+function saveOtherPrices() {
+  saveOtherVenueData();
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(() => {});
+  showToast('✅ 기타업체 단가 저장됐어요!', 'success');
+}
+
+// ── 업체 select 업데이트
+function updateOtherVenueSelects() {
+  const targets = ['ot_venueName', 'otFilterVenue', 'other-price-venue-select'];
+  targets.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    const emptyOpt = id === 'otFilterVenue' ? '<option value="">전체 업체</option>' : '<option value="">-- 선택 --</option>';
+    sel.innerHTML = emptyOpt + otherVenues.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
+    if (cur) sel.value = cur;
+  });
+}
+
+// ── 주문 입력 UI
+function onOtherTteokSelectChange() {
+  const sel = document.getElementById('ot_tteokSelect');
+  const custom = document.getElementById('ot_tteokCustom');
+  if (sel.value === '직접입력') { custom.style.display = 'block'; custom.focus(); }
+  else { custom.style.display = 'none'; custom.value = ''; }
+}
+
+function updateOtherVenueTteokSelect() {
+  const venue = document.getElementById('ot_venueName').value;
+  const sel = document.getElementById('ot_tteokSelect');
+  if (!venue) { sel.innerHTML = '<option value="">위에서 업체를 먼저 선택해주세요</option>'; return; }
+  const prices = otherVenuePrices[venue] || {};
+  const keys = Object.keys(prices);
+  if (keys.length === 0) {
+    sel.innerHTML = '<option value="">-- 단가 설정에서 먼저 등록해주세요 --</option>';
+  } else {
+    sel.innerHTML = '<option value="">-- 떡 선택 --</option>' +
+      keys.map(k => `<option value="${k}">${k}</option>`).join('') +
+      '<option value="직접입력">✏️ 직접 입력</option>';
+  }
+}
+
+function updateOtherQtyUI() {
+  const venue = document.getElementById('ot_venueName').value;
+  const venueInfo = otherVenues.find(v => v.name === venue);
+  const btn5kg = document.getElementById('ot_qty_5kg_btns');
+  const kgInput = document.getElementById('ot_qty_kg_input');
+  const defBtn = document.getElementById('ot_tteok_default_btn');
+  const defQty = document.getElementById('ot_tteokQty');
+  if (!venue) {
+    if (btn5kg) btn5kg.style.display = 'none';
+    if (kgInput) kgInput.style.display = 'none';
+    if (defBtn) defBtn.style.display = 'block';
+    if (defQty) defQty.style.display = 'block';
+    return;
+  }
+  if (venueInfo && venueInfo.type === '5kg') {
+    if (btn5kg) btn5kg.style.display = 'flex';
+    if (kgInput) kgInput.style.display = 'none';
+    if (defBtn) defBtn.style.display = 'none';
+    if (defQty) defQty.style.display = 'none';
+  } else {
+    if (btn5kg) btn5kg.style.display = 'none';
+    if (kgInput) kgInput.style.display = 'flex';
+    if (defBtn) defBtn.style.display = 'none';
+    if (defQty) defQty.style.display = 'none';
+  }
+}
+
+function addOtherTteokItem(fixedQty) {
+  const sel = document.getElementById('ot_tteokSelect');
+  const custom = document.getElementById('ot_tteokCustom');
+  const name = sel.value === '직접입력' ? custom.value.trim() : sel.value;
+  if (!name) { showToast('떡 종류를 선택하거나 입력해주세요.', 'error'); return; }
+  let qty = '';
+  if (fixedQty) {
+    qty = fixedQty;
+  } else {
+    const kgEl = document.getElementById('ot_tteokKg');
+    const qtyEl = document.getElementById('ot_tteokQty');
+    if (kgEl && kgEl.closest('#ot_qty_kg_input') && kgEl.closest('#ot_qty_kg_input').style.display !== 'none') {
+      qty = kgEl.value ? kgEl.value + 'kg' : '';
+      kgEl.value = '';
+    } else if (qtyEl) {
+      qty = qtyEl.value.trim();
+      qtyEl.value = '';
+    }
+  }
+  otherTteokItems.push({ name, qty });
+  renderOtherTteokList();
+  sel.value = ''; custom.style.display = 'none'; custom.value = '';
+  calcOtherVenuePrice();
+}
+
+function removeOtherTteokItem(idx) {
+  otherTteokItems.splice(idx, 1);
+  renderOtherTteokList();
+  calcOtherVenuePrice();
+}
+
+function renderOtherTteokList() {
+  const el = document.getElementById('ot_tteokList');
+  if (!el) return;
+  if (otherTteokItems.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = otherTteokItems.map((item, i) =>
+    `<div class="tteok-item"><span class="tteok-item-name">${item.name}</span><span class="tteok-item-qty">${item.qty || ''}</span><button type="button" onclick="removeOtherTteokItem(${i})" class="tteok-item-del">✕</button></div>`
+  ).join('');
+}
+
+function calcOtherVenuePrice() {
+  const venue = document.getElementById('ot_venueName').value;
+  if (!venue || otherTteokItems.length === 0) {
+    if (otherTteokItems.length === 0) { document.getElementById('ot_priceProduct').value = 0; calcOtherTotal(); }
+    return;
+  }
+  const prices = otherVenuePrices[venue] || {};
+  if (Object.keys(prices).length === 0) return;
+  const venueInfo = otherVenues.find(v => v.name === venue);
+  const is5kg = venueInfo && venueInfo.type === '5kg';
+  let total = 0;
+  otherTteokItems.forEach(item => {
+    const priceVal = prices[item.name];
+    if (!priceVal || !item.qty) return;
+    const qtyStr = String(item.qty).trim();
+    if (is5kg && typeof priceVal === 'object') {
+      const p5 = priceVal.price5 || 0;
+      if (qtyStr === '5kg') total += p5;
+      else if (qtyStr === '10kg') total += p5 * 2;
+      else if (qtyStr === '15kg') total += p5 * 3;
+      else if (qtyStr === '20kg') total += p5 * 4;
+    } else {
+      const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
+      const m = qtyStr.match(/^(\d+\.?\d*)/);
+      if (m) total += parseFloat(m[1]) * unitPrice;
+    }
+  });
+  document.getElementById('ot_priceProduct').value = Math.round(total);
+  calcOtherTotal();
+}
+
+function calcOtherTotal() {
+  const product = parseInt(document.getElementById('ot_priceProduct').value) || 0;
+  const delivery = parseInt(document.getElementById('ot_priceDelivery').value) || 0;
+  const discount = parseInt(document.getElementById('ot_priceDiscount').value) || 0;
+  const total = product + delivery - discount;
+  document.getElementById('ot_priceTotal').textContent = total.toLocaleString() + ' 원';
+}
+
+function selectOtherPay(btn, status) {
+  document.querySelectorAll('#panel-other .pay-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('ot_payStatus').value = status;
+}
+
+function submitOtherOrder() {
+  const venue = document.getElementById('ot_venueName').value;
+  const deliveryDate = document.getElementById('ot_deliveryDate').value;
+  if (!venue) { showToast('업체명을 선택해주세요.', 'error'); return; }
+  if (!deliveryDate) { showToast('배송일을 입력해주세요.', 'error'); return; }
+  const tteokType = otherTteokItems.map(i => i.qty ? `${i.name}(${i.qty})` : i.name).join(', ') || '미입력';
+  const order = {
+    id: 'OT' + Date.now(),
+    createdAt: new Date().toLocaleString('ko-KR'),
+    venueName: venue,
+    tteokType,
+    deliveryDate,
+    deliveryTime: document.getElementById('ot_deliveryTime').value,
+    priceProduct: parseInt(document.getElementById('ot_priceProduct').value) || 0,
+    priceDelivery: parseInt(document.getElementById('ot_priceDelivery').value) || 0,
+    priceDiscount: parseInt(document.getElementById('ot_priceDiscount').value) || 0,
+    priceTotal: parseInt((document.getElementById('ot_priceTotal').textContent || '0').replace(/[^0-9]/g, '')) || 0,
+    payStatus: document.getElementById('ot_payStatus').value || '미수금',
+    staffName: document.getElementById('ot_staffName').value,
+    memo: document.getElementById('ot_memo').value.trim(),
+    tteokItems: [...otherTteokItems],
+  };
+  sendToOtherSheet(order);
+  resetOtherForm();
+}
+
+function resetOtherForm() {
+  ['ot_venueName','ot_deliveryTime','ot_priceProduct','ot_priceDelivery','ot_priceDiscount','ot_memo','ot_staffName'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('ot_priceTotal').textContent = '0 원';
+  otherTteokItems = [];
+  renderOtherTteokList();
+  document.querySelectorAll('#panel-other .pay-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('ot_payStatus').value = '미수금';
+  document.getElementById('ot_tteokSelect').innerHTML = '<option value="">위에서 업체를 먼저 선택해주세요</option>';
+  updateOtherQtyUI();
+}
+
+// ── 시트 연동
+function sendToOtherSheet(order) {
+  otherOrders.unshift(order);
+  updateOtherStats(); renderOtherList();
+  showToast('⏳ 저장 중...', '');
+  if (!gasUrl) { showToast('⚠️ 구글 시트 미연결. 로컬에만 저장됩니다.', ''); return; }
+  gasPost({ action: 'save', sheet: 'other', data: order })
+    .then(data => {
+      if (data.success) { showToast('✅ 기타업체 주문 접수 완료!', 'success'); }
+      else {
+        otherOrders = otherOrders.filter(o => o.id !== order.id);
+        updateOtherStats(); renderOtherList();
+        showToast('❌ 저장 실패', 'error');
+      }
+    }).catch(() => {
+      otherOrders = otherOrders.filter(o => o.id !== order.id);
+      updateOtherStats(); renderOtherList();
+      showToast('❌ 저장 실패 - 다시 시도해주세요', 'error');
+    });
+}
+
+function loadOtherOrdersFromSheet(silent) {
+  if (!gasUrl) return Promise.resolve();
+  return gasGet({ action: 'getOrders', sheet: 'other' })
+    .then(data => {
+      if (data.success && data.orders) {
+        otherOrders = data.orders;
+        updateOtherStats(); renderOtherList();
+        // 개인주문 목록 기타업체 섹션도 갱신
+        if (document.getElementById('panel-list') && document.getElementById('panel-list').classList.contains('active')) {
+          renderList();
+        }
+      }
+    }).catch(() => {});
+}
+
+function deleteOtherOrder(id) {
+  if (!confirm('이 주문을 삭제하시겠습니까?')) return;
+  const backup = [...otherOrders];
+  otherOrders = otherOrders.filter(o => String(o.id) !== String(id));
+  updateOtherStats(); renderOtherList();
+  if (!gasUrl) return;
+  gasPost({ action: 'delete', sheet: 'other', id: String(id) })
+    .then(data => {
+      if (data.success) {
+        showToast('🗑 삭제됐어요.', '');
+        loadOtherOrdersFromSheet(true);
+      } else {
+        otherOrders = backup; updateOtherStats(); renderOtherList();
+        showToast('❌ 삭제 실패', 'error');
+      }
+    }).catch(() => {
+      otherOrders = backup; updateOtherStats(); renderOtherList();
+      showToast('❌ 삭제 실패', 'error');
+    });
+}
+
+// ── 목록 렌더
+function updateOtherStats() {
+  const today = getLocalDateStr();
+  const todayOrders = otherOrders.filter(o => o.deliveryDate === today);
+  const todaySales = todayOrders.reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
+  const unpaid = otherOrders.filter(o => o.payStatus === '미수금').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
+  const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  el('otstat-today', todayOrders.length);
+  el('otstat-sales', todaySales.toLocaleString());
+  el('otstat-total', otherOrders.length);
+  el('otstat-unpaid', unpaid.toLocaleString());
+}
+
+function renderOtherList() {
+  const tbody = document.getElementById('otherTableBody');
+  const empty = document.getElementById('otherEmptyState');
+  if (!tbody) return;
+  const dateFilter = document.getElementById('otFilterDate') ? document.getElementById('otFilterDate').value : '';
+  const venueFilter = document.getElementById('otFilterVenue') ? document.getElementById('otFilterVenue').value : '';
+  const search = document.getElementById('otSearchInput') ? document.getElementById('otSearchInput').value.trim() : '';
+  let list = [...otherOrders];
+  if (dateFilter) list = list.filter(o => o.deliveryDate === dateFilter);
+  if (venueFilter) list = list.filter(o => o.venueName === venueFilter);
+  if (search) list = list.filter(o => (o.venueName + o.tteokType + o.memo).includes(search));
+  if (list.length === 0) {
+    tbody.innerHTML = ''; empty.style.display = 'block'; return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = list.map(o => `
+    <tr>
+      <td>${o.deliveryDate || ''} ${o.deliveryTime || ''}</td>
+      <td style="font-weight:700;">${o.venueName || ''}</td>
+      <td style="font-size:12px;">${o.tteokType || ''}</td>
+      <td style="text-align:right;">${Number(o.priceTotal || 0).toLocaleString()}원</td>
+      <td><span class="pay-badge ${o.payStatus === '완료' ? 'paid' : 'unpaid'}">${o.payStatus || ''}</span></td>
+      <td>${o.staffName || ''}</td>
+      <td>
+        <button class="btn-small btn-danger" onclick="deleteOtherOrder('${o.id}')">삭제</button>
+      </td>
+    </tr>`).join('');
+}
+
+function clearOtherFilter() {
+  const d = document.getElementById('otFilterDate'); if (d) d.value = '';
+  const v = document.getElementById('otFilterVenue'); if (v) v.value = '';
+  const s = document.getElementById('otSearchInput'); if (s) s.value = '';
+  renderOtherList();
+}
+
+function initOtherSettings() {
+  renderOtherVenueList();
+  updateOtherVenueSelects();
+  renderOtherVenuePrices();
 }
 
 function initVenuePriceSettings() {
