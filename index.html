@@ -3037,7 +3037,11 @@ function getTteokUnitPrice(name, setType, unitType) {
 function loadTteokPriceSettings() {
   // 먼저 localStorage 기본값 적용
   const saved = localStorage.getItem('tteokPriceDB');
-  if (saved) { try { Object.assign(TTEOK_DB, JSON.parse(saved)); } catch(e){} }
+  if (saved) { try {
+    const parsed = JSON.parse(saved);
+    Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
+    Object.assign(TTEOK_DB, parsed);
+  } catch(e){} }
   const savedSet = localStorage.getItem('ehyeSetPrices');
   if (savedSet) { try { Object.assign(SET_DB['은혜세트'].prices, JSON.parse(savedSet)); } catch(e){} }
   loadTteokCategories();
@@ -3047,11 +3051,13 @@ function loadTteokPriceSettings() {
       if (!data.success) return;
       const d = data.data || {};
       if (d.tteokPriceDB) { try {
-        // Object.assign 대신 완전 덮어쓰기 → 새 떡 추가/삭제도 반영
         Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
         Object.assign(TTEOK_DB, d.tteokPriceDB);
         localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
-      } catch(e){} }
+        // 화면 갱신
+        if (typeof renderTteokAllList === 'function') renderTteokAllList();
+        if (typeof updateTteokSelects === 'function') updateTteokSelects();
+      } catch(e){ console.error('tteokPriceDB 로드 오류', e); } }
       if (d.priceSettings) { try {
         priceSettings = d.priceSettings;
         localStorage.setItem('tteokPriceSettings', JSON.stringify(priceSettings));
