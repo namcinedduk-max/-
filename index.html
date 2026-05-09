@@ -2064,6 +2064,45 @@
       <button class="btn-small" onclick="openCustomerLinkModal()" style="margin-bottom:8px;margin-left:8px;background:#f59e0b;color:#fff;border:none;">📱 고객 주문링크 생성</button>
     </div>
 
+    </div>
+
+    <!-- 회사 정보 설정 -->
+    <div class="form-card" style="margin-top:16px;">
+      <h3>🏢 회사 정보 설정</h3>
+      <p style="font-size:12px;color:var(--brown-light);margin-bottom:12px;">거래명세표에 자동으로 들어갈 회사 정보예요.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">상호명</label>
+          <input type="text" id="company_name" placeholder="예: 남씨네떡집" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">대표자명</label>
+          <input type="text" id="company_ceo" placeholder="예: 홍길동" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">사업자번호</label>
+          <input type="text" id="company_regno" placeholder="예: 123-45-67890" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">전화번호</label>
+          <input type="text" id="company_tel" placeholder="예: 042-000-0000" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">업태</label>
+          <input type="text" id="company_type" placeholder="예: 제조업" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">종목</label>
+          <input type="text" id="company_item" placeholder="예: 떡류" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:4px;">주소</label>
+          <input type="text" id="company_addr" placeholder="예: 대전시 ○○구 ○○로 123" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+      <button class="btn-small btn-primary" onclick="saveCompanyInfo()">💾 저장</button>
+    </div>
+
     <!-- 계좌번호 설정 -->
     <div class="form-card" style="margin-top:16px;">
       <h2>🏦 계좌번호 설정</h2>
@@ -3167,6 +3206,12 @@ function loadTteokPriceSettings() {
         try {
           venueSettings = d.venueSettings;
           localStorage.setItem('venueSettings', JSON.stringify(venueSettings));
+        } catch(e) {}
+      }
+      if (d.companyInfo) {
+        try {
+          localStorage.setItem('companyInfo', JSON.stringify(d.companyInfo));
+          loadCompanyInfo();
         } catch(e) {}
       }
       if (d.paymentRecords) {
@@ -6309,6 +6354,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadPriceSettings();
   loadLabelImgSettings();
   loadQuickFeeTable();
+  loadCompanyInfo();
   loadTteokPriceSettings();
   initDoeTteokSel();
   loadOrderCategories();
@@ -9373,6 +9419,197 @@ function confirmReject() {
   _nextPendingModal();
 }
 
+function saveCompanyInfo() {
+  const info = {
+    name: document.getElementById('company_name').value.trim(),
+    ceo: document.getElementById('company_ceo').value.trim(),
+    regno: document.getElementById('company_regno').value.trim(),
+    tel: document.getElementById('company_tel').value.trim(),
+    type: document.getElementById('company_type').value.trim(),
+    item: document.getElementById('company_item').value.trim(),
+    addr: document.getElementById('company_addr').value.trim(),
+  };
+  localStorage.setItem('companyInfo', JSON.stringify(info));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { companyInfo: info } }).catch(() => {});
+  showToast('✅ 회사 정보 저장됐어요!', 'success');
+}
+
+function loadCompanyInfo() {
+  const saved = localStorage.getItem('companyInfo');
+  if (!saved) return;
+  try {
+    const info = JSON.parse(saved);
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    set('company_name', info.name);
+    set('company_ceo', info.ceo);
+    set('company_regno', info.regno);
+    set('company_tel', info.tel);
+    set('company_type', info.type);
+    set('company_item', info.item);
+    set('company_addr', info.addr);
+  } catch(e) {}
+}
+
+function getCompanyInfo() {
+  try { return JSON.parse(localStorage.getItem('companyInfo') || '{}'); } catch(e) { return {}; }
+}
+
+// ============================================================
+// 거래명세표 출력
+// ============================================================
+function printInvoice(order, orderType) {
+  const c = getCompanyInfo();
+  const company = c.name || '남씨네떡집';
+  const ceo = c.ceo || '';
+  const regno = c.regno || '';
+  const tel = c.tel || '';
+  const addr = c.addr || '';
+  const bizType = c.type || '';
+  const bizItem = c.item || '';
+
+  // 거래처명 / 보관용 라벨 결정
+  let venueName = '';
+  let subInfo = '';
+  let copies = [];
+
+  if (orderType === 'funeral') {
+    venueName = order.funeralName || '';
+    subInfo = order.binsoLocation || '';
+    if (venueName === '대청장례식장') {
+      copies = [
+        { label: '상 주 보 관 용', bg: '#f5f5f5', color: '#333', border: '#ccc' },
+        { label: '대청장례식장 보관용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+        { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+      ];
+    } else {
+      copies = [
+        { label: '거 래 처 보 관 용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+        { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+      ];
+    }
+  } else if (orderType === 'wedding') {
+    venueName = order.weddingName || order.hallName || '';
+    subInfo = order.floor ? order.floor + '층' : '';
+    copies = [
+      { label: '거 래 처 보 관 용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+      { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+    ];
+  } else {
+    venueName = order.venueName || '';
+    subInfo = '';
+    copies = [
+      { label: '거 래 처 보 관 용', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+      { label: '우 리 보 관 용', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+    ];
+  }
+
+  // 품목 행 생성
+  const items = order.tteokItems && order.tteokItems.length > 0 ? order.tteokItems : [];
+  const totalAmount = Number(order.priceTotal) || 0;
+  const minRows = 8;
+  const itemRows = items.map(item => `
+    <tr>
+      <td style="border:0.5px solid #999;padding:4px 5px;">${item.name||''}</td>
+      <td style="border:0.5px solid #999;padding:4px 5px;text-align:center;">${item.qty||''}</td>
+      <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;"></td>
+      <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;"></td>
+    </tr>`).join('');
+
+  const emptyRows = Math.max(0, minRows - items.length);
+  const blankRows = Array(emptyRows).fill('<tr><td style="border:0.5px solid #999;padding:5px;">&nbsp;</td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td><td style="border:0.5px solid #999;padding:5px;"></td></tr>').join('');
+
+  // 명세서 1장 HTML 생성
+  const makeSlip = (copy) => `
+    <div style="padding:14px 12px;flex:1;min-width:0;">
+      <div style="text-align:center;margin-bottom:10px;">
+        <div style="font-size:15px;font-weight:bold;letter-spacing:3px;margin-bottom:5px;">거 래 명 세 표</div>
+        <div style="font-size:10px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 10px;display:inline-block;color:${copy.color};">${copy.label}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:8px;">
+        <tr>
+          <td style="border:0.5px solid #999;padding:3px 5px;width:50%;">
+            <div style="color:#666;font-size:8px;margin-bottom:2px;">공 급 자</div>
+            <div style="font-weight:bold;font-size:10px;">${company}</div>
+            <div style="color:#555;font-size:8px;">사업자: ${regno}</div>
+            <div style="color:#555;font-size:8px;">대표: ${ceo}</div>
+            <div style="color:#555;font-size:8px;">업태: ${bizType} / 종목: ${bizItem}</div>
+            <div style="color:#555;font-size:8px;">전화: ${tel}</div>
+            <div style="color:#555;font-size:8px;">${addr}</div>
+          </td>
+          <td style="border:0.5px solid #999;padding:3px 5px;width:50%;border-left:none;">
+            <div style="color:#666;font-size:8px;margin-bottom:2px;">공급받는자</div>
+            <div style="font-weight:bold;font-size:10px;">${venueName}</div>
+            ${subInfo ? `<div style="color:#555;font-size:8px;">${subInfo}</div>` : ''}
+            <div style="color:#555;font-size:8px;margin-top:6px;">납품일: ${order.deliveryDate||''}</div>
+            ${order.deliveryTime ? `<div style="color:#555;font-size:8px;">시간: ${order.deliveryTime}</div>` : ''}
+          </td>
+        </tr>
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:9px;">
+        <thead>
+          <tr style="background:#f0f0f0;">
+            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:35%;">품 목</th>
+            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:15%;">수량</th>
+            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:25%;">단 가</th>
+            <th style="border:0.5px solid #999;padding:4px 5px;text-align:center;width:25%;">금 액</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+          ${blankRows}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f5f5f5;">
+            <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;">합 계</td>
+            <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;">${totalAmount.toLocaleString()}</td>
+          </tr>
+        </tfoot>
+      </table>
+      ${order.memo ? `<div style="font-size:8px;color:#666;margin-top:5px;">메모: ${order.memo}</div>` : ''}
+      <div style="margin-top:16px;text-align:right;font-size:9px;color:#666;">
+        공급자 (인) ________________
+      </div>
+    </div>`;
+
+  // 3장이면 가로 3등분, 2장이면 가로 2등분
+  const is3 = copies.length === 3;
+  const slipStyle = is3
+    ? 'display:flex;flex-direction:row;'
+    : 'display:flex;flex-direction:row;';
+
+  const dividers = copies.map((copy, i) => {
+    const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
+    return `<div style="flex:1;min-width:0;${borderRight}">${makeSlip(copy)}</div>`;
+  }).join('');
+
+  const cutLabel = is3 ? '✂ 절취선 — A4 가로 3등분 절취' : '✂ 절취선 — A4 세로 반으로 절취';
+
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>거래명세표 - ${venueName}</title>
+<style>
+  @page { size: A4; margin: 8mm; }
+  body { margin:0; padding:0; font-family: '맑은 고딕', sans-serif; }
+  .page { width:100%; }
+  .slips { display:flex; flex-direction:row; width:100%; border:0.5px solid #ccc; }
+  .cut-line { text-align:center; font-size:9px; color:#999; padding:4px; border-top:1px dashed #aaa; margin-top:0; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="slips">${dividers}</div>
+    <div class="cut-line">${cutLabel}</div>
+  </div>
+  <script>window.onload = function(){ window.print(); }<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+
 function saveBankInfo() {
   const info = {
     bankName: document.getElementById('bankName').value.trim(),
@@ -9684,7 +9921,10 @@ function renderFuneralList() {
       <td style="font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
       <td>${payBadge}</td>
       <td style="font-size:12px;">${o.staffName}</td>
-      <td><button class="btn-small btn-danger" onclick="event.stopPropagation();deleteFuneralOrder(${o.id})" style="padding:4px 10px;font-size:11px;">삭제</button></td>
+      <td style="white-space:nowrap;">
+        <button onclick="event.stopPropagation();printInvoice(funeralOrders.find(x=>String(x.id)===String('${o.id}')), 'funeral')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
+        <button class="btn-small btn-danger" onclick="event.stopPropagation();deleteFuneralOrder(${o.id})" style="padding:4px 10px;font-size:11px;">삭제</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -10478,6 +10718,7 @@ function renderWeddingList() {
       <td>${statusBadge(o.payStatus)}</td>
       <td>${o.staffName || ''}</td>
       <td>
+        <button onclick="printInvoice(weddingOrders.find(x=>String(x.id)===String('${o.id}')), 'wedding')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
         <button onclick="deleteWeddingOrder('${o.id}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
       </td>
     </tr>`).join('');
@@ -11143,6 +11384,7 @@ function renderOtherList() {
       <td><span class="pay-badge ${o.payStatus === '완료' ? 'paid' : 'unpaid'}">${o.payStatus || ''}</span></td>
       <td>${o.staffName || ''}</td>
       <td>
+        <button onclick="printInvoice((otherOrders||[]).find(x=>String(x.id)===String('${o.id}')), 'other')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
         <button class="btn-small btn-danger" onclick="deleteOtherOrder('${o.id}')">삭제</button>
       </td>
     </tr>`).join('');
