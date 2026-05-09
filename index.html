@@ -2196,17 +2196,11 @@
       <p style="color:var(--brown-light);font-size:13px;margin-bottom:20px;">설정한 단가는 이 기기에 저장돼요. 떡 선택 후 수량 입력하면 금액이 자동 계산됩니다.</p>
 
       <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-        <button class="settings-tab-btn active" id="stab-personal" onclick="switchSettingsTab('personal')">👤 개인고객 단가</button>
-        <button class="settings-tab-btn" id="stab-funeral" onclick="switchSettingsTab('funeral')">🏛️ 장례식장 단가</button>
+        <button class="settings-tab-btn active" id="stab-funeral" onclick="switchSettingsTab('funeral')">🏛️ 장례식장 단가</button>
         <button class="settings-tab-btn" id="stab-wedding-price" onclick="switchSettingsTab('wedding-price')">💒 웨딩홀 단가</button>
         <button class="settings-tab-btn" id="stab-other-price" onclick="switchSettingsTab('other-price')">🏢 기타업체 단가</button>
         <button class="settings-tab-btn" id="stab-quickfee" onclick="switchSettingsTab('quickfee')">📦 퀵비 요금표</button>
         <button class="settings-tab-btn" id="stab-tteokprice" onclick="switchSettingsTab('tteokprice')">🍡 떡 단가</button>
-      </div>
-
-      <div id="settings-personal">
-        <div id="priceList-personal" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
-        <button class="btn-small btn-primary" onclick="addPriceItem('personal')">+ 떡 종류 추가</button>
       </div>
 
       <div id="settings-funeral" style="display:none;">
@@ -3052,7 +3046,22 @@ function loadTteokPriceSettings() {
     gasGet({ action: 'getTteokSettings' }).then(function(data) {
       if (!data.success) return;
       const d = data.data || {};
-      if (d.tteokPriceDB) { try { Object.assign(TTEOK_DB, d.tteokPriceDB); } catch(e){} }
+      if (d.tteokPriceDB) { try {
+        // Object.assign 대신 완전 덮어쓰기 → 새 떡 추가/삭제도 반영
+        Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
+        Object.assign(TTEOK_DB, d.tteokPriceDB);
+        localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
+      } catch(e){} }
+      if (d.priceSettings) { try {
+        priceSettings = d.priceSettings;
+        localStorage.setItem('tteokPriceSettings', JSON.stringify(priceSettings));
+        renderPriceSettings();
+      } catch(e){} }
+      if (d.quickFeeTable) { try {
+        Object.keys(QUICK_FEE_TABLE).forEach(function(k){ delete QUICK_FEE_TABLE[k]; });
+        Object.assign(QUICK_FEE_TABLE, d.quickFeeTable);
+        localStorage.setItem('quickFeeTable', JSON.stringify(QUICK_FEE_TABLE));
+      } catch(e){} }
       if (d.ehyeSetPrices) { try { Object.assign(SET_DB['은혜세트'].prices, d.ehyeSetPrices); } catch(e){} }
       if (d.tteokCategories) { try { window.TTEOK_CATEGORIES = d.tteokCategories; } catch(e){} }
       if (d.pinkBoxFee !== undefined) SET_DB['분홍세트'].boxFee = d.pinkBoxFee;
@@ -5459,7 +5468,15 @@ function loadQuickFeeTable() {
 
 function saveQuickFeeSettings() {
   localStorage.setItem('quickFeeTable', JSON.stringify(QUICK_FEE_TABLE));
-  showToast('✅ 퀵비 요금표가 저장됐어요!', 'success');
+  if (gasUrl) {
+    gasPost({ action: 'saveTteokSettings', data: { quickFeeTable: QUICK_FEE_TABLE } })
+      .then(function(res) {
+        if (res.success) showToast('✅ 퀵비 요금표 저장됐어요!', 'success');
+        else showToast('❌ 저장 실패', 'error');
+      }).catch(function(){ showToast('❌ 저장 실패', 'error'); });
+  } else {
+    showToast('✅ 퀵비 요금표가 저장됐어요!', 'success');
+  }
 }
 
 function renderQuickFeeList() {
@@ -5907,7 +5924,15 @@ function loadPriceSettings() {
 
 function savePriceSettings() {
   localStorage.setItem('tteokPriceSettings', JSON.stringify(priceSettings));
-  showToast('✅ 단가 설정이 저장되었습니다!', 'success');
+  if (gasUrl) {
+    gasPost({ action: 'saveTteokSettings', data: { priceSettings } })
+      .then(function(res) {
+        if (res.success) showToast('✅ 단가 설정 저장됐어요!', 'success');
+        else showToast('❌ 저장 실패', 'error');
+      }).catch(function(){ showToast('❌ 저장 실패', 'error'); });
+  } else {
+    showToast('✅ 단가 설정이 저장되었습니다!', 'success');
+  }
   updateTteokSelects();
 }
 
@@ -5921,11 +5946,11 @@ function resetPriceSettings() {
   renderPriceSettings();
 }
 
-let currentSettingsTab = 'personal';
+let currentSettingsTab = 'funeral';
 
 function switchSettingsTab(type) {
   currentSettingsTab = type;
-  const tabs = ['personal', 'funeral', 'wedding-price', 'other-price', 'quickfee', 'tteokprice'];
+  const tabs = ['funeral', 'wedding-price', 'other-price', 'quickfee', 'tteokprice'];
   tabs.forEach(t => {
     const content = document.getElementById('settings-' + t);
     const btn = document.getElementById('stab-' + t);
