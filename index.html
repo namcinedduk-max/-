@@ -7138,13 +7138,14 @@ function loadProductionPlan() {
   });
 
   // ── 웨딩홀별 합산 ────────────────────────────────────────────
-  // { 홀이름: { 떡이름: kg합계 } }
-  const weddingByHall = {};
-  const weddingTotalSummary = {};
+  // 카드용: { 홀이름: [{ name, floor, baseName, kg }] } - 층 정보 유지
+  // 합계용: { 떡이름: kg합계 } - 층 정보 제거 후 합산
+  const weddingByHall = {};      // 카드용 (층별 표시)
+  const weddingTotalSummary = {}; // 합계용 (떡 이름만)
 
   weddingOrdersToday.forEach(o => {
     const hallName = o.weddingName || o.hallName || '웨딩홀';
-    if (!weddingByHall[hallName]) weddingByHall[hallName] = {};
+    if (!weddingByHall[hallName]) weddingByHall[hallName] = [];
 
     const items = o.tteokItems && o.tteokItems.length > 0
       ? o.tteokItems
@@ -7157,8 +7158,16 @@ function loadProductionPlan() {
       if (!item.name) return;
       const kgM = String(item.qty || '').match(/^([\d.]+)\s*(kg|키로)?$/);
       const kg = kgM ? parseFloat(kgM[1]) : 0;
-      weddingByHall[hallName][item.name] = (weddingByHall[hallName][item.name] || 0) + kg;
-      weddingTotalSummary[item.name] = (weddingTotalSummary[item.name] || 0) + kg;
+      const realName = item.baseName || item.name.replace(/^\d+층\s+/, '').trim();
+      const floor = item.floor || '';
+
+      // 카드용: 층별로 항목 추가 (같은 층+떡이면 합산)
+      const existing = weddingByHall[hallName].find(x => x.name === item.name && x.floor === floor);
+      if (existing) existing.kg += kg;
+      else weddingByHall[hallName].push({ name: item.name, floor, baseName: realName, kg });
+
+      // 합계용: 떡 이름으로만 합산
+      weddingTotalSummary[realName] = (weddingTotalSummary[realName] || 0) + kg;
     });
   });
 
@@ -7170,14 +7179,22 @@ function loadProductionPlan() {
   }));
 
   // ── 웨딩홀 카드 HTML ─────────────────────────────────────────
-  const hallCards = Object.entries(weddingByHall).map(([hall, items]) => `
-    <div style="background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:130px;">
+  const hallCards = Object.entries(weddingByHall).map(([hall, items]) => {
+    const sorted = [...items].sort((a, b) => (a.floor||'zzz').localeCompare(b.floor||'zzz', 'ko'));
+    const rows = sorted.map(item =>
+      `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #f0e8dc;font-size:12px;align-items:center;">
+        <span>
+          ${item.floor ? `<span style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;margin-right:3px;font-weight:700;">${item.floor}</span>` : ''}${item.baseName}
+        </span>
+        <span style="font-weight:700;white-space:nowrap;">${item.kg % 1 === 0 ? item.kg : item.kg}kg</span>
+      </div>`
+    ).join('');
+    return `<div style="background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:130px;">
       <div style="font-size:11px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);">${hall}</div>
-      ${Object.entries(items).map(([tteok, kg]) => `
-        <div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid #f0e8dc;font-size:13px;">
-          <span>${tteok}</span><span style="font-weight:700;">${kg % 1 === 0 ? kg : kg}kg</span>
-        </div>`).join('')}
-    </div>`).join('');
+      ${rows}
+    </div>`;
+  }).join('');
+
 
   const weddingTotalRows = Object.entries(weddingTotalSummary).map(([tteok, kg]) => `
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:14px;">
