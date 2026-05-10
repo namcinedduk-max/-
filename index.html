@@ -1635,6 +1635,7 @@
         <thead>
           <tr>
             <th>No.</th>
+            <th onclick="sortFuneralOrders('createdAt')" style="cursor:pointer;">접수시간 <span id="fsort-createdAt"></span></th>
             <th onclick="sortFuneralOrders('funeralName')" style="cursor:pointer;">장례식장 <span id="fsort-funeralName"></span></th>
             <th onclick="sortFuneralOrders('binsoLocation')" style="cursor:pointer;">빈소 <span id="fsort-binsoLocation"></span></th>
             <th onclick="sortFuneralOrders('deceasedName')" style="cursor:pointer;">고인명 <span id="fsort-deceasedName"></span></th>
@@ -7556,7 +7557,11 @@ function switchTab(tab) {
       loadOtherOrdersFromSheet(true);
     } else { updateStats(); renderList(); }
   }
-  if (tab === 'funeralList') { if (gasUrl) loadFuneralOrdersFromSheet(false); else { updateFuneralStats(); renderFuneralList(); } }
+  if (tab === 'funeralList') {
+    const fd = document.getElementById('fFilterDate');
+    if (fd && !fd.value) fd.value = getLocalDateStr();
+    if (gasUrl) loadFuneralOrdersFromSheet(false); else { updateFuneralStats(); renderFuneralList(); }
+  }
   if (tab === 'settlement') { initSettlementTab(); }
   if (tab === 'company') { loadCompanyInfo(); loadCompanySeal(); }
   if (tab === 'production') {
@@ -9809,7 +9814,7 @@ function printInvoice(order, orderType) {
           </td>
           <td style="border:0.5px solid #999;border-left:none;padding:3px 5px;width:50%;vertical-align:top;">
             <div style="color:#888;font-size:7px;margin-bottom:1px;">공급받는자</div>
-            <div style="font-weight:bold;font-size:10px;">${venueName}${subInfo ? ' / ' + subInfo : ''}</div>
+            <div style="font-weight:bold;font-size:10px;">${venueName}${subInfo ? ' / ' + subInfo : ''}${order.deceasedName ? ' / 故 '+order.deceasedName : ''}</div>
             ${order.deceasedName ? `<div style="font-size:7px;color:#555;font-weight:700;">고인: ${order.deceasedName}</div>` : ''}
             ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
             ${venueCeo ? `<div style="font-size:7px;color:#555;">대표: ${venueCeo}</div>` : ''}
@@ -10259,6 +10264,7 @@ function renderFuneralList() {
     const nameColor = o.funeralName === '대청장례식장' ? 'color:#1565C0;' : o.funeralName === '충대장례식장' ? 'color:#E65100;' : '';
     return `<tr onclick="openFuneralModal(${o.id})" style="cursor:pointer;${funeralColor}">
       <td style="color:var(--brown-light);font-size:12px;">#${i+1}</td>
+      <td style="font-size:11px;color:#666;white-space:nowrap;">${String(o.createdAt||'-').slice(0,16)}</td>
       <td><strong style="${nameColor}">${o.funeralName||o.receiverName}</strong></td>
       <td>${o.binsoLocation||'-'}</td>
       <td>${o.deceasedName ? `<span style="font-weight:700;color:var(--brown-deep);">${o.deceasedName}</span>` : '-'}</td>
