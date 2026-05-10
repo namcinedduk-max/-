@@ -7558,7 +7558,9 @@ function switchTab(tab) {
   }
   if (tab === 'funeralList') {
     const fd = document.getElementById('fFilterDate');
+    const ft = document.getElementById('fFilterDateType');
     if (fd && !fd.value) fd.value = getLocalDateStr();
+    if (ft && !ft.value) ft.value = 'delivery';
     if (gasUrl) loadFuneralOrdersFromSheet(false); else { updateFuneralStats(); renderFuneralList(); }
   }
   if (tab === 'settlement') { initSettlementTab(); }
@@ -10219,8 +10221,7 @@ function renderFuneralList() {
       if (filterType === 'delivery') {
         matchDate = normalizeDateStr(String(o.deliveryDate||'')) === filterDate;
       } else {
-        const m = String(o.createdAt).match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
-        if (m) matchDate = (m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0')) === filterDate;
+        matchDate = normalizeDateStr(String(o.createdAt||'')) === filterDate;
       }
     }
     const matchSearch = !search ||
@@ -10695,17 +10696,27 @@ function sendToFuneralSheet(order) {
     showToast('✅ 장례식장 주문 접수! (로컬 저장)', 'success');
     return;
   }
+  // 즉시 로컬에 추가해서 목록에 바로 보이게
+  funeralOrders.unshift(order);
+  updateFuneralStats(); renderFuneralList();
   showToast('📤 저장 중...', '');
   gasFuneralPost({ action: 'save', data: order })
     .then(data => {
       if (data.success) {
         showToast('✅ 장례식장 주문 접수 완료!', 'success');
-        loadFuneralOrdersFromSheet();
+        loadFuneralOrdersFromSheet(false, true); // 강제 새로고침
       } else {
         showToast('❌ 저장 실패: ' + (data.error||''), 'error');
+        // 실패 시 로컬에서 제거
+        funeralOrders = funeralOrders.filter(o => String(o.id) !== String(order.id));
+        updateFuneralStats(); renderFuneralList();
       }
     })
-    .catch(() => showToast('❌ 저장 실패', 'error'));
+    .catch(() => {
+      showToast('❌ 저장 실패', 'error');
+      funeralOrders = funeralOrders.filter(o => String(o.id) !== String(order.id));
+      updateFuneralStats(); renderFuneralList();
+    });
 }
 
 function sendToSheet(order) {
