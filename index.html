@@ -11142,10 +11142,10 @@ function applyPresetKg() {
   const area = document.getElementById('w_presetKgArea');
   if (!area) return;
   const inputs = area.querySelectorAll('input[data-name]');
-  // 기존 preset 항목 제거
   const hallName = (document.getElementById('w_weddingName')||{}).value || '';
   const preset = weddingHallPresets[hallName] || [];
   const presetNames = preset.map(p => (p.floor||'') + '__' + p.name);
+  // 기존 preset 항목 제거 후 다시 추가
   weddingTteokItems = weddingTteokItems.filter(t => {
     const key = (t.floor||'') + '__' + (t.baseName||t.name);
     return !presetNames.includes(key);
@@ -11155,9 +11155,12 @@ function applyPresetKg() {
     if (!kg || kg <= 0) return;
     const floor = inp.dataset.floor || '';
     const name = inp.dataset.name;
-    const qtyStr = (kg % 1 === 0 ? kg : kg) + 'kg';
+    const qtyStr = (kg % 1 === 0 ? String(kg) : String(kg)) + 'kg';
     const fullName = floor ? floor + ' ' + name : name;
-    weddingTteokItems.push({ name: fullName, qty: qtyStr, floor, baseName: name });
+    // 단가 자동 계산
+    const unitPrice = (venuePrices['wedding'] || {})[name] || 0;
+    const price = unitPrice ? Math.round(unitPrice * kg) : 0;
+    weddingTteokItems.push({ name: fullName, qty: qtyStr, floor, baseName: name, price });
   });
   renderWeddingTteokList();
   calcVenuePrice('wedding');
@@ -11192,14 +11195,20 @@ function onPresetHallSelect() {
 function addPresetItemRow(name='', floor='') {
   const container = document.getElementById('presetItemInputs');
   if (!container) return;
-  const idx = container.children.length;
+  // 웨딩홀 단가에 등록된 떡 목록 가져오기
+  const weddingTteoks = Object.keys(venuePrices['wedding'] || {});
+  const options = weddingTteoks.length > 0
+    ? weddingTteoks.map(t => `<option value="${t}"${t===name?' selected':''}>${t}</option>`).join('')
+    : `<option value="${name}">${name||'(단가설정에 떡을 먼저 등록하세요)'}</option>`;
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;gap:6px;align-items:center;';
   row.innerHTML = `
     <input type="text" placeholder="층 (예: 2층)" value="${floor}"
       style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" class="preset-floor-input">
-    <input type="text" placeholder="떡 이름" value="${name}"
-      style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" class="preset-name-input">
+    <select style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;" class="preset-name-input">
+      <option value="">-- 떡 선택 --</option>
+      ${options}
+    </select>
     <button type="button" onclick="this.parentNode.remove()"
       style="padding:6px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:8px;font-size:12px;cursor:pointer;">✕</button>`;
   container.appendChild(row);
