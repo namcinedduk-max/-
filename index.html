@@ -10453,6 +10453,8 @@ function initEditModalTteok(order, venueType) {
   efUpdateTteokSelect(venueName, venueType);
   efUpdateQtyUI(venueName, venueType);
   efRenderTteokList();
+  // 모달 열릴 때 단가 자동 재계산
+  setTimeout(() => efCalcPrice(), 50);
 }
 
 function efUpdateTteokSelect(venueName, venueType) {
@@ -11701,7 +11703,10 @@ function saveWeddingModalEdit() {
   // floor는 품목별 층으로 관리
   o.deliveryDate = (document.getElementById('ew_deliveryDate')||{}).value || o.deliveryDate;
   o.deliveryTime = deliveryTime;
-  o.priceProduct = p; o.priceDelivery = d; o.priceDiscount = dis; o.priceTotal = p+d-dis;
+  o.priceProduct = isNaN(p) ? o.priceProduct : p;
+  o.priceDelivery = isNaN(d) ? o.priceDelivery : d;
+  o.priceDiscount = isNaN(dis) ? o.priceDiscount : dis;
+  o.priceTotal = o.priceProduct + o.priceDelivery - o.priceDiscount;
   o.payStatus = (document.getElementById('ew_payStatus')||{}).value || o.payStatus;
   o.memo = (document.getElementById('ew_memo')||{}).value?.trim() || '';
   o.staffName = (document.getElementById('ew_staffName')||{}).value || o.staffName;
