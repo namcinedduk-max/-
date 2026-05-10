@@ -2191,10 +2191,10 @@
     <span class="kw">var</span> isFuneral = params.sheet === <span class="str">"funeral"</span>;
 
     <span class="kw">if</span> (isFuneral) {
-      <span class="kw">var</span> sheet = <span class="fn">getOrCreateSheet</span>(FUNERAL_SHEET_NAME, [<span class="str">"id"</span>,<span class="str">"접수시각"</span>,<span class="str">"장례식장"</span>,<span class="str">"빈소위치"</span>,<span class="str">"떡종류"</span>,<span class="str">"배송일"</span>,<span class="str">"배송시간"</span>,<span class="str">"상품금액"</span>,<span class="str">"배송비"</span>,<span class="str">"할인"</span>,<span class="str">"총금액"</span>,<span class="str">"결제상태"</span>,<span class="str">"담당직원"</span>]);
+      <span class="kw">var</span> sheet = <span class="fn">getOrCreateSheet</span>(FUNERAL_SHEET_NAME, [<span class="str">"id"</span>,<span class="str">"접수시각"</span>,<span class="str">"장례식장"</span>,<span class="str">"빈소위치"</span>,<span class="str">"고인명"</span>,<span class="str">"떡종류"</span>,<span class="str">"배송일"</span>,<span class="str">"배송시간"</span>,<span class="str">"상품금액"</span>,<span class="str">"배송비"</span>,<span class="str">"할인"</span>,<span class="str">"총금액"</span>,<span class="str">"결제상태"</span>,<span class="str">"담당직원"</span>]);
       <span class="kw">if</span> (params.action === <span class="str">"save"</span>) {
         <span class="kw">var</span> d = params.data;
-        sheet.<span class="fn">appendRow</span>([d.id,d.createdAt,d.funeralName,d.binsoLocation,d.tteokType,d.deliveryDate,d.deliveryTime,d.priceProduct||0,d.priceDelivery||0,d.priceDiscount||0,d.priceTotal||0,d.payStatus,d.staffName]);
+        sheet.<span class="fn">appendRow</span>([d.id,d.createdAt,d.funeralName,d.binsoLocation,d.deceasedName||<span class="str">''</span>,d.tteokType,d.deliveryDate,d.deliveryTime,d.priceProduct||0,d.priceDelivery||0,d.priceDiscount||0,d.priceTotal||0,d.payStatus,d.staffName]);
       } <span class="kw">else if</span> (params.action === <span class="str">"delete"</span>) {
         <span class="fn">deleteRow</span>(sheet, params.id);
       }
@@ -2217,8 +2217,8 @@
     <span class="kw">if</span> (e.parameter.action === <span class="str">"getOrders"</span>) {
       <span class="kw">var</span> sheet, cols;
       <span class="kw">if</span> (isFuneral) {
-        sheet = <span class="fn">getOrCreateSheet</span>(FUNERAL_SHEET_NAME,[<span class="str">"id"</span>,<span class="str">"접수시각"</span>,<span class="str">"장례식장"</span>,<span class="str">"빈소위치"</span>,<span class="str">"떡종류"</span>,<span class="str">"배송일"</span>,<span class="str">"배송시간"</span>,<span class="str">"상품금액"</span>,<span class="str">"배송비"</span>,<span class="str">"할인"</span>,<span class="str">"총금액"</span>,<span class="str">"결제상태"</span>,<span class="str">"담당직원"</span>]);
-        cols = 13;
+        sheet = <span class="fn">getOrCreateSheet</span>(FUNERAL_SHEET_NAME,[<span class="str">"id"</span>,<span class="str">"접수시각"</span>,<span class="str">"장례식장"</span>,<span class="str">"빈소위치"</span>,<span class="str">"고인명"</span>,<span class="str">"떡종류"</span>,<span class="str">"배송일"</span>,<span class="str">"배송시간"</span>,<span class="str">"상품금액"</span>,<span class="str">"배송비"</span>,<span class="str">"할인"</span>,<span class="str">"총금액"</span>,<span class="str">"결제상태"</span>,<span class="str">"담당직원"</span>]);
+        cols = 14;
       } <span class="kw">else</span> {
         sheet = <span class="fn">getOrCreateSheet</span>(SHEET_NAME,[<span class="str">"id"</span>,<span class="str">"접수시각"</span>,<span class="str">"배송일"</span>,<span class="str">"배송시간"</span>,<span class="str">"받는분"</span>,<span class="str">"받는분 전화"</span>,<span class="str">"보내는분"</span>,<span class="str">"보내는분 전화"</span>,<span class="str">"떡종류"</span>,<span class="str">"배송지"</span>,<span class="str">"상품금액"</span>,<span class="str">"배송비"</span>,<span class="str">"할인"</span>,<span class="str">"총금액"</span>,<span class="str">"결제방법"</span>,<span class="str">"결제상태"</span>,<span class="str">"담당직원"</span>]);
         cols = 17;
@@ -2227,7 +2227,7 @@
       <span class="kw">if</span> (last < 2) <span class="kw">return</span> <span class="fn">jsonOut</span>({success:<span class="kw">true</span>,orders:[]});
       <span class="kw">var</span> rows = sheet.<span class="fn">getRange</span>(2,1,last-1,cols).<span class="fn">getValues</span>();
       <span class="kw">var</span> orders = rows.<span class="fn">map</span>(<span class="kw">function</span>(r){
-        <span class="kw">if</span>(isFuneral) <span class="kw">return</span> {id:r[0],createdAt:r[1],funeralName:r[2],binsoLocation:r[3],tteokType:r[4],deliveryDate:r[5],deliveryTime:r[6],priceProduct:r[7],priceDelivery:r[8],priceDiscount:r[9],priceTotal:r[10],payStatus:r[11],staffName:r[12]};
+        <span class="kw">if</span>(isFuneral) <span class="kw">return</span> {id:r[0],createdAt:r[1],funeralName:r[2],binsoLocation:r[3],deceasedName:r[4],tteokType:r[5],deliveryDate:r[6],deliveryTime:r[7],priceProduct:r[8],priceDelivery:r[9],priceDiscount:r[10],priceTotal:r[11],payStatus:r[12],staffName:r[13]};
         <span class="kw">return</span> {id:r[0],createdAt:r[1],deliveryDate:r[2],deliveryTime:r[3],receiverName:r[4],receiverPhone:r[5],senderName:r[6],senderPhone:r[7],tteokType:r[8],deliveryAddr1:r[9],deliveryAddr2:r[10]||'',labelText:r[11]||'',memo:r[12],priceProduct:r[13],priceDelivery:r[14],priceDiscount:r[15],priceTotal:r[16],payMethod:r[17],payStatus:r[18],staffName:r[19],deliveryMethod:r[20]||'배송',linkCode:r[21]||''};
       }).<span class="fn">reverse</span>();
       <span class="kw">return</span> <span class="fn">jsonOut</span>({success:<span class="kw">true</span>,orders:orders});
