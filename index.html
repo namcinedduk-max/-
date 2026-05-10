@@ -1689,6 +1689,7 @@
           <div class="tteok-list" id="w_tteokList"></div>
           <div class="tteok-add-row">
             <div class="tteok-add-row-inputs">
+              <input type="text" id="w_tteokFloor" placeholder="층 (예: 2층)" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
               <select id="w_tteokSelect">
                 <option value="">-- 목록에서 선택 --</option>
               </select>
@@ -8427,12 +8428,27 @@ function renderList() {
         </div>
         <div style="display:flex;flex-wrap:wrap;background:#fff;">
           ${todayWeddingOrders.map(o => {
-            const items = (o.tteokItems && o.tteokItems.length > 0)
-              ? o.tteokItems.map(t => `<div style="font-size:12px;color:var(--text-mid);padding:1px 0;">${t.name}${t.qty ? ' <span style="color:#9ca3af;">'+t.qty+'</span>' : ''}</div>`).join('')
-              : String(o.tteokType||'-').split(',').map(t => `<div style="font-size:12px;color:var(--text-mid);padding:1px 0;">${t.trim()}</div>`).join('');
-            return `<div onclick="switchTab('weddingList')" style="cursor:pointer;border-right:1px solid #e0e7ff;border-bottom:1px solid #e0e7ff;padding:10px 14px;min-width:130px;flex:1;">
-              <div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:5px;">${o.weddingName||o.hallName||'-'}${o.floor ? ' <span style="font-size:11px;font-weight:400;color:#6b7280;">'+o.floor+'층</span>' : ''}</div>
-              ${items}
+            const tteokItems = o.tteokItems && o.tteokItems.length > 0 ? o.tteokItems : [];
+            let itemsHtml = '';
+            if (tteokItems.length > 0) {
+              const floorMap = {};
+              tteokItems.forEach(t => {
+                const floor = t.floor || '';
+                if (!floorMap[floor]) floorMap[floor] = [];
+                floorMap[floor].push((t.baseName||t.name) + (t.qty ? ' '+t.qty : ''));
+              });
+              const sorted = Object.keys(floorMap).sort((a,b) => a ? (b ? a.localeCompare(b,'ko') : -1) : 1);
+              itemsHtml = sorted.map(floor =>
+                `<div style="font-size:12px;color:var(--text-mid);padding:1px 0;">` +
+                (floor ? `<b style="color:#1d4ed8;">${floor}</b> — ` : '') +
+                floorMap[floor].join(' / ') + `</div>`
+              ).join('');
+            } else {
+              itemsHtml = `<div style="font-size:12px;color:var(--text-mid);">${o.tteokType||'-'}</div>`;
+            }
+            return `<div onclick="switchTab('weddingList')" style="cursor:pointer;border-right:1px solid var(--border);padding:0 12px;min-width:140px;">
+              <div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:5px;">${o.weddingName||o.hallName||'-'}</div>
+              ${itemsHtml}
               <div style="font-size:11px;color:#9ca3af;margin-top:5px;">${normalizeDateStr(String(o.deliveryDate||''))} · ${(Number(o.priceTotal)||0).toLocaleString()}원</div>
             </div>`;
           }).join('')}
@@ -10951,14 +10967,18 @@ let weddingSortDir = 1;
 function addWeddingTteokItem() {
   const sel = document.getElementById('w_tteokSelect');
   const qty = document.getElementById('w_tteokQty').value.trim();
+  const floor = (document.getElementById('w_tteokFloor')||{}).value?.trim() || '';
   const name = sel.value;
   if (!name) { showToast('떡 종류를 선택해주세요.', 'error'); return; }
   if (!qty) { showToast('kg을 입력해주세요.', 'error'); return; }
   const qtyStr = parseFloat(qty) % 1 === 0 ? qty + 'kg' : parseFloat(qty) + 'kg';
-  weddingTteokItems.push({ name, qty: qtyStr });
+  const fullName = floor ? floor + ' ' + name : name;
+  weddingTteokItems.push({ name: fullName, qty: qtyStr, floor: floor, baseName: name });
   renderWeddingTteokList();
   sel.value = '';
   document.getElementById('w_tteokQty').value = '';
+  const floorEl = document.getElementById('w_tteokFloor');
+  // 층은 유지 (같은 층에 여러 떡 추가 편의)
   calcVenuePrice('wedding');
 }
 
@@ -10971,10 +10991,17 @@ function removeWeddingTteokItem(i) {
 function renderWeddingTteokList() {
   const el = document.getElementById('w_tteokList');
   if (!el) return;
-  el.innerHTML = weddingTteokItems.map((t, i) =>
-    `<div class="tteok-item">${t.name}${t.qty ? ' ' + t.qty : ''} <button onclick="removeWeddingTteokItem(${i})">✕</button></div>`
+  const sorted = [...weddingTteokItems].map((t, i) => ({ ...t, origIdx: i }))
+    .sort((a, b) => (a.floor||'zzz').localeCompare(b.floor||'zzz', 'ko'));
+  el.innerHTML = sorted.map(t =>
+    `<div style="display:flex;align-items:center;gap:6px;background:#f9fafb;border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin-bottom:4px;">
+      ${t.floor ? `<span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-weight:700;">${t.floor}</span>` : ''}
+      <span style="flex:1;font-size:12px;">🍡 ${t.baseName||t.name} <b>${t.qty}</b></span>
+      <button onclick="removeWeddingTteokItem(${t.origIdx})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;">✕</button>
+    </div>`
   ).join('');
 }
+
 
 function w_deliveryTimeUpdate() {
   const type = document.getElementById('w_deliveryTime-type').value;
