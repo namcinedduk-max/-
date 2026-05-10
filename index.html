@@ -11228,6 +11228,13 @@ function saveHallPreset() {
   showToast('✅ ' + hall + ' 떡 목록 저장됐어요!', 'success');
 }
 
+let _presetOpenHalls = {};
+
+function togglePresetHall(hall) {
+  _presetOpenHalls[hall] = !_presetOpenHalls[hall];
+  renderWeddingPresetList();
+}
+
 function renderWeddingPresetList() {
   const el = document.getElementById('weddingPresetList');
   if (!el) return;
@@ -11238,19 +11245,25 @@ function renderWeddingPresetList() {
   }
   el.innerHTML = halls.map(hall => {
     const items = weddingHallPresets[hall] || [];
+    const isOpen = !!_presetOpenHalls[hall];
     const tags = items.map(t =>
       `<span style="font-size:11px;background:#EEEDFE;color:#3C3489;border-radius:20px;padding:2px 8px;display:inline-flex;gap:3px;">${t.floor ? '<b>'+t.floor+'</b>' : ''}${t.name}</span>`
     ).join('');
-    return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:13px;font-weight:700;color:var(--brown-deep);">${hall}</span>
-        <button onclick="editHallPreset('${hall}')" style="font-size:11px;padding:3px 10px;background:var(--brown-pale);color:var(--brown-deep);border:none;border-radius:6px;cursor:pointer;">수정</button>
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:2px;">
+      <div onclick="togglePresetHall('${hall}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;user-select:none;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;font-weight:700;color:var(--brown-deep);">${hall}</span>
+          <span style="font-size:11px;color:var(--brown-light);">${items.length}종</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button onclick="event.stopPropagation();editHallPreset('${hall}')" style="font-size:11px;padding:3px 10px;background:var(--brown-pale);color:var(--brown-deep);border:none;border-radius:6px;cursor:pointer;">수정</button>
+          <span style="font-size:13px;color:var(--brown-light);display:inline-block;transform:rotate(${isOpen?'180deg':'0deg'});transition:transform .2s;">▼</span>
+        </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;">${tags}</div>
+      ${isOpen ? `<div style="padding:10px 14px 12px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px;">${tags}</div>` : ''}
     </div>`;
   }).join('');
 }
-
 function editHallPreset(hall) {
   const sel = document.getElementById('presetHallSelect');
   if (sel) { sel.value = hall; onPresetHallSelect(); }
