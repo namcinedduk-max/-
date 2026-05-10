@@ -10499,7 +10499,7 @@ function efAddTteok(fixedQty) {
     const kgEl = document.getElementById('ef_tteokKg');
     if (kgEl && kgEl.value) { qty = kgEl.value + 'kg'; kgEl.value = ''; }
   }
-  editModalTteokItems.push({ name, qty });
+  editModalTteokItems.push({ name, qty, baseName: name });
   efRenderTteokList();
   efCalcPrice();
   sel.value = ''; if (custom) { custom.style.display = 'none'; custom.value = ''; }
@@ -10549,9 +10549,11 @@ function efCalcPrice() {
           return kgP * qtyNum;
         }
       } else if (editModalVenueType === 'wedding') {
-        const kgP = (venuePrices['wedding'] || {})[item.name] || 0;
+        // baseName 우선, 없으면 층 접두어 제거한 name으로 조회
+        const lookupName = item.baseName || String(item.name||'').replace(/^[0-9]+층\s*/, '');
+        const kgP = (venuePrices['wedding'] || {})[lookupName] || 0;
         const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
-        return kgP * qtyNum;
+        return Math.round(kgP * qtyNum);
       }
       return 0;
     })();
@@ -10559,8 +10561,9 @@ function efCalcPrice() {
   });
   const el = document.getElementById('ef_priceProduct');
   const ewEl = document.getElementById('ew_priceProduct');
-  if (el && total > 0) { el.value = total; calcFuneralEditTotal(); }
-  if (ewEl && total > 0) { ewEl.value = total; calcWeddingEditTotal(); }
+  // total이 0이어도 업데이트 (새 항목 추가로 기존 단가 사라지는 문제 방지)
+  if (el) { el.value = total; calcFuneralEditTotal(); }
+  if (ewEl) { ewEl.value = total; calcWeddingEditTotal(); }
 }
 
 function saveFuneralEdit() {
