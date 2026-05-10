@@ -527,8 +527,6 @@
     padding: 18px 20px;
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
-    overflow: hidden;
-    min-width: 0;
   }
   .stat-label {
     font-size: 12px;
@@ -542,8 +540,6 @@
     font-size: 24px;
     font-weight: 700;
     color: var(--brown-deep);
-    word-break: break-all;
-    overflow-wrap: break-word;
   }
   .stat-sub {
     font-size: 12px;
@@ -8248,8 +8244,8 @@ function updateStats() {
   // 오늘 접수된 주문 (created)
   const nowStr = new Date().toLocaleDateString('ko-KR');
   const createdToday = orders.filter(o => o.createdAt.startsWith(nowStr));
-  const salesToday = createdToday.reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
-  const unpaid = orders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
+  const salesToday = createdToday.reduce((s,o) => s + (o.priceTotal||0), 0);
+  const unpaid = orders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (o.priceTotal||0), 0);
 
   document.getElementById('stat-today').textContent = createdToday.length.toLocaleString();
   document.getElementById('stat-sales').textContent = salesToday.toLocaleString();
@@ -11263,7 +11259,7 @@ function renderWeddingList() {
       <td style="font-weight:700;">${o.weddingName || ''}</td>
       <td>${o.floor || ''}</td>
       <td style="${o.memo ? 'color:var(--accent-red);font-weight:700;' : ''}">${o.memo || ''}</td>
-      <td style="font-size:12px;">${o.tteokType || ''}</td>
+      <td style="font-size:12px;min-width:160px;">${renderWeddingTteok(o)}</td>
       <td>${normalizeDateStr(String(o.deliveryDate || ''))}</td>
       <td>${normalizeTimeStr(o.deliveryTime) || ''}</td>
       <td style="font-weight:700;">${Number(o.priceTotal || 0).toLocaleString()}원</td>
@@ -11274,6 +11270,37 @@ function renderWeddingList() {
         <button onclick="event.stopPropagation();deleteWeddingOrder('${o.id}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
       </td>
     </tr>`).join('');
+}
+
+function renderWeddingTteok(o) {
+  const items = (o.tteokItems && o.tteokItems.length > 0) ? o.tteokItems : null;
+  if (!items) {
+    const parts = (o.tteokType || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return '-';
+    return parts.map(p => {
+      const m = p.match(/^(.+?)\s+([\d.]+\s*kg.*)$/i);
+      if (m) return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${m[1]}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${m[2]}</span></div>`;
+      return `<div style="font-size:12px;padding:3px 0;">${p}</div>`;
+    }).join('');
+  }
+  const hasFloor = items.some(t => t.floor || (t.name && /^[0-9]+층/.test(t.name)));
+  if (!hasFloor) {
+    return items.map(t => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${t.name||''}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${t.qty||''}</span></div>`).join('');
+  }
+  const floorMap = {};
+  items.forEach(t => {
+    let floor = t.floor || '';
+    if (!floor) { const m = (t.name||'').match(/^([0-9]+층)\s*/); if (m) floor = m[1]; }
+    if (!floorMap[floor]) floorMap[floor] = [];
+    const name = t.floor ? t.name : (t.name||'').replace(/^[0-9]+층\s*/, '');
+    floorMap[floor].push({ name, qty: t.qty||'' });
+  });
+  const floors = Object.keys(floorMap);
+  const cols = floors.map(f => {
+    const rows = floorMap[f].map(t => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${t.name}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${t.qty}</span></div>`).join('');
+    return `<div style="flex:1;min-width:0;background:var(--cream);border-radius:6px;padding:8px 10px;"><div style="font-size:11px;font-weight:700;color:var(--brown-mid);background:var(--brown-pale);border-radius:4px;padding:2px 8px;display:inline-block;margin-bottom:6px;">${f}</div>${rows}</div>`;
+  }).join('');
+  return `<div style="display:flex;gap:8px;">${cols}</div>`;
 }
 
 function sortWeddingOrders(key) {
