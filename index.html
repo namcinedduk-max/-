@@ -8269,16 +8269,10 @@ function saveOrders() {
 }
 
 function updateStats() {
-  const today = getLocalDateStr();
-  const todayOrders = orders.filter(o => o.createdAt.startsWith(new Date().toLocaleDateString('ko-KR').split('.')[0]));
-  const todayAll = orders.filter(o => o.deliveryDate === today || o.createdAt.includes(new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/ /g,'').slice(0,8)));
-  
-  // 오늘 접수된 주문 (created)
   const nowStr = new Date().toLocaleDateString('ko-KR');
-  const createdToday = orders.filter(o => o.createdAt.startsWith(nowStr));
+  const createdToday = orders.filter(o => String(o.createdAt||'').startsWith(nowStr));
   const salesToday = createdToday.reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
   const unpaid = orders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
-
   document.getElementById('stat-today').textContent = createdToday.length.toLocaleString();
   document.getElementById('stat-sales').textContent = salesToday.toLocaleString();
   document.getElementById('stat-total').textContent = orders.length.toLocaleString();
@@ -11404,14 +11398,14 @@ function loadWeddingOrdersFromSheet(silent, force) {
 }
 
 function updateWeddingStats() {
-  const today = getLocalDateStr();
-  const todayOrders = weddingOrders.filter(o => (o.deliveryDate || '').startsWith(today));
-  const todaySales = todayOrders.reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
+  const nowStr = new Date().toLocaleDateString('ko-KR');
+  const createdToday = weddingOrders.filter(o => String(o.createdAt||'').startsWith(nowStr));
+  const todaySales = createdToday.reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
   const unpaid = weddingOrders.filter(o => o.payStatus === '입금대기').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
   const el = id => document.getElementById(id);
-  if (el('wstat-today')) el('wstat-today').textContent = todayOrders.length;
+  if (el('wstat-today')) el('wstat-today').textContent = createdToday.length.toLocaleString();
   if (el('wstat-sales')) el('wstat-sales').textContent = todaySales.toLocaleString();
-  if (el('wstat-total')) el('wstat-total').textContent = weddingOrders.length;
+  if (el('wstat-total')) el('wstat-total').textContent = weddingOrders.length.toLocaleString();
   if (el('wstat-unpaid')) el('wstat-unpaid').textContent = unpaid.toLocaleString();
 }
 
@@ -12317,14 +12311,14 @@ function deleteOtherOrder(id) {
 
 // ── 목록 렌더
 function updateOtherStats() {
-  const today = getLocalDateStr();
-  const todayOrders = otherOrders.filter(o => o.deliveryDate === today);
-  const todaySales = todayOrders.reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
-  const unpaid = otherOrders.filter(o => o.payStatus === '미수금').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
+  const nowStr = new Date().toLocaleDateString('ko-KR');
+  const createdToday = otherOrders.filter(o => String(o.createdAt||'').startsWith(nowStr));
+  const todaySales = createdToday.reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
+  const unpaid = otherOrders.filter(o => o.payStatus === '입금대기' || o.payStatus === '미수금').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
   const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-  el('otstat-today', todayOrders.length);
+  el('otstat-today', createdToday.length.toLocaleString());
   el('otstat-sales', todaySales.toLocaleString());
-  el('otstat-total', otherOrders.length);
+  el('otstat-total', otherOrders.length.toLocaleString());
   el('otstat-unpaid', unpaid.toLocaleString());
 }
 
