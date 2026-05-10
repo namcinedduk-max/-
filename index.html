@@ -11473,7 +11473,7 @@ function renderWeddingList() {
       <td style="font-weight:700;">${o.weddingName || ''}</td>
       <td>${o.floor || ''}</td>
       <td style="${o.memo ? 'color:var(--accent-red);font-weight:700;' : ''}">${o.memo || ''}</td>
-      <td style="font-size:12px;">${o.tteokType || ''}</td>
+      <td style="font-size:12px;min-width:160px;">${renderWeddingTteok(o)}</td>
       <td>${normalizeDateStr(String(o.deliveryDate || ''))}</td>
       <td>${normalizeTimeStr(o.deliveryTime) || ''}</td>
       <td style="font-weight:700;">${Number(o.priceTotal || 0).toLocaleString()}원</td>
@@ -11484,6 +11484,49 @@ function renderWeddingList() {
         <button onclick="event.stopPropagation();deleteWeddingOrder('${o.id}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
       </td>
     </tr>`).join('');
+}
+
+function renderWeddingTteok(o) {
+  const items = (o.tteokItems && o.tteokItems.length > 0) ? o.tteokItems : null;
+  // tteokItems 없으면 tteokType 문자열 파싱
+  const list = items || (o.tteokType||'').split(',').map(s => {
+    const t = s.trim();
+    const m = t.match(/^([0-9]+층)\s+(.+?)\s+([\d.]+kg)$/) || t.match(/^(.+?)\s+([\d.]+kg)$/);
+    if (m && m.length === 4) return { floor: m[1], baseName: m[2], qty: m[3] };
+    if (m && m.length === 3) return { floor: '', baseName: m[1], qty: m[2] };
+    return { floor: '', baseName: t, qty: '' };
+  }).filter(t => t.baseName);
+
+  const hasFloor = list.some(t => t.floor || (t.name && /^[0-9]+층/.test(t.name)));
+
+  if (!hasFloor) {
+    return list.map(t => {
+      const name = t.baseName || (t.name||'').replace(/^[0-9]+층\s*/, '');
+      const qty = t.qty || '';
+      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${name}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${qty}</span></div>`;
+    }).join('');
+  }
+
+  // 층별 그룹핑
+  const floorMap = {};
+  list.forEach(t => {
+    let floor = t.floor || '';
+    if (!floor && t.name) { const m = (t.name||'').match(/^([0-9]+층)/); if (m) floor = m[1]; }
+    if (!floorMap[floor]) floorMap[floor] = [];
+    const name = t.baseName || (t.name||'').replace(/^[0-9]+층\s*/, '');
+    const qty = t.qty || '';
+    floorMap[floor].push({ name, qty });
+  });
+  const cols = Object.keys(floorMap).map(f => {
+    const rows = floorMap[f].map(t =>
+      `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${t.name}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${t.qty}</span></div>`
+    ).join('');
+    return `<div style="flex:1;min-width:0;background:var(--cream);border-radius:6px;padding:8px 10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--brown-mid);background:var(--brown-pale);border-radius:4px;padding:2px 8px;display:inline-block;margin-bottom:6px;">${f}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+  return `<div style="display:flex;gap:8px;">${cols}</div>`;
 }
 
 function sortWeddingOrders(key) {
