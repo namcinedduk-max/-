@@ -8276,8 +8276,8 @@ function updateStats() {
   // 오늘 접수된 주문 (created)
   const nowStr = new Date().toLocaleDateString('ko-KR');
   const createdToday = orders.filter(o => o.createdAt.startsWith(nowStr));
-  const salesToday = createdToday.reduce((s,o) => s + (o.priceTotal||0), 0);
-  const unpaid = orders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (o.priceTotal||0), 0);
+  const salesToday = createdToday.reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
+  const unpaid = orders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
 
   document.getElementById('stat-today').textContent = createdToday.length.toLocaleString();
   document.getElementById('stat-sales').textContent = salesToday.toLocaleString();
