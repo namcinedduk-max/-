@@ -1664,10 +1664,10 @@
           <select id="w_weddingName" onchange="onWeddingNameChange()">
             <option value="">-- 선택 --</option>
           </select>
-        </div>
-        <div class="form-group">
-          <label>층/홀</label>
-          <input type="text" id="w_floor" placeholder="예: 2층 로즈홀">
+          <div id="w_floorWarning" style="display:none;margin-top:8px;background:#fef9c3;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;">
+            ⚠️ <b>유성컨벤션</b>은 층별로 배송해요!<br>
+            아래 떡 추가 시 <b>층 입력란에 2층 / 3층</b>을 꼭 입력해주세요.
+          </div>
         </div>
 
         <!-- 메모 -->
@@ -10958,6 +10958,16 @@ let weddingSortDir = 1;
 
 
 
+function onWeddingNameChange() {
+  const name = (document.getElementById('w_weddingName')||{}).value || '';
+  const warning = document.getElementById('w_floorWarning');
+  if (warning) {
+    warning.style.display = name.includes('유성컨벤션') ? 'block' : 'none';
+  }
+  updateVenueTteokSelect(document.getElementById('w_tteokSelect') ? 'w_tteokSelect' : null, 'wedding');
+  calcVenuePrice('wedding');
+}
+
 function addWeddingTteokItem() {
   const sel = document.getElementById('w_tteokSelect');
   const qty = document.getElementById('w_tteokQty').value.trim();
@@ -11031,7 +11041,7 @@ function submitWeddingOrder() {
   const p = parseInt(document.getElementById('w_priceProduct').value) || 0;
   const d = parseInt(document.getElementById('w_priceDelivery').value) || 0;
   const dis = parseInt(document.getElementById('w_priceDiscount').value) || 0;
-  const floor = document.getElementById('w_floor').value.trim();
+  const floor = ''; // 층/홀 필드 제거됨 - 품목별 층으로 관리
 
   const order = {
     id: Date.now(),
@@ -11072,7 +11082,7 @@ function sendToWeddingSheet(order) {
 }
 
 function resetWeddingForm() {
-  ['w_weddingName','w_floor','w_memo','w_priceProduct','w_priceDelivery','w_priceDiscount','w_deliveryTime'].forEach(id => {
+  ['w_weddingName','w_memo','w_priceProduct','w_priceDelivery','w_priceDiscount','w_deliveryTime'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   weddingTteokItems = [];
@@ -11203,7 +11213,6 @@ function openWeddingModal(id) {
   document.getElementById('modalContent').innerHTML = `
     <div class="modal-detail-row"><span class="modal-detail-label">접수 시각</span><span>${o.createdAt||'-'}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">웨딩홀</span><span>${o.weddingName||o.hallName||'-'}</span></div>
-    <div class="modal-detail-row"><span class="modal-detail-label">층/홀</span><span>${o.floor||'-'}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">떡 종류</span><span>${o.tteokItems ? o.tteokItems.map(t=>t.name+(t.qty?' '+t.qty:'')).join(', ') : (o.tteokType||'-')}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><span>${delivDate}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><span>${normalizeTimeStr(o.deliveryTime)||'-'}</span></div>
@@ -11215,7 +11224,7 @@ function openWeddingModal(id) {
   // 수정 모드
   document.getElementById('modalEditContent').innerHTML = `
     <div class="modal-detail-row"><span class="modal-detail-label">웨딩홀</span><input id="ew_weddingName" value="${o.weddingName||o.hallName||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
-    <div class="modal-detail-row"><span class="modal-detail-label">층/홀</span><input id="ew_floor" value="${o.floor||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+
     <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><input type="date" id="ew_deliveryDate" value="${delivDate}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span>
       <div style="display:flex;gap:6px;flex:1;flex-wrap:wrap;">
@@ -11315,7 +11324,7 @@ function saveWeddingModalEdit() {
 
   o.weddingName = (document.getElementById('ew_weddingName')||{}).value?.trim() || o.weddingName;
   o.hallName = o.weddingName;
-  o.floor = (document.getElementById('ew_floor')||{}).value?.trim() || '';
+  // floor는 품목별 층으로 관리
   o.deliveryDate = (document.getElementById('ew_deliveryDate')||{}).value || o.deliveryDate;
   o.deliveryTime = deliveryTime;
   o.priceProduct = p; o.priceDelivery = d; o.priceDiscount = dis; o.priceTotal = p+d-dis;
