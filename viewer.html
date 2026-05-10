@@ -148,9 +148,7 @@
     🍡 떡 합계
     <span class="count-pill" id="summaryCount">0종</span>
   </div>
-  <div class="summary-grid" id="summaryGrid">
-    <div class="loading">불러오는 중...</div>
-  </div>
+  <div id="venueSection" style="margin-bottom:4px;"></div>
 
   <div class="section-title">
     📋 주문 목록
@@ -159,11 +157,21 @@
   <div class="order-cards" id="orderCards">
     <div class="loading">불러오는 중...</div>
   </div>
+
+  <div class="section-title" style="margin-top:16px;">
+    🍡 떡 합계
+    <span class="count-pill" id="summaryCount">0종</span>
+  </div>
+  <div class="summary-grid" id="summaryGrid">
+    <div class="loading">불러오는 중...</div>
+  </div>
 </div>
 
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxVlzh9rzQaA9G8DntgEUExgDWUKsvtYb9LM3Blbh0QBZRv_SZdtL657_SpJ56n1qnE/exec';
 let allOrders = [];
+let allWeddingOrders = [];
+let allOtherOrders = [];
 let currentSort = 'time';
 
 function setSort(type) {
@@ -236,9 +244,17 @@ function normDate(str) {
 function loadData() {
   document.getElementById('summaryGrid').innerHTML = '<div class="loading">불러오는 중...</div>';
   document.getElementById('orderCards').innerHTML = '<div class="loading">불러오는 중...</div>';
-  gasGet({ action: 'getOrders' }).then(data => {
+  document.getElementById('venueSection').innerHTML = '<div class="loading">불러오는 중...</div>';
+
+  Promise.all([
+    gasGet({ action: 'getOrders' }),
+    gasGet({ action: 'getOrders', sheet: 'wedding' }),
+    gasGet({ action: 'getOrders', sheet: 'other' }),
+  ]).then(([data, wData, oData]) => {
     if (!data.success) { showError(); return; }
     allOrders = data.orders || [];
+    allWeddingOrders = wData.success ? (wData.orders || []) : [];
+    allOtherOrders = oData.success ? (oData.orders || []) : [];
     render(document.getElementById('dateInput').value);
   }).catch(() => showError());
 }
@@ -293,6 +309,61 @@ function render(date) {
   });
 
   document.getElementById('orderCount').textContent = filtered.length + '건';
+
+  // ── 웨딩홀 / 기타업체 섹션 ──────────────────────
+  const todayWedding = allWeddingOrders.filter(o => normDate(String(o.deliveryDate||'')) === date);
+  const todayOther   = allOtherOrders.filter(o => normDate(String(o.deliveryDate||'')) === date);
+
+  const venueEl = document.getElementById('venueSection');
+  if (todayWedding.length === 0 && todayOther.length === 0) {
+    venueEl.innerHTML = '';
+  } else {
+    let html = '';
+
+    if (todayWedding.length > 0) {
+      html += '<div class="section-title" style="margin-top:0;">💒 웨딩홀 발주 <span class="count-pill">'+todayWedding.length+'건</span></div>';
+      html += '<div class="order-cards" style="margin-bottom:16px;">';
+      todayWedding.forEach(function(o) {
+        const items = (o.tteokItems && o.tteokItems.length)
+          ? o.tteokItems.map(t => (t.floor?'<span style="background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;font-size:11px;margin-right:3px;">'+t.floor+'</span>':'') + t.name + (t.qty?' <strong>'+t.qty+'</strong>':'')).join('<br>')
+          : (o.tteokType||'-');
+        const time = normalizeTimeStr(o.deliveryTime) || '시간미정';
+        html += '<div class="order-card">'
+          + '<div class="order-card-header" style="background:#1d4ed8;">'
+          + '<span class="no">💒 '+( o.weddingName||o.hallName||'-')+'</span>'
+          + '<span class="time">'+time+'</span>'
+          + '</div>'
+          + '<div class="order-card-body">'
+          + '<div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">'+items+'</span></div>'
+          + (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ '+o.memo+'</span></div>' : '')
+          + '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    if (todayOther.length > 0) {
+      html += '<div class="section-title" style="margin-top:0;">🏢 기타업체 발주 <span class="count-pill">'+todayOther.length+'건</span></div>';
+      html += '<div class="order-cards" style="margin-bottom:16px;">';
+      todayOther.forEach(function(o) {
+        const items = (o.tteokItems && o.tteokItems.length)
+          ? o.tteokItems.map(t => t.name + (t.qty?' <strong>'+t.qty+'</strong>':'')).join('<br>')
+          : (o.tteokType||'-');
+        const time = normalizeTimeStr(o.deliveryTime) || '시간미정';
+        html += '<div class="order-card">'
+          + '<div class="order-card-header" style="background:#0891b2;">'
+          + '<span class="no">🏢 '+(o.venueName||'-')+'</span>'
+          + '<span class="time">'+time+'</span>'
+          + '</div>'
+          + '<div class="order-card-body">'
+          + '<div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">'+items+'</span></div>'
+          + (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ '+o.memo+'</span></div>' : '')
+          + '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    venueEl.innerHTML = html;
+  }
 
   // 합계
   const totals = {};
