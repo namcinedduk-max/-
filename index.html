@@ -10583,7 +10583,7 @@ function saveFuneralEdit() {
     ...o,
     funeralName: document.getElementById('ef_funeralName').value,
     binsoLocation: document.getElementById('ef_binsoLocation').value,
-    deceasedName: (document.getElementById('ef_deceasedName')||{}).value?.trim() || o.deceasedName || '',
+    deceasedName: (() => { const el = document.getElementById('ef_deceasedName'); return el ? el.value.trim() : (o.deceasedName || ''); })(),
     tteokType: editModalTteokItems.length > 0
       ? editModalTteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', ')
       : (document.getElementById('ef_tteokType') ? document.getElementById('ef_tteokType').value : o.tteokType),
