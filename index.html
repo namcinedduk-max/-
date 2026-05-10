@@ -9702,8 +9702,9 @@ function printInvoice(order, orderType) {
       const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
       unitPrice = qtyNum > 0 ? Math.round(storedPrice / qtyNum) : 0;
     } else {
-      // 없으면 단가설정에서 계산
-      const looked = getItemPrice(item.name, item.qty, orderType, venueName);
+      // 없으면 단가설정에서 계산 (baseName 우선 사용)
+      const lookupName = item.baseName || item.name;
+      const looked = getItemPrice(lookupName, item.qty, orderType, venueName);
       unitPrice = looked.unitPrice;
       displayAmount = looked.amount;
     }
@@ -9719,7 +9720,8 @@ function printInvoice(order, orderType) {
   // 합계: 품목별 금액 합산 (없으면 priceTotal 사용)
   const calcTotal = items.reduce((sum, item) => {
     if (Number(item.price) > 0) return sum + Number(item.price);
-    const looked = getItemPrice(item.name, item.qty, orderType, venueName);
+    const lookupName = item.baseName || item.name;
+    const looked = getItemPrice(lookupName, item.qty, orderType, venueName);
     return sum + (looked.amount || 0);
   }, 0);
   const displayTotal = calcTotal > 0 ? calcTotal : totalAmount;
