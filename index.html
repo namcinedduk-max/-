@@ -10354,6 +10354,7 @@ function openFuneralModal(id) {
       <span class="modal-detail-label">떡 종류</span>
       <div style="width:100%;">
         <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <input id="ef_tteokFloor" placeholder="층 (예: 2층)" style="width:75px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
           <select id="ef_tteokSelect" onchange="efOnTteokSelectChange()" style="flex:2;min-width:100px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;"></select>
           <input id="ef_tteokCustom" placeholder="직접입력" style="display:none;flex:2;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
           <div id="ef_qty_5kg_btns" style="display:none;gap:4px;display:none;">
@@ -10492,17 +10493,21 @@ function efOnFuneralNameChange() {
 function efAddTteok(fixedQty) {
   const sel = document.getElementById('ef_tteokSelect');
   const custom = document.getElementById('ef_tteokCustom');
-  const name = sel.value === '직접입력' ? custom.value.trim() : sel.value;
-  if (!name || name === '') { showToast('떡 종류를 선택해주세요.', 'error'); return; }
+  const baseName = sel.value === '직접입력' ? custom.value.trim() : sel.value;
+  if (!baseName || baseName === '') { showToast('떡 종류를 선택해주세요.', 'error'); return; }
+  const floorEl = document.getElementById('ef_tteokFloor');
+  const floor = floorEl ? floorEl.value.trim() : '';
+  const fullName = floor ? floor + ' ' + baseName : baseName;
   let qty = fixedQty || '';
   if (!fixedQty) {
     const kgEl = document.getElementById('ef_tteokKg');
     if (kgEl && kgEl.value) { qty = kgEl.value + 'kg'; kgEl.value = ''; }
   }
-  editModalTteokItems.push({ name, qty, baseName: name });
+  editModalTteokItems.push({ name: fullName, qty, baseName, floor });
   efRenderTteokList();
   efCalcPrice();
   sel.value = ''; if (custom) { custom.style.display = 'none'; custom.value = ''; }
+  // 층은 유지 (같은 층에 여러 떡 추가 편의)
 }
 
 function efRemoveTteok(idx) {
@@ -11609,6 +11614,7 @@ function openWeddingModal(id) {
       <span class="modal-detail-label">떡 종류</span>
       <div style="width:100%;">
         <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <input id="ef_tteokFloor" placeholder="층 (예: 2층)" style="width:75px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
           <select id="ef_tteokSelect" onchange="efOnTteokSelectChange()" style="flex:2;min-width:100px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;"></select>
           <input id="ef_tteokCustom" placeholder="직접입력" style="display:none;flex:2;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
           <div id="ef_qty_5kg_btns" style="display:none;gap:4px;">
