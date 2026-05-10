@@ -1495,7 +1495,9 @@
         </div>
 
       </div>
-      <button class="btn-submit" onclick="submitFuneralOrder()">✅ 장례식장 주문 접수 완료</button>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button onclick="submitFuneralOrder()" style="padding:10px 24px;background:var(--brown-deep);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">✅ 장례식장 주문 접수 완료</button>
+      </div>
     </div>
   </div>
 
@@ -1549,6 +1551,10 @@
       <span class="count" id="filterResultCount">0건</span>
     </div>
 
+    <!-- 발주 섹션 (충대식당 / 웨딩홀 / 기타업체) -->
+    <div id="chungdaeSection" style="display:none;margin-bottom:12px;"></div>
+    <div id="weddingSection" style="display:none;margin-bottom:12px;"></div>
+    <div id="otherSection" style="display:none;margin-bottom:16px;"></div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -1577,10 +1583,6 @@
     </div>
 
     <!-- 충대 발주 / 웨딩홀 발주 섹션 -->
-    <div id="chungdaeSection" style="display:none;margin-top:20px;"></div>
-    <div id="weddingSection" style="display:none;margin-top:12px;"></div>
-    <div id="otherSection" style="display:none;margin-top:12px;"></div>
-  </div>
 
   <!-- ==================== 장례식장 주문 목록 패널 ==================== -->
   <div class="panel" id="panel-funeralList">
@@ -8154,6 +8156,7 @@ function submitFuneralOrder() {
 
   if (!funeralName) { showToast('장례식장을 선택해주세요.', 'error'); return; }
   if (!binsoLocation) { showToast('빈소 위치를 입력해주세요.', 'error'); return; }
+  if (funeralName === '대청장례식장' && !deceasedName) { showToast('대청장례식장은 고인명을 입력해주세요.', 'error'); return; }
   if (funeralTteokItems.length === 0) { showToast('떡 종류를 하나 이상 추가해주세요.', 'error'); return; }
   if (!deliveryDate) { showToast('배송 일자를 선택해주세요.', 'error'); return; }
 
