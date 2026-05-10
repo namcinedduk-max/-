@@ -39,36 +39,6 @@
     min-height: 100vh;
   }
 
-  .cl-filter-btn {
-    font-size:12px;padding:5px 14px;border-radius:20px;
-    border:1.5px solid var(--border);background:var(--warm-white);
-    color:var(--brown-mid);cursor:pointer;font-weight:600;
-  }
-  .cl-filter-btn.active {
-    background:var(--brown-deep);color:#fff;border-color:var(--brown-deep);
-  }
-  .cl-row {
-    display:flex;align-items:flex-start;gap:10px;
-    padding:12px 0;border-bottom:.5px solid var(--border);
-  }
-  .cl-row:last-child { border-bottom:none; }
-  .cl-time { font-size:11px;color:var(--brown-light);white-space:nowrap;min-width:65px;padding-top:2px; }
-  .cl-badge { display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap; }
-  .cl-badge-등록 { background:#E1F5EE;color:#0F6E56; }
-  .cl-badge-수정 { background:#FAEEDA;color:#854F0B; }
-  .cl-badge-삭제 { background:#FCEBEB;color:#A32D2D; }
-  .cl-badge-복구 { background:#EEEDFE;color:#534AB7; }
-  .cl-body { flex:1;min-width:0; }
-  .cl-title { font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:2px; }
-  .cl-sub { font-size:12px;color:var(--brown-mid);line-height:1.5; }
-  .cl-diff { font-size:12px;margin-top:5px;padding:6px 10px;background:var(--cream);border-radius:6px;border-left:2px solid var(--brown-pale); }
-  .cl-diff-before { color:var(--accent-red);text-decoration:line-through; }
-  .cl-diff-after { color:#2E7D32; }
-  .cl-recover-btn {
-    margin-top:5px;font-size:11px;padding:4px 12px;
-    background:#FCEBEB;color:#A32D2D;border:1px solid #F09595;
-    border-radius:6px;cursor:pointer;font-weight:700;
-  }
 
   /* HEADER */
   header {
@@ -779,7 +749,6 @@
       <div class="tab-group-items">
         <button class="tab-btn" onclick="switchTab('production')">생산계획</button>
         <button class="tab-btn" onclick="switchTab('delivery')">택배</button>
-        <button class="tab-btn" onclick="switchTab('changelog')">🕵️ 이력</button>
       </div>
     </div>
     <div class="tab-group">
@@ -2301,58 +2270,6 @@
     </div>
   </div>
 
-  <!-- ==================== 변경이력 패널 ==================== -->
-  <div class="panel" id="panel-changelog">
-    <div class="form-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-        <h2 style="margin:0;">🕵️ 변경 이력</h2>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <select id="clFilterSheet" onchange="renderChangelog()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <option value="">전체 장부</option>
-            <option value="개인">개인</option>
-            <option value="장례식장">장례식장</option>
-            <option value="웨딩홀">웨딩홀</option>
-            <option value="기타업체">기타업체</option>
-          </select>
-          <input type="date" id="clFilterDate" onchange="renderChangelog()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-          <button onclick="document.getElementById('clFilterDate').value='';renderChangelog()" style="padding:6px 10px;background:#eee;border:none;border-radius:8px;font-size:12px;cursor:pointer;">전체</button>
-        </div>
-      </div>
-
-      <!-- 요약 통계 -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
-        <div style="background:var(--warm-white);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
-          <div style="font-size:20px;font-weight:800;color:#2E7D32;" id="cl-stat-add">0</div>
-          <div style="font-size:11px;color:var(--brown-light);margin-top:2px;">등록</div>
-        </div>
-        <div style="background:var(--warm-white);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
-          <div style="font-size:20px;font-weight:800;color:#854F0B;" id="cl-stat-edit">0</div>
-          <div style="font-size:11px;color:var(--brown-light);margin-top:2px;">수정</div>
-        </div>
-        <div style="background:var(--warm-white);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
-          <div style="font-size:20px;font-weight:800;color:var(--accent-red);" id="cl-stat-del">0</div>
-          <div style="font-size:11px;color:var(--brown-light);margin-top:2px;">삭제</div>
-        </div>
-        <div style="background:var(--warm-white);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
-          <div style="font-size:20px;font-weight:800;color:#534AB7;" id="cl-stat-recover">0</div>
-          <div style="font-size:11px;color:var(--brown-light);margin-top:2px;">복구</div>
-        </div>
-      </div>
-
-      <!-- 필터 버튼 -->
-      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
-        <button class="cl-filter-btn active" data-action="" onclick="clSetFilter(this,'')">전체</button>
-        <button class="cl-filter-btn" data-action="등록" onclick="clSetFilter(this,'등록')">등록</button>
-        <button class="cl-filter-btn" data-action="수정" onclick="clSetFilter(this,'수정')">수정</button>
-        <button class="cl-filter-btn" data-action="삭제" onclick="clSetFilter(this,'삭제')">삭제</button>
-        <button class="cl-filter-btn" data-action="복구" onclick="clSetFilter(this,'복구')">복구</button>
-      </div>
-
-      <div id="changelogList" style="display:flex;flex-direction:column;gap:0;">
-        <div style="text-align:center;padding:40px;color:var(--brown-light);">불러오는 중...</div>
-      </div>
-    </div>
-  </div>
 
   <!-- ==================== 택배 패널 ==================== -->
   <div class="panel" id="panel-delivery">
@@ -7721,9 +7638,6 @@ function switchTab(tab) {
     const d = document.getElementById('ot_deliveryDate');
     if (d && !d.value) d.value = getLocalDateStr();
     updateOtherVenueSelects();
-  }
-  if (tab === 'changelog') {
-    loadChangelog();
   }
   if (tab === 'wedding') {
     const d = document.getElementById('w_deliveryDate');
@@ -13190,139 +13104,6 @@ function applyExtraVenuesToSelects() {
 
 function initExtraVenues() {
   applyExtraVenuesToSelects();
-}
-
-// ============================================================
-// 변경이력 탭
-// ============================================================
-let changelogData = [];
-let clActionFilter = '';
-
-function loadChangelog() {
-  if (!gasUrl) {
-    document.getElementById('changelogList').innerHTML =
-      '<div style="text-align:center;padding:40px;color:var(--brown-light);">구글 시트 연결 후 사용 가능해요.</div>';
-    return;
-  }
-  document.getElementById('changelogList').innerHTML =
-    '<div style="text-align:center;padding:40px;color:var(--brown-light);">불러오는 중...</div>';
-  gasGet({ action: 'getChangelog' })
-    .then(data => {
-      if (data.success) {
-        changelogData = data.logs || [];
-        renderChangelog();
-      } else {
-        document.getElementById('changelogList').innerHTML =
-          '<div style="text-align:center;padding:40px;color:var(--accent-red);">불러오기 실패</div>';
-      }
-    }).catch(() => {
-      document.getElementById('changelogList').innerHTML =
-        '<div style="text-align:center;padding:40px;color:var(--accent-red);">연결 오류</div>';
-    });
-}
-
-function clSetFilter(btn, action) {
-  document.querySelectorAll('.cl-filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  clActionFilter = action;
-  renderChangelog();
-}
-
-function renderChangelog() {
-  const list = document.getElementById('changelogList');
-  if (!list) return;
-
-  const sheetFilter = (document.getElementById('clFilterSheet')||{}).value || '';
-  const dateFilter  = (document.getElementById('clFilterDate')||{}).value || '';
-
-  let filtered = changelogData.filter(log => {
-    if (clActionFilter && log.action !== clActionFilter) return false;
-    if (sheetFilter && log.sheetType !== sheetFilter) return false;
-    if (dateFilter) {
-      const logDate = String(log.time||'').slice(0,10).replace(/\./g,'-').replace(/ /g,'');
-      if (!String(log.time||'').includes(dateFilter.replace(/-/g,'.'))) return false;
-    }
-    return true;
-  });
-
-  // 통계 (오늘 기준)
-  const todayStr = new Date().toLocaleDateString('ko-KR');
-  const todayLogs = changelogData.filter(l => String(l.time||'').startsWith(todayStr));
-  const stat = (a) => todayLogs.filter(l=>l.action===a).length;
-  const setStat = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-  setStat('cl-stat-add', stat('등록'));
-  setStat('cl-stat-edit', stat('수정'));
-  setStat('cl-stat-del', stat('삭제'));
-  setStat('cl-stat-recover', stat('복구'));
-
-  if (filtered.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--brown-light);">이력이 없습니다.</div>';
-    return;
-  }
-
-  list.innerHTML = filtered.map(log => {
-    const timeStr = String(log.time||'').slice(5,16); // MM. DD. HH:MM
-    const badgeClass = 'cl-badge cl-badge-' + (log.action||'');
-    const sheetLabel = log.sheetType ? `<span style="font-size:11px;color:var(--brown-light);margin-left:4px;">${log.sheetType}</span>` : '';
-
-    // 수정: 전후 비교
-    let diffHtml = '';
-    if (log.action === '수정' && log.before && log.after) {
-      const b = typeof log.before === 'object' ? log.before : {};
-      const a = typeof log.after  === 'object' ? log.after  : {};
-      const diffs = [];
-      ['tteokType','priceProduct','priceDelivery','priceDiscount','priceTotal','payStatus','deliveryDate','memo','deceasedName','binsoLocation'].forEach(k => {
-        if (b[k] !== undefined && a[k] !== undefined && String(b[k]) !== String(a[k])) {
-          const label = {tteokType:'떡종류',priceProduct:'상품금액',priceDelivery:'배송비',
-            priceDiscount:'할인',priceTotal:'총금액',payStatus:'결제상태',
-            deliveryDate:'배송일',memo:'메모',deceasedName:'고인명',binsoLocation:'빈소'}[k]||k;
-          diffs.push(`<span class="cl-diff-before">${label}: ${b[k]}</span> → <span class="cl-diff-after">${a[k]}</span>`);
-        }
-      });
-      if (diffs.length > 0) {
-        diffHtml = `<div class="cl-diff">${diffs.join('<br>')}</div>`;
-      }
-    }
-
-    // 삭제: 복구 버튼
-    const originalData = log.originalJson || log.after || log.before;
-    const recoverBtn = log.action === '삭제' && originalData
-      ? `<button class="cl-recover-btn" onclick="recoverOrder('${log.sheetType}','${log.orderId}')">↩ 복구</button>`
-      : '';
-
-    return `<div class="cl-row">
-      <div class="cl-time">${timeStr}</div>
-      <div style="padding-top:2px;min-width:36px;"><span class="${badgeClass}">${log.action||''}</span></div>
-      <div class="cl-body">
-        <div class="cl-title">${log.summary||'-'}${sheetLabel}</div>
-        <div class="cl-sub">담당: ${log.staffName||'-'}</div>
-        ${diffHtml}
-        ${recoverBtn}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function recoverOrder(sheetType, orderId) {
-  if (!confirm('이 주문을 복구할까요?')) return;
-  const log = changelogData.find(l => l.action === '삭제' && String(l.orderId) === String(orderId) && l.sheetType === sheetType);
-  if (!log) { showToast('복구할 데이터를 찾을 수 없어요.', 'error'); return; }
-  const originalData = log.originalJson || log.before;
-  if (!originalData) { showToast('원본 데이터가 없어요.', 'error'); return; }
-  gasPost({ action: 'recover', sheet: sheetType, sheetType: sheetType, data: originalData })
-    .then(data => {
-      if (data.success) {
-        showToast('✅ 복구됐어요! 목록을 새로고침해주세요.', 'success');
-        loadChangelog();
-        // 해당 장부 목록도 새로고침
-        if (sheetType === 'funeral') loadFuneralOrdersFromSheet(false);
-        else if (sheetType === 'wedding') loadWeddingOrdersFromSheet(false);
-        else if (sheetType === 'other') loadOtherOrdersFromSheet(false);
-        else loadOrdersFromSheet(false);
-      } else {
-        showToast('❌ 복구 실패: ' + (data.error||''), 'error');
-      }
-    }).catch(() => showToast('❌ 복구 실패', 'error'));
 }
 
 function showToast(msg, type='') {
