@@ -1685,6 +1685,8 @@
         <!-- 떡 종류 -->
         <div class="form-group full">
           <label>떡 종류 <span class="required">*</span></label>
+          <!-- 홀 프리셋 kg 입력 영역 -->
+          <div id="w_presetKgArea" style="display:none;flex-direction:column;gap:0;margin-bottom:8px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;"></div>
           <div class="tteok-list" id="w_tteokList"></div>
           <div class="tteok-add-row">
             <div class="tteok-add-row-inputs">
@@ -2389,6 +2391,26 @@
           <button onclick="addVenuePrice('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
         <button class="btn-submit" onclick="saveWeddingPrices()">💾 웨딩홀 단가 저장</button>
+
+        <!-- 웨딩홀 홀별 기본 떡 목록 -->
+        <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-top:20px;">
+          <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:6px;">🍡 홀별 기본 떡 목록</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:14px;">등록해두면 접수 시 웨딩홀 선택만 해도 떡 목록이 자동으로 뜨고, kg만 입력하면 돼요.</p>
+          <div id="weddingPresetList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
+          <div style="background:#fdf6ec;border-radius:10px;padding:14px;border:1px solid var(--brown-pale);">
+            <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:10px;">+ 홀 떡 목록 추가 / 수정</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+              <select id="presetHallSelect" onchange="onPresetHallSelect()" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
+                <option value="">-- 웨딩홀 선택 --</option>
+              </select>
+            </div>
+            <div id="presetItemInputs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+            <button onclick="addPresetItemRow()" style="padding:7px 14px;background:var(--brown-pale);color:var(--brown-deep);border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;">+ 떡 추가</button>
+            <div>
+              <button onclick="saveHallPreset()" style="padding:9px 20px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 이 홀 저장</button>
+            </div>
+          </div>
+        </div>
 
         <!-- 웨딩홀 거래처 관리 -->
         <div style="border-top:2px solid var(--brown-pale);padding-top:20px;margin-top:20px;">
@@ -3204,6 +3226,10 @@ function loadTteokPriceSettings() {
         if (typeof renderTteokAllList === 'function') renderTteokAllList();
         if (typeof updateTteokSelects === 'function') updateTteokSelects();
       } catch(e){ console.error('tteokPriceDB 로드 오류', e); } }
+      if (d.weddingHallPresets) { try {
+        weddingHallPresets = d.weddingHallPresets;
+        localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
+      } catch(e){} }
       if (d.priceSettings) { try {
         priceSettings = d.priceSettings;
         localStorage.setItem('tteokPriceSettings', JSON.stringify(priceSettings));
@@ -6165,7 +6191,13 @@ function switchSettingsTab(type) {
       renderOrderCatSettings();
     }
   }
-  if (type === 'funeral' || type === 'wedding-price') initVenuePriceSettings();
+  if (type === 'funeral' || type === 'wedding-price') {
+    initVenuePriceSettings();
+    if (type === 'wedding-price') {
+      renderWeddingPresetList();
+      renderPresetHallSelect();
+    }
+  }
   if (type === 'other-price') initOtherSettings();
 }
 
@@ -11046,6 +11078,10 @@ let weddingSortDir = 1;
 
 
 
+// 홀별 기본 떡 목록 preset
+let weddingHallPresets = JSON.parse(localStorage.getItem('weddingHallPresets') || '{}');
+// 구조: { "그랜드볼룸": [{name:"바람떡", floor:"2층"}, ...], ... }
+
 function onWeddingNameChange() {
   const name = (document.getElementById('w_weddingName')||{}).value || '';
   const warning = document.getElementById('w_floorWarning');
@@ -11054,6 +11090,168 @@ function onWeddingNameChange() {
   }
   updateVenueTteokSelect(document.getElementById('w_tteokSelect') ? 'w_tteokSelect' : null, 'wedding');
   calcVenuePrice('wedding');
+  loadWeddingPresetKgArea(name);
+}
+
+function loadWeddingPresetKgArea(hallName) {
+  const area = document.getElementById('w_presetKgArea');
+  if (!area) return;
+  const preset = weddingHallPresets[hallName];
+  if (!preset || preset.length === 0) {
+    area.style.display = 'none';
+    area.innerHTML = '';
+    return;
+  }
+  // 층별로 그룹핑
+  const floorMap = {};
+  preset.forEach(item => {
+    const f = item.floor || '';
+    if (!floorMap[f]) floorMap[f] = [];
+    floorMap[f].push(item.name);
+  });
+  const floors = Object.keys(floorMap);
+  let html = '';
+  floors.forEach((floor, fi) => {
+    if (floor) {
+      html += `<div style="background:var(--brown-pale);padding:6px 12px;font-size:11px;font-weight:700;color:var(--brown-deep);">${floor}</div>`;
+    }
+    floorMap[floor].forEach((tteokName, ti) => {
+      const key = (floor||'') + '__' + tteokName;
+      const isLast = fi === floors.length-1 && ti === floorMap[floor].length-1;
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;${isLast?'':'border-bottom:.5px solid var(--border);'}background:#fff;">
+        <span style="font-size:13px;color:var(--text-dark);">${tteokName}</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input type="number" id="preset_kg_${fi}_${ti}" placeholder="0" min="0" step="0.5"
+            style="width:64px;padding:6px 8px;text-align:right;border:1.5px solid var(--border);border-radius:8px;font-size:13px;"
+            data-floor="${floor}" data-name="${tteokName}"
+            oninput="syncPresetToTteokItems()">
+          <span style="font-size:12px;color:var(--text-mid);">kg</span>
+        </div>
+      </div>`;
+    });
+  });
+  html += `<div style="padding:8px 12px;background:#f9f5f0;border-top:.5px solid var(--border);">
+    <button type="button" onclick="applyPresetKg()" style="width:100%;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✅ kg 입력 완료 — 목록에 반영</button>
+  </div>`;
+  area.innerHTML = html;
+  area.style.display = 'flex';
+  area.style.flexDirection = 'column';
+}
+
+function applyPresetKg() {
+  const area = document.getElementById('w_presetKgArea');
+  if (!area) return;
+  const inputs = area.querySelectorAll('input[data-name]');
+  // 기존 preset 항목 제거
+  const hallName = (document.getElementById('w_weddingName')||{}).value || '';
+  const preset = weddingHallPresets[hallName] || [];
+  const presetNames = preset.map(p => (p.floor||'') + '__' + p.name);
+  weddingTteokItems = weddingTteokItems.filter(t => {
+    const key = (t.floor||'') + '__' + (t.baseName||t.name);
+    return !presetNames.includes(key);
+  });
+  inputs.forEach(inp => {
+    const kg = parseFloat(inp.value);
+    if (!kg || kg <= 0) return;
+    const floor = inp.dataset.floor || '';
+    const name = inp.dataset.name;
+    const qtyStr = (kg % 1 === 0 ? kg : kg) + 'kg';
+    const fullName = floor ? floor + ' ' + name : name;
+    weddingTteokItems.push({ name: fullName, qty: qtyStr, floor, baseName: name });
+  });
+  renderWeddingTteokList();
+  calcVenuePrice('wedding');
+  showToast('✅ 떡 목록에 반영됐어요!', 'success');
+}
+
+function syncPresetToTteokItems() { /* 실시간 반영 원하면 applyPresetKg 호출 */ }
+
+// ── 단가설정: 프리셋 홀 select 채우기
+function renderPresetHallSelect() {
+  const sel = document.getElementById('presetHallSelect');
+  if (!sel) return;
+  const halls = (extraVenues.wedding || []).map(v => typeof v === 'object' ? v.name : v).filter(Boolean);
+  sel.innerHTML = '<option value="">-- 웨딩홀 선택 --</option>' +
+    halls.map(h => `<option value="${h}"${weddingHallPresets[h]?' ✔':''}>${h}${weddingHallPresets[h]?' ✔':''}</option>`).join('');
+}
+
+function onPresetHallSelect() {
+  const hall = document.getElementById('presetHallSelect').value;
+  const container = document.getElementById('presetItemInputs');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!hall) return;
+  const items = weddingHallPresets[hall] || [];
+  if (items.length === 0) {
+    addPresetItemRow();
+  } else {
+    items.forEach(item => addPresetItemRow(item.name, item.floor));
+  }
+}
+
+function addPresetItemRow(name='', floor='') {
+  const container = document.getElementById('presetItemInputs');
+  if (!container) return;
+  const idx = container.children.length;
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+  row.innerHTML = `
+    <input type="text" placeholder="층 (예: 2층)" value="${floor}"
+      style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" class="preset-floor-input">
+    <input type="text" placeholder="떡 이름" value="${name}"
+      style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" class="preset-name-input">
+    <button type="button" onclick="this.parentNode.remove()"
+      style="padding:6px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:8px;font-size:12px;cursor:pointer;">✕</button>`;
+  container.appendChild(row);
+}
+
+function saveHallPreset() {
+  const hall = (document.getElementById('presetHallSelect')||{}).value;
+  if (!hall) { showToast('웨딩홀을 선택해주세요.', 'error'); return; }
+  const container = document.getElementById('presetItemInputs');
+  const rows = container ? container.querySelectorAll('div') : [];
+  const items = [];
+  rows.forEach(row => {
+    const floor = (row.querySelector('.preset-floor-input')||{}).value?.trim() || '';
+    const name = (row.querySelector('.preset-name-input')||{}).value?.trim() || '';
+    if (name) items.push({ name, floor });
+  });
+  if (items.length === 0) { showToast('떡을 하나 이상 입력해주세요.', 'error'); return; }
+  weddingHallPresets[hall] = items;
+  localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { weddingHallPresets } }).catch(() => {});
+  renderWeddingPresetList();
+  renderPresetHallSelect();
+  showToast('✅ ' + hall + ' 떡 목록 저장됐어요!', 'success');
+}
+
+function renderWeddingPresetList() {
+  const el = document.getElementById('weddingPresetList');
+  if (!el) return;
+  const halls = Object.keys(weddingHallPresets);
+  if (halls.length === 0) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--brown-light);">아직 등록된 홀이 없어요.</p>';
+    return;
+  }
+  el.innerHTML = halls.map(hall => {
+    const items = weddingHallPresets[hall] || [];
+    const tags = items.map(t =>
+      `<span style="font-size:11px;background:#EEEDFE;color:#3C3489;border-radius:20px;padding:2px 8px;display:inline-flex;gap:3px;">${t.floor ? '<b>'+t.floor+'</b>' : ''}${t.name}</span>`
+    ).join('');
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:700;color:var(--brown-deep);">${hall}</span>
+        <button onclick="editHallPreset('${hall}')" style="font-size:11px;padding:3px 10px;background:var(--brown-pale);color:var(--brown-deep);border:none;border-radius:6px;cursor:pointer;">수정</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+function editHallPreset(hall) {
+  const sel = document.getElementById('presetHallSelect');
+  if (sel) { sel.value = hall; onPresetHallSelect(); }
+  document.getElementById('presetItemInputs')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function addWeddingTteokItem() {
@@ -11259,7 +11457,7 @@ function renderWeddingList() {
       <td style="font-weight:700;">${o.weddingName || ''}</td>
       <td>${o.floor || ''}</td>
       <td style="${o.memo ? 'color:var(--accent-red);font-weight:700;' : ''}">${o.memo || ''}</td>
-      <td style="font-size:12px;min-width:160px;">${renderWeddingTteok(o)}</td>
+      <td style="font-size:12px;">${o.tteokType || ''}</td>
       <td>${normalizeDateStr(String(o.deliveryDate || ''))}</td>
       <td>${normalizeTimeStr(o.deliveryTime) || ''}</td>
       <td style="font-weight:700;">${Number(o.priceTotal || 0).toLocaleString()}원</td>
@@ -11270,37 +11468,6 @@ function renderWeddingList() {
         <button onclick="event.stopPropagation();deleteWeddingOrder('${o.id}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
       </td>
     </tr>`).join('');
-}
-
-function renderWeddingTteok(o) {
-  const items = (o.tteokItems && o.tteokItems.length > 0) ? o.tteokItems : null;
-  if (!items) {
-    const parts = (o.tteokType || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (parts.length === 0) return '-';
-    return parts.map(p => {
-      const m = p.match(/^(.+?)\s+([\d.]+\s*kg.*)$/i);
-      if (m) return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${m[1]}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${m[2]}</span></div>`;
-      return `<div style="font-size:12px;padding:3px 0;">${p}</div>`;
-    }).join('');
-  }
-  const hasFloor = items.some(t => t.floor || (t.name && /^[0-9]+층/.test(t.name)));
-  if (!hasFloor) {
-    return items.map(t => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${t.name||''}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${t.qty||''}</span></div>`).join('');
-  }
-  const floorMap = {};
-  items.forEach(t => {
-    let floor = t.floor || '';
-    if (!floor) { const m = (t.name||'').match(/^([0-9]+층)\s*/); if (m) floor = m[1]; }
-    if (!floorMap[floor]) floorMap[floor] = [];
-    const name = t.floor ? t.name : (t.name||'').replace(/^[0-9]+층\s*/, '');
-    floorMap[floor].push({ name, qty: t.qty||'' });
-  });
-  const floors = Object.keys(floorMap);
-  const cols = floors.map(f => {
-    const rows = floorMap[f].map(t => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:.5px solid var(--border);"><span style="font-size:12px;">${t.name}</span><span style="font-size:12px;font-weight:700;color:#534AB7;">${t.qty}</span></div>`).join('');
-    return `<div style="flex:1;min-width:0;background:var(--cream);border-radius:6px;padding:8px 10px;"><div style="font-size:11px;font-weight:700;color:var(--brown-mid);background:var(--brown-pale);border-radius:4px;padding:2px 8px;display:inline-block;margin-bottom:6px;">${f}</div>${rows}</div>`;
-  }).join('');
-  return `<div style="display:flex;gap:8px;">${cols}</div>`;
 }
 
 function sortWeddingOrders(key) {
