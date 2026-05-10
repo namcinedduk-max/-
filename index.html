@@ -1663,13 +1663,6 @@
           <label>웨딩홀 <span class="required">*</span></label>
           <select id="w_weddingName" onchange="onWeddingNameChange()">
             <option value="">-- 선택 --</option>
-            <option value="마리드엘">마리드엘</option>
-            <option value="유성컨벤션 2층">유성컨벤션 2층</option>
-            <option value="유성컨벤션 3층">유성컨벤션 3층</option>
-            <option value="빌라드알티오라">빌라드알티오라</option>
-            <option value="KW웨딩홀">KW웨딩홀</option>
-            <option value="명가">명가</option>
-            <option value="킹덤">킹덤</option>
           </select>
         </div>
         <div class="form-group">
@@ -6335,7 +6328,8 @@ function calcVenuePrice(type) {
 
   let total = 0;
   items.forEach(item => {
-    const priceVal = prices[item.name];
+    const lookupName = item.baseName || item.name; // 층 접두어 제거한 실제 떡 이름
+    const priceVal = prices[lookupName];
     if (!priceVal || !item.qty) return;
     const qtyStr = String(item.qty).trim();
 
@@ -12706,7 +12700,9 @@ function applyExtraVenuesToSelects() {
   const wSel = document.getElementById('w_weddingName');
   if (wSel) {
     Array.from(wSel.querySelectorAll('option[data-extra]')).forEach(o => o.remove());
-    (extraVenues.wedding || []).forEach(name => {
+    (extraVenues.wedding || []).forEach(v => {
+      const name = typeof v === 'object' ? v.name : v;
+      if (!name) return;
       const opt = document.createElement('option');
       opt.value = name; opt.textContent = name; opt.dataset.extra = 'wedding';
       wSel.appendChild(opt);
