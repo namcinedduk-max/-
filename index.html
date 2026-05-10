@@ -9818,7 +9818,7 @@ function printInvoice(order, orderType) {
             ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
             ${venueCeo ? `<div style="font-size:7px;color:#555;">대표: ${venueCeo}</div>` : ''}
             ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
-            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
+            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${normalizeDateStr(String(order.deliveryDate||''))} ${normalizeTimeStr(order.deliveryTime)||''}</div>
           </td>
         </tr>
       </table>
@@ -9884,7 +9884,7 @@ function printInvoice(order, orderType) {
             <div style="font-weight:bold;font-size:9px;">${venueName}${subInfo ? ' / '+subInfo : ''}</div>
             ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
             ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
-            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
+            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${normalizeDateStr(String(order.deliveryDate||''))} ${normalizeTimeStr(order.deliveryTime)||''}</div>
           </td>
         </tr>
       </table>
