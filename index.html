@@ -2375,6 +2375,13 @@
 
       <div id="settings-wedding-price" style="display:none;margin-top:8px;">
         <p style="font-size:12px;color:var(--brown-light);margin-bottom:14px;">웨딩홀 공통 납품단가. 모든 웨딩홀에 동일하게 적용돼요.</p>
+        <div style="background:#fef9c3;border:1.5px solid #f59e0b;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">
+          <span style="font-size:20px;flex-shrink:0;">⚠️</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:3px;">부가세 10% 포함가로 입력하세요!</div>
+            <div style="font-size:12px;color:#92400e;line-height:1.7;">웨딩홀 단가는 <b>부가세 10%가 포함된 가격</b>으로 입력해야 해요.<br>명세서에 자동으로 &ldquo;부가세 10% 포함가&rdquo;로 표기됩니다.</div>
+          </div>
+        </div>
         <div id="priceList-wedding" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
           <input id="wedding-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
@@ -9765,9 +9772,89 @@ function printInvoice(order, orderType) {
       </div>
     </div>`;
 
+  // 웨딩홀 전용 명세서 (품목/수량/단가/금액 + 부가세10%포함 + 정산)
+  const makeWeddingSlip = (copy) => {
+    // 정산 정보 (전미수금)
+    const ym = (order.deliveryDate||'').slice(0,7);
+    const prevDate = new Date((order.deliveryDate||'').slice(0,4), parseInt((order.deliveryDate||'0000-00').slice(5,7))-2, 1);
+    const prevYm = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
+    const prevOrders = (window._allWeddingOrders||[]).filter(o => (o.weddingName||o.hallName||'') === venueName && String(o.deliveryDate||'').startsWith(prevYm));
+    const prevTotal = prevOrders.reduce((s,o) => s+(Number(o.priceTotal)||0), 0);
+    const prevPaid = ((paymentRecords||{})[venueName+'_'+prevYm]||[]).reduce((s,p) => s+(Number(p.amount)||0), 0);
+    const prevCarryover = Math.max(0, prevTotal - prevPaid);
+    const todaySales = displayTotal;
+    const grandTotal = prevCarryover + todaySales;
+
+    return `
+    <div style="padding:10px 8px;box-sizing:border-box;display:flex;flex-direction:column;width:100%;">
+      <div style="text-align:center;margin-bottom:7px;">
+        <div style="font-size:14px;font-weight:bold;letter-spacing:3px;margin-bottom:3px;">거 래 명 세 표</div>
+        <span style="font-size:9px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 8px;color:${copy.color};">${copy.label}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:8px;margin-bottom:5px;">
+        <tr>
+          <td style="border:0.5px solid #999;padding:3px 4px;width:50%;vertical-align:top;">
+            <div style="color:#888;font-size:7px;">공 급 자</div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <div style="font-weight:bold;font-size:9px;">${company}</div>
+              ${sealImg ? `<img src="${sealImg}" style="height:24px;opacity:0.9;">` : ''}
+            </div>
+            <div style="font-size:7px;color:#555;">사업자: ${regno}</div>
+            <div style="font-size:7px;color:#555;">전화: ${tel}</div>
+            <div style="font-size:7px;color:#555;">${addr}</div>
+          </td>
+          <td style="border:0.5px solid #999;border-left:none;padding:3px 4px;width:50%;vertical-align:top;">
+            <div style="color:#888;font-size:7px;">공급받는자</div>
+            <div style="font-weight:bold;font-size:9px;">${venueName}${subInfo ? ' / '+subInfo : ''}</div>
+            ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
+            ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
+            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${order.deliveryDate||''} ${order.deliveryTime||''}</div>
+          </td>
+        </tr>
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:8px;table-layout:fixed;">
+        <thead><tr style="background:#f0f0f0;">
+          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:34%;">품 목</th>
+          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:14%;">수량</th>
+          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:26%;">단 가</th>
+          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:26%;">금 액</th>
+        </tr></thead>
+        <tbody>${itemRows}${blankRows}</tbody>
+        <tfoot>
+          <tr style="background:#f5f5f5;">
+            <td colspan="3" style="border:0.5px solid #999;padding:3px 4px;text-align:right;font-weight:bold;font-size:8px;">합 계</td>
+            <td style="border:0.5px solid #999;padding:3px 4px;text-align:right;font-weight:bold;font-size:8px;">${displayTotal.toLocaleString()}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="font-size:7px;color:#888;text-align:right;padding:2px 0 4px;border-bottom:1.5px solid #ddd;margin-bottom:4px;">부가세 10% 포함가</div>
+      <table style="width:100%;border-collapse:collapse;font-size:8px;">
+        <tr style="background:#fef9c3;">
+          <td style="border:0.5px solid #999;padding:3px 5px;color:#92400e;">전 미수금</td>
+          <td style="border:0.5px solid #999;padding:3px 5px;text-align:right;color:#92400e;font-weight:bold;">${prevCarryover.toLocaleString()} 원</td>
+        </tr>
+        <tr>
+          <td style="border:0.5px solid #999;padding:3px 5px;color:#555;">금일 매출액</td>
+          <td style="border:0.5px solid #999;padding:3px 5px;text-align:right;font-weight:bold;">${todaySales.toLocaleString()} 원</td>
+        </tr>
+        <tr style="background:#f0fdf4;">
+          <td style="border:0.5px solid #999;padding:3px 5px;font-weight:bold;color:#166534;">총 합 계</td>
+          <td style="border:0.5px solid #999;padding:3px 5px;text-align:right;font-weight:bold;color:#166534;">${grandTotal.toLocaleString()} 원</td>
+        </tr>
+      </table>
+      ${order.memo ? `<div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;"><div style="font-size:7px;color:#aaa;">메 모</div><div style="font-size:8px;">${order.memo}</div></div>` : `<div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;min-height:20px;"><div style="font-size:7px;color:#aaa;">메 모</div></div>`}
+      ${notice ? `<div style="margin-top:4px;border:0.5px solid #f59e0b;background:#fffbeb;padding:3px 5px;"><div style="font-size:7px;color:#92400e;">전달사항</div><div style="font-size:8px;color:#92400e;">${notice}</div></div>` : ''}
+      <div style="margin-top:6px;text-align:right;font-size:8px;color:#666;">(인) _______________</div>
+    </div>`;
+  };
+
+  // 웨딩홀은 전용 슬립 사용
+  const isWedding = orderType === 'wedding';
+
   const dividers = copies.map((copy, i) => {
     const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
-    return `<div style="flex:1;min-width:0;${borderRight}">${makeSlip(copy)}</div>`;
+    const slipContent = isWedding ? makeWeddingSlip(copy) : makeSlip(copy);
+    return `<div style="flex:1;min-width:0;${borderRight}">${slipContent}</div>`;
   }).join('');
 
   const cutLabel = copies.length === 3 ? '✂ 절취선 — A4 가로 3등분 절취' : '✂ 절취선 — A4 가로 반으로 절취';
