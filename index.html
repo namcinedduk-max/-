@@ -1373,6 +1373,9 @@
           <label>빈소 위치 <span class="required">*</span></label>
           <input type="text" id="f_binsoLocation" placeholder="예: 3층 302호">
         </div>
+        <div class="form-group">
+          <label>고인명</label>
+          <input type="text" id="f_deceasedName" placeholder="예: 홍길동">
 
         <!-- 메모 -->
         <div class="form-group full">
@@ -1632,6 +1635,7 @@
             <th>No.</th>
             <th onclick="sortFuneralOrders('funeralName')" style="cursor:pointer;">장례식장 <span id="fsort-funeralName"></span></th>
             <th onclick="sortFuneralOrders('binsoLocation')" style="cursor:pointer;">빈소 <span id="fsort-binsoLocation"></span></th>
+            <th onclick="sortFuneralOrders('deceasedName')" style="cursor:pointer;">고인명 <span id="fsort-deceasedName"></span></th>
             <th onclick="sortFuneralOrders('memo')" style="cursor:pointer;">메모 <span id="fsort-memo"></span></th>
             <th>떡 종류</th>
             <th onclick="sortFuneralOrders('deliveryDate')" style="cursor:pointer;">배송일 <span id="fsort-deliveryDate">▲</span></th>
@@ -8145,6 +8149,7 @@ function calcFuneralTotal() {
 function submitFuneralOrder() {
   const funeralName = document.getElementById('f_funeralName').value.trim();
   const binsoLocation = document.getElementById('f_binsoLocation').value.trim();
+  const deceasedName = (document.getElementById('f_deceasedName')||{}).value?.trim() || '';
   const deliveryDate = document.getElementById('f_deliveryDate').value;
 
   if (!funeralName) { showToast('장례식장을 선택해주세요.', 'error'); return; }
@@ -8175,6 +8180,7 @@ function submitFuneralOrder() {
     tteokType: funeralTteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', '),
     deliveryAddr1: funeralName + ' ' + binsoLocation,
     deliveryAddr2: '',
+    deceasedName,
     memo: (document.getElementById('f_memo') ? document.getElementById('f_memo').value.trim() : ''),
     deliveryDate,
     deliveryTime: document.getElementById('f_deliveryTime').value.trim(),
@@ -8190,7 +8196,7 @@ function submitFuneralOrder() {
 }
 
 function resetFuneralForm() {
-  ['f_funeralName','f_binsoLocation','f_memo','f_priceProduct','f_priceDelivery','f_priceDiscount','f_deliveryTime'].forEach(id => {
+  ['f_funeralName','f_binsoLocation','f_deceasedName','f_memo','f_priceProduct','f_priceDelivery','f_priceDiscount','f_deliveryTime'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   funeralTteokItems = [];
@@ -9768,6 +9774,7 @@ function printInvoice(order, orderType) {
           <td style="border:0.5px solid #999;border-left:none;padding:3px 5px;width:50%;vertical-align:top;">
             <div style="color:#888;font-size:7px;margin-bottom:1px;">공급받는자</div>
             <div style="font-weight:bold;font-size:10px;">${venueName}${subInfo ? ' / ' + subInfo : ''}</div>
+            ${order.deceasedName ? `<div style="font-size:7px;color:#555;font-weight:700;">고인: ${order.deceasedName}</div>` : ''}
             ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
             ${venueCeo ? `<div style="font-size:7px;color:#555;">대표: ${venueCeo}</div>` : ''}
             ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
@@ -10218,6 +10225,7 @@ function renderFuneralList() {
       <td style="color:var(--brown-light);font-size:12px;">#${i+1}</td>
       <td><strong style="${nameColor}">${o.funeralName||o.receiverName}</strong></td>
       <td>${o.binsoLocation||'-'}</td>
+      <td>${o.deceasedName ? `<span style="font-weight:700;color:var(--brown-deep);">${o.deceasedName}</span>` : '-'}</td>
       <td>${o.memo ? `<span style="color:var(--accent-red);font-weight:700;font-size:12px;">⚠️ ${o.memo}</span>` : '-'}</td>
       <td><span style="font-weight:600;">${o.tteokItems ? o.tteokItems.map(t => t.name + (t.qty ? ' '+t.qty : '')).join('<br>') : String(o.tteokType||'').split(', ').join('<br>')}</span></td>
       <td>${normalizeDateStr(String(o.deliveryDate||''))}</td>
@@ -10250,6 +10258,7 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">접수 시각</span><span class="modal-detail-value">${o.createdAt}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">장례식장</span><span class="modal-detail-value">${o.funeralName||o.receiverName}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">빈소 위치</span><span class="modal-detail-value">${o.binsoLocation||'-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">고인명</span><span class="modal-detail-value" style="font-weight:700;">${o.deceasedName||'-'}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">떡 종류</span><span class="modal-detail-value">${o.tteokItems ? o.tteokItems.map(t => t.name+(t.qty?' '+t.qty:'')).join('<br>') : String(o.tteokType||'').split(', ').join('<br>')}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><span class="modal-detail-value">${delivDate}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><span class="modal-detail-value">${normalizeTimeStr(o.deliveryTime) || '-'}</span></div>
@@ -10267,6 +10276,7 @@ function openFuneralModal(id) {
       </select>
     </div>
     <div class="modal-detail-row"><span class="modal-detail-label">빈소 위치</span><input id="ef_binsoLocation" value="${o.binsoLocation||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">고인명</span><input id="ef_deceasedName" value="${o.deceasedName||''}" placeholder="예: 홍길동" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
       <span class="modal-detail-label">떡 종류</span>
       <div style="width:100%;">
@@ -10490,6 +10500,7 @@ function saveFuneralEdit() {
     ...o,
     funeralName: document.getElementById('ef_funeralName').value,
     binsoLocation: document.getElementById('ef_binsoLocation').value,
+    deceasedName: (document.getElementById('ef_deceasedName')||{}).value?.trim() || o.deceasedName || '',
     tteokType: editModalTteokItems.length > 0
       ? editModalTteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', ')
       : (document.getElementById('ef_tteokType') ? document.getElementById('ef_tteokType').value : o.tteokType),
@@ -10578,6 +10589,7 @@ function printFuneralOrders() {
       <td>${i+1}</td>
       <td><strong>${o.funeralName||o.receiverName}</strong></td>
       <td>${o.binsoLocation||'-'}</td>
+      <td>${o.deceasedName ? `<span style="font-weight:700;color:var(--brown-deep);">${o.deceasedName}</span>` : '-'}</td>
       <td>${o.memo ? `<span style="color:red;font-weight:700;">⚠️ ${o.memo}</span>` : ''}</td>
       <td><strong>${o.tteokItems ? o.tteokItems.map(t=>t.name+(t.qty?' '+t.qty:'')).join('<br>') : String(o.tteokType||'').split(', ').join('<br>')}</strong></td>
       <td>${normalizeDateStr(String(o.deliveryDate||''))}<br><span class="sub">${normalizeTimeStr(o.deliveryTime) || '-'}</span></td>
@@ -12343,27 +12355,29 @@ function renderVenueSettlement(venueName, data, ym, allOrdersMap) {
         <thead><tr style="background:#f9fafb;">
           <th style="padding:8px 14px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">배송일</th>
           <th style="padding:8px 14px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">호실</th>
+          <th style="padding:8px 14px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">고인명</th>
           <th style="padding:8px 14px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">납품 내역</th>
           <th style="padding:8px 14px;text-align:right;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;">금액</th>
         </tr></thead>
         <tbody>
           ${data.thisMonth.length === 0
-            ? `<tr><td colspan="4" style="padding:14px;text-align:center;color:#aaa;">이번달 납품 내역이 없어요.</td></tr>`
+            ? `<tr><td colspan="5" style="padding:14px;text-align:center;color:#aaa;">이번달 납품 내역이 없어요.</td></tr>`
             : data.thisMonth.sort(function(a,b){ return (a.deliveryDate||'')>(b.deliveryDate||'')?1:-1; }).map(function(o){
               const location = o.binsoLocation || o.floor || o.deliveryAddr1 || '';
               return `<tr style="border-bottom:1px solid #f0f0f0;">
                 <td style="padding:8px 14px;color:#666;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
                 <td style="padding:8px 14px;color:#666;">${location || '-'}</td>
+                <td style="padding:8px 14px;font-weight:700;color:var(--brown-deep);">${o.deceasedName||'-'}</td>
                 <td style="padding:8px 14px;">${o.tteokType||'-'}</td>
                 <td style="padding:8px 14px;text-align:right;font-weight:600;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
               </tr>`;
             }).join('')}
           ${prevCarryover > 0 ? `<tr style="background:#fef9c3;">
-            <td colspan="3" style="padding:8px 14px;font-weight:600;color:#92400e;">전월 이월</td>
+            <td colspan="4" style="padding:8px 14px;font-weight:600;color:#92400e;">전월 이월</td>
             <td style="padding:8px 14px;text-align:right;font-weight:600;color:#92400e;">+${prevCarryover.toLocaleString()}원</td>
           </tr>` : ''}
           <tr style="background:#f3f4f6;">
-            <td colspan="3" style="padding:10px 14px;font-weight:700;">총 청구액</td>
+            <td colspan="4" style="padding:10px 14px;font-weight:700;">총 청구액</td>
             <td style="padding:10px 14px;text-align:right;font-weight:700;font-size:15px;">${totalBill.toLocaleString()}원</td>
           </tr>
         </tbody>
