@@ -7587,14 +7587,11 @@ function switchTab(tab) {
   if (tab === 'list') {
     if (gasUrl) {
       loadOtherOrdersFromSheet(true);
-      // 장례 주문도 로딩해서 충대 식당 발주 섹션 표시
-      const funeralPromise = loadFuneralOrdersFromSheet(true, true); // force 새로고침
-      const orderPromise = loadOrdersFromSheet(false);
-      // 둘 다 완료되면 renderList 재호출 (충대 섹션 최신화)
-      Promise.all([
-        funeralPromise instanceof Promise ? funeralPromise : Promise.resolve(),
-        orderPromise instanceof Promise ? orderPromise : Promise.resolve()
-      ]).then(() => renderList()).catch(() => {});
+      // 개인주문 + 장례주문 동시 로딩 후 renderList 한 번만 호출
+      // 개인주문 로드(자체 renderList 포함) + 장례주문 강제 로드 후 renderList 재호출
+      loadFuneralOrdersFromSheet(true, true)
+        .then(() => loadOrdersFromSheet(false))
+        .catch(() => loadOrdersFromSheet(false));
     } else { updateStats(); renderList(); }
   }
   if (tab === 'funeralList') {
