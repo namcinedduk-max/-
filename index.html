@@ -10629,8 +10629,8 @@ function saveFuneralEdit() {
         updateFuneralStats(); renderFuneralList();
         closeModal();
         showToast('✅ 수정되었습니다.', 'success');
-        // 시트에서 최신 데이터 재동기화
-        loadFuneralOrdersFromSheet(true, true);
+        // 시트에서 최신 데이터 재동기화 후 개인목록 충대섹션도 갱신
+        loadFuneralOrdersFromSheet(true, true).then(() => renderList());
       } else {
         const idx2 = funeralOrders.findIndex(x => String(x.id) === String(updated.id));
         if (idx2 > -1) funeralOrders[idx2] = o;
