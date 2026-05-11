@@ -7588,6 +7588,7 @@ function switchTab(tab) {
     if (gasUrl) {
       loadOrdersFromSheet(false);
       loadOtherOrdersFromSheet(true);
+      loadFuneralOrdersFromSheet(true); // 충대 식당 발주 섹션용
     } else { updateStats(); renderList(); }
   }
   if (tab === 'funeralList') {
