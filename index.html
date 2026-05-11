@@ -8356,9 +8356,21 @@ function normalizeDateStr(str) {
   return str.slice(0, 10);
 }
 
+function getFilterDateValue() {
+  const input = document.getElementById('filterDate');
+  if (!input || !input.value) return '';
+  // date input value는 항상 YYYY-MM-DD지만 브라우저 timezone에 따라 하루 밀릴 수 있음
+  // input.valueAsDate는 UTC 자정 기준이라 한국에선 하루 앞날짜로 보정 필요
+  const d = input.valueAsDate;
+  if (!d) return input.value;
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
 function renderList() {
   updatePendingBadge();
-  const filterDate = document.getElementById('filterDate').value;
+  const filterDate = getFilterDateValue();
   const filterType = document.getElementById('filterDateType').value;
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
 
