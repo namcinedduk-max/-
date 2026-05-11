@@ -1535,7 +1535,7 @@
           <option value="created">📋 접수일</option>
         </select>
         <div class="filter-divider"></div>
-        <input type="date" id="filterDate" onchange="loadFuneralOrdersFromSheet(true,true).then(()=>renderList())">
+        <input type="date" id="filterDate" onchange="loadFuneralOrdersFromSheet(true).then(()=>renderList())">
       </div>
       <input type="text" class="search-input" id="searchInput" placeholder="🔍 이름, 전화번호, 떡 종류 검색..." oninput="renderList()">
       <button class="btn-small btn-secondary" onclick="clearFilter()">전체보기</button>
