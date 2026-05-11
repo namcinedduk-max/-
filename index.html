@@ -8272,15 +8272,12 @@ function saveOrders() {
 
 function updateStats() {
   const nowStr = new Date().toLocaleDateString('ko-KR');
-  const RESTAURANT_VENUES = ['충대본관영양', '소비조합', '재활환자', '재활직원'];
-  const restaurantOrders = funeralOrders.filter(o => RESTAURANT_VENUES.includes(o.funeralName));
-  const allPersonal = [...orders, ...restaurantOrders];
-  const createdToday = allPersonal.filter(o => String(o.createdAt||'').startsWith(nowStr));
+  const createdToday = orders.filter(o => String(o.createdAt||'').startsWith(nowStr));
   const salesToday = createdToday.reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
-  const unpaid = allPersonal.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
+  const unpaid = orders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
   document.getElementById('stat-today').textContent = createdToday.length.toLocaleString();
   document.getElementById('stat-sales').textContent = salesToday.toLocaleString();
-  document.getElementById('stat-total').textContent = allPersonal.length.toLocaleString();
+  document.getElementById('stat-total').textContent = orders.length.toLocaleString();
   document.getElementById('stat-unpaid').textContent = unpaid.toLocaleString();
 }
 
@@ -8352,14 +8349,7 @@ function renderList() {
   const filterType = document.getElementById('filterDateType').value;
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
 
-  // 식당 계열 장례식장 주문을 개인 목록에 같이 표시
-  const RESTAURANT_VENUES = ['충대본관영양', '소비조합', '재활환자', '재활직원'];
-  const restaurantOrders = funeralOrders
-    .filter(o => RESTAURANT_VENUES.includes(o.funeralName))
-    .map(o => ({ ...o, _fromFuneral: true, receiverName: o.funeralName, deliveryAddr1: o.funeralName }));
-  const combinedOrders = [...orders, ...restaurantOrders];
-
-  let filtered = combinedOrders.filter(o => {
+  let filtered = orders.filter(o => {
     if (o.deliveryMethod === '택배') return false;
     if (window._filterPayStatus && o.payStatus !== window._filterPayStatus) return false;
     let matchDate = true;
@@ -8426,14 +8416,13 @@ function renderList() {
       ? `<button class="btn-small" onclick="event.stopPropagation();approveOrder(${o.id})" style="padding:4px 8px;font-size:11px;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-bottom:2px;display:block;width:100%;">✅ 승인</button>
          <button class="btn-small btn-danger" onclick="event.stopPropagation();rejectOrder(${o.id})" style="padding:4px 8px;font-size:11px;display:block;width:100%;">❌ 거절</button>`
       : `<button class="btn-small btn-danger" onclick="event.stopPropagation();deleteOrder(${o.id})" style="padding:4px 10px;font-size:11px;">삭제</button>`;
-    const restaurantBadge = o._fromFuneral ? `<span style="font-size:10px;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;margin-left:4px;">식당</span>` : '';
     const nameCell = isLinkWaiting
       ? `<span style="color:#aaa;font-size:12px;">고객 입력 전</span>`
-      : `<strong>${o.receiverName}</strong>${restaurantBadge}<br><span style="color:var(--brown-light);font-size:12px;">${o.senderName||''}</span>`;
+      : `<strong>${o.receiverName}</strong><br><span style="color:var(--brown-light);font-size:12px;">${o.senderName}</span>`;
     const phoneCell = isLinkWaiting
       ? `<span style="color:#aaa;font-size:12px;">-</span>`
       : `<span style="font-size:12px;">${o.receiverPhone}<br><span style="color:var(--brown-light);">${o.senderPhone}</span></span>`;
-    return `<tr onclick="${o._fromFuneral ? 'openFuneralModal('+o.id+')' : 'openModal('+o.id+')'}" style="${rowStyle}">
+    return `<tr onclick="openModal(${o.id})" style="${rowStyle}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="order-checkbox" data-id="${o.id}" style="width:auto;cursor:pointer;"></td>
       <td style="color:var(--brown-light);font-size:12px;">#${getOrderNo(o)}${bundleBadge}${pendingBadge}${waitingBadge}</td>
       <td>${nameCell}</td>
