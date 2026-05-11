@@ -3236,13 +3236,6 @@ function loadTteokPriceSettings() {
       if (d.weddingHallPresets) { try {
         weddingHallPresets = d.weddingHallPresets;
         localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
-        // weddingHallPresets에 있는 홀을 extraVenues.wedding에도 자동 추가
-        Object.keys(weddingHallPresets).forEach(function(hallName) {
-          if (!extraVenues.wedding) extraVenues.wedding = [];
-          const exists = extraVenues.wedding.some(function(v){ return (typeof v==='object'?v.name:v) === hallName; });
-          if (!exists) extraVenues.wedding.push({ name: hallName });
-        });
-        localStorage.setItem('extraVenues', JSON.stringify(extraVenues));
         applyExtraVenuesToSelects();
       } catch(e){} }
       if (d.priceSettings) { try {
@@ -13001,18 +12994,26 @@ function addVenueName(type) {
 }
 
 function removeVenueName(type, name) {
+  if (!confirm(name + ' 거래처를 삭제할까요?\n홀별 기본 떡 목록도 같이 삭제됩니다.')) return;
   if (type === 'funeral') {
     extraVenues.funeral = (extraVenues.funeral || []).filter(v => v.name !== name);
-    // 해당 거래처 단가 데이터도 삭제
     if (venuePrices[name]) {
       delete venuePrices[name];
       saveVenuePriceData();
     }
   } else {
     extraVenues.wedding = (extraVenues.wedding || []).filter(v => (typeof v === 'object' ? v.name : v) !== name);
+    // 홀별 기본 떡 목록도 같이 삭제
+    if (weddingHallPresets[name]) {
+      delete weddingHallPresets[name];
+      localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
+      if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { weddingHallPresets } }).catch(() => {});
+    }
   }
   saveExtraVenues();
   renderVenueList();
+  renderWeddingPresetList();
+  renderPresetHallSelect();
   renderExtraFuneralPriceSections();
   applyExtraVenuesToSelects();
   showToast('🗑 ' + name + ' 삭제됐어요.', '');
