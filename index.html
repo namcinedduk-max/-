@@ -8412,9 +8412,9 @@ function renderList() {
   if (filtered.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
-    return;
+  } else {
+    empty.style.display = 'none';
   }
-  empty.style.display = 'none';
 
   tbody.innerHTML = filtered.map((o, i) => {
     const payBadge = getPayBadge(o.payStatus);
