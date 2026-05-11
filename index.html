@@ -3236,6 +3236,14 @@ function loadTteokPriceSettings() {
       if (d.weddingHallPresets) { try {
         weddingHallPresets = d.weddingHallPresets;
         localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
+        // weddingHallPresets에 있는 홀을 extraVenues.wedding에도 자동 추가
+        Object.keys(weddingHallPresets).forEach(function(hallName) {
+          if (!extraVenues.wedding) extraVenues.wedding = [];
+          const exists = extraVenues.wedding.some(function(v){ return (typeof v==='object'?v.name:v) === hallName; });
+          if (!exists) extraVenues.wedding.push({ name: hallName });
+        });
+        localStorage.setItem('extraVenues', JSON.stringify(extraVenues));
+        applyExtraVenuesToSelects();
       } catch(e){} }
       if (d.priceSettings) { try {
         priceSettings = d.priceSettings;
