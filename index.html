@@ -8466,6 +8466,8 @@ function renderList() {
   });
 
   const chungdaeSec = document.getElementById('chungdaeSection');
+  chungdaeSec.style.display = 'none'; // 초기화
+  console.log('[충대섹션] orders:', chungdaeOrders.length, 'filterDate:', filterDate);
   if (chungdaeOrders.length > 0) {
     chungdaeSec.style.display = 'block';
     chungdaeSec.innerHTML = `
