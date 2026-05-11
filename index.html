@@ -7588,10 +7588,19 @@ function switchTab(tab) {
     if (gasUrl) {
       loadOtherOrdersFromSheet(true);
       // 개인주문 + 장례주문 동시 로딩 후 renderList 한 번만 호출
-      // 개인주문 로드(자체 renderList 포함) + 장례주문 강제 로드 후 renderList 재호출
-      loadFuneralOrdersFromSheet(true, true)
-        .then(() => loadOrdersFromSheet(false))
-        .catch(() => loadOrdersFromSheet(false));
+      // 장례+개인 동시 로드, 둘 다 완료 후 renderList 한 번만 호출
+      Promise.all([
+        loadFuneralOrdersFromSheet(true, true),
+        loadOrdersFromSheet(true, true)
+      ]).then(() => {
+        updateStats();
+        renderList();
+        showLoading(false);
+      }).catch(() => {
+        updateStats();
+        renderList();
+        showLoading(false);
+      });
     } else { updateStats(); renderList(); }
   }
   if (tab === 'funeralList') {
