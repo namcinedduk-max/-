@@ -3228,6 +3228,11 @@ function loadTteokPriceSettings() {
         if (typeof renderTteokAllList === 'function') renderTteokAllList();
         if (typeof updateTteokSelects === 'function') updateTteokSelects();
       } catch(e){ console.error('tteokPriceDB 로드 오류', e); } }
+      if (d.extraVenues) { try {
+        extraVenues = d.extraVenues;
+        localStorage.setItem('extraVenues', JSON.stringify(extraVenues));
+        applyExtraVenuesToSelects();
+      } catch(e){} }
       if (d.weddingHallPresets) { try {
         weddingHallPresets = d.weddingHallPresets;
         localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
@@ -12951,6 +12956,7 @@ function confirmNewTteok(name) {
 
 function saveExtraVenues() {
   localStorage.setItem('extraVenues', JSON.stringify(extraVenues));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { extraVenues } }).catch(() => {});
 }
 
 function addVenueName(type) {
