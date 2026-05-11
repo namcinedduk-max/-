@@ -13009,7 +13009,7 @@ function removeVenueName(type, name) {
       saveVenuePriceData();
     }
   } else {
-    extraVenues.wedding = (extraVenues.wedding || []).filter(n => n !== name);
+    extraVenues.wedding = (extraVenues.wedding || []).filter(v => (typeof v === 'object' ? v.name : v) !== name);
   }
   saveExtraVenues();
   renderVenueList();
