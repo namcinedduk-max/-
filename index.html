@@ -10367,8 +10367,11 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">장례식장</span>
       <select id="ef_funeralName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
         <option value="충대장례식장" ${(o.funeralName||o.receiverName)==='충대장례식장'?'selected':''}>충대장례식장</option>
+        <option value="충대본관영양" ${(o.funeralName||o.receiverName)==='충대본관영양'?'selected':''}>충대본관영양</option>
+        <option value="소비조합" ${(o.funeralName||o.receiverName)==='소비조합'?'selected':''}>소비조합</option>
+        <option value="재활환자" ${(o.funeralName||o.receiverName)==='재활환자'?'selected':''}>재활환자</option>
+        <option value="재활직원" ${(o.funeralName||o.receiverName)==='재활직원'?'selected':''}>재활직원</option>
         <option value="대청장례식장" ${(o.funeralName||o.receiverName)==='대청장례식장'?'selected':''}>대청장례식장</option>
-        ${(extraVenues.funeral||[]).map(v=>{const n=typeof v==='object'?v.name:v;return `<option value="${n}" ${(o.funeralName||o.receiverName)===n?'selected':''}>${n}</option>`;}).join('')}
       </select>
     </div>
     <div class="modal-detail-row"><span class="modal-detail-label">빈소 위치</span><input id="ef_binsoLocation" value="${o.binsoLocation||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
