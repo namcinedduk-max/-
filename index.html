@@ -7586,9 +7586,15 @@ function switchTab(tab) {
   if (btn) btn.classList.add('active');
   if (tab === 'list') {
     if (gasUrl) {
-      loadOrdersFromSheet(false);
       loadOtherOrdersFromSheet(true);
-      loadFuneralOrdersFromSheet(true); // 충대 식당 발주 섹션용
+      // 장례 주문도 로딩해서 충대 식당 발주 섹션 표시
+      const funeralPromise = loadFuneralOrdersFromSheet(true, true); // force 새로고침
+      const orderPromise = loadOrdersFromSheet(false);
+      // 둘 다 완료되면 renderList 재호출 (충대 섹션 최신화)
+      Promise.all([
+        funeralPromise instanceof Promise ? funeralPromise : Promise.resolve(),
+        orderPromise instanceof Promise ? orderPromise : Promise.resolve()
+      ]).then(() => renderList()).catch(() => {});
     } else { updateStats(); renderList(); }
   }
   if (tab === 'funeralList') {
