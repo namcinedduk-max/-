@@ -11306,6 +11306,7 @@ function renderWeddingPresetList() {
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <button onclick="event.stopPropagation();editHallPreset('${safeId}')" style="font-size:11px;padding:3px 10px;background:var(--brown-pale);color:var(--brown-deep);border:none;border-radius:6px;cursor:pointer;">수정</button>
+          <button onclick="event.stopPropagation();deleteHallPreset('${safeId}')" style="font-size:11px;padding:3px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;cursor:pointer;">삭제</button>
           <span id="preset-arrow-${safeId}" style="font-size:13px;color:var(--brown-light);display:inline-block;transform:rotate(${isOpen?'180deg':'0deg'});transition:transform .25s;">▼</span>
         </div>
       </div>
@@ -11318,6 +11319,18 @@ function renderWeddingPresetList() {
     el._hallKeyMap[hall.replace(/[^a-zA-Z0-9가-힣]/g, '_')] = hall;
   });
 }
+function deleteHallPreset(safeId) {
+  const el = document.getElementById('weddingPresetList');
+  const hallName = (el && el._hallKeyMap) ? (el._hallKeyMap[safeId] || safeId) : safeId;
+  if (!confirm(hallName + ' 홀 떡 목록을 삭제할까요?')) return;
+  delete weddingHallPresets[hallName];
+  localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { weddingHallPresets } }).catch(() => {});
+  renderWeddingPresetList();
+  renderPresetHallSelect();
+  showToast('🗑 ' + hallName + ' 떡 목록 삭제됐어요.', '');
+}
+
 function editHallPreset(safeId) {
   // safeId → 실제 hall 이름 역변환
   const el = document.getElementById('weddingPresetList');
