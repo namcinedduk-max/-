@@ -9394,20 +9394,87 @@ function printOrders() {
     showToast('출력할 주문이 없습니다.', 'error'); return;
   }
 
+  // ── 떡 표시 헬퍼: "세트명(구성품들)" 패턴이면 두 줄로 분리 ──────
+  function smartSplitTteokType(str) {
+    const result = [];
+    let depth = 0, cur = '';
+    const s = String(str || '');
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '(') depth++;
+      else if (c === ')') depth = Math.max(0, depth - 1);
+      if (c === ',' && depth === 0) {
+        if (cur.trim()) result.push(cur.trim());
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    if (cur.trim()) result.push(cur.trim());
+    return result;
+  }
+  function formatTteokItem(name, qty, opts) {
+    opts = opts || {};
+    const hs = opts.headerSize || 11;
+    const cs = opts.compSize || 10;
+    const hc = opts.headerColor || '#000';
+    const cc = opts.compColor || '#555';
+    const prefix = opts.prefix || '';
+    const nameStr = String(name || '').trim();
+    const qtyStr = qty ? String(qty).trim() : '';
+    // 마지막 ')' 와 매칭되는 '(' 를 찾아서 split (세트명에 괄호 있는 케이스: 코리아(대), 쿠키상자(소) 대응)
+    let openPos = -1, closePos = -1;
+    const lastClose = nameStr.lastIndexOf(')');
+    if (lastClose !== -1) {
+      let depth = 1;
+      for (let i = lastClose - 1; i >= 0; i--) {
+        if (nameStr[i] === ')') depth++;
+        else if (nameStr[i] === '(') { depth--; if (depth === 0) { openPos = i; break; } }
+      }
+      if (openPos !== -1) closePos = lastClose;
+    }
+    if (openPos > 0 && closePos > openPos) {
+      const setName = nameStr.substring(0, openPos).trim();
+      const components = nameStr.substring(openPos + 1, closePos).trim();
+      const afterParen = nameStr.substring(closePos + 1).trim();
+      // 구성품에 ',' 가 없으면 세트가 아니라 그냥 괄호 정보(예: 코리아(대) 단독)일 수 있음 - 그땐 일반 떡으로
+      if (components.indexOf(',') !== -1) {
+        const headerText = setName + (afterParen ? ' ' + afterParen : '') + (qtyStr ? ' ' + qtyStr : '');
+        return '<div style="font-weight:700;font-size:' + hs + 'px;color:' + hc + ';">'
+          + prefix + headerText + '</div>'
+          + '<div style="font-size:' + cs + 'px;color:' + cc + ';margin-top:1px;">'
+          + components + '</div>';
+      }
+    }
+    return '<div style="font-weight:700;font-size:' + hs + 'px;color:' + hc + ';">'
+      + prefix + nameStr + (qtyStr ? ' ' + qtyStr : '')
+      + '</div>';
+  }
+  function renderTteokItems(o, opts) {
+    if (o.tteokItems && o.tteokItems.length) {
+      return o.tteokItems.map(function(t){ return formatTteokItem(t.name, t.qty, opts); }).join('');
+    }
+    if (o.tteokType) {
+      const parts = smartSplitTteokType(o.tteokType);
+      if (parts.length > 0) return parts.map(function(s){ return formatTteokItem(s, '', opts); }).join('');
+    }
+    return '<div style="font-size:' + ((opts && opts.headerSize) || 11) + 'px;color:#999;">-</div>';
+  }
+
   // ── 개인 주문 테이블 행 (받는분/보낸이 선으로 구분, 전화번호 한 줄) ──
   const rows = filtered.map((o, i) => {
-    const tteok = (o.tteokItems && o.tteokItems.length) ? o.tteokItems.map(t => t.name + (t.qty ? ' '+t.qty : '')).join('<br>') : String(o.tteokType||'').split(', ').join('<br>');
+    const tteokHtml = renderTteokItems(o, {headerSize: 11, compSize: 10, headerColor: '#000'});
     const isLast = i === filtered.length - 1;
     const rowBorder = isLast ? '' : 'border-bottom:1.5px dashed #888;';
     const bg = i % 2 ? '#FFF9F2' : '#fff';
 
     const senderName = String(o.senderName || '').trim();
-    const recipientCell = '<div style="font-weight:700;font-size:13px;">' + (o.receiverName||'-') + '</div>'
-      + (senderName ? '<div style="border-top:1px solid #ccc;margin-top:5px;padding-top:5px;color:#666;font-size:11px;">' + senderName + '</div>' : '');
+    const recipientCell = '<div><span style="color:#3D2314;font-size:10px;font-weight:700;">받:</span> <span style="font-weight:700;font-size:13px;">' + (o.receiverName||'-') + '</span></div>'
+      + (senderName ? '<div style="border-top:1px solid #ccc;margin-top:5px;padding-top:5px;color:#666;"><span style="color:#3D2314;font-size:10px;font-weight:700;">보:</span> <span style="font-size:11px;">' + senderName + '</span></div>' : '');
 
     const senderPhone = String(o.senderPhone || '').trim();
-    const phoneCell = '<div style="font-weight:600;font-size:12px;">' + (o.receiverPhone||'-') + '</div>'
-      + (senderPhone ? '<div style="border-top:1px solid #ccc;margin-top:5px;padding-top:5px;color:#666;font-size:11px;">' + senderPhone + '</div>' : '');
+    const phoneCell = '<div><span style="color:#3D2314;font-size:10px;font-weight:700;">받:</span> <span style="font-weight:600;font-size:12px;">' + (o.receiverPhone||'-') + '</span></div>'
+      + (senderPhone ? '<div style="border-top:1px solid #ccc;margin-top:5px;padding-top:5px;color:#666;"><span style="color:#3D2314;font-size:10px;font-weight:700;">보:</span> <span style="font-size:11px;">' + senderPhone + '</span></div>' : '');
 
     const addr = [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ') || '-';
     const memo = o.memo ? '<div style="margin-top:4px;color:#dc2626;font-weight:700;font-size:10px;">⚠️ ' + o.memo + '</div>' : '';
@@ -9418,7 +9485,7 @@ function printOrders() {
       + '<td style="padding:10px 5px;font-size:11px;line-height:1.4;">' + recipientCell + '</td>'
       + '<td style="padding:10px 5px;font-size:11px;line-height:1.4;white-space:nowrap;">' + phoneCell + '</td>'
       + '<td style="padding:10px 5px;font-size:11px;line-height:1.5;">' + addr + memo + '</td>'
-      + '<td style="padding:10px 5px;font-size:11px;">' + tteok + '</td>'
+      + '<td style="padding:10px 5px;line-height:1.4;">' + tteokHtml + '</td>'
       + '<td style="padding:10px 5px;font-size:11px;text-align:right;font-weight:700;">' + (Number(o.priceTotal)||0).toLocaleString() + '원' + (o.payMethod ? '<br><span style="font-size:10px;font-weight:400;color:#666;">' + o.payMethod + '</span>' : '') + '</td>'
       + '<td style="padding:10px 5px;font-size:10px;">' + (o.payStatus||'-') + '</td>'
       + '</tr>';
@@ -9432,7 +9499,7 @@ function printOrders() {
       + '</div>';
   }
 
-  // 웨딩홀 (층별 정리, 시간만 표시)
+  // 웨딩홀 (층별 정리, 시간만 표시, 세트는 두 줄로 분리)
   const weddingBlocks = todayWedding.map(function(o, i) {
     const isLast = i === todayWedding.length - 1;
     let itemsHtml = '';
@@ -9441,16 +9508,26 @@ function printOrders() {
       o.tteokItems.forEach(function(t) {
         const floor = t.floor || '';
         if (!floorMap[floor]) floorMap[floor] = [];
-        floorMap[floor].push((t.baseName || t.name) + (t.qty ? ' '+t.qty : ''));
+        floorMap[floor].push(t);
       });
       const sorted = Object.keys(floorMap).sort(function(a, b){ return a ? (b ? a.localeCompare(b, 'ko') : -1) : 1; });
       itemsHtml = sorted.map(function(floor) {
-        return '<div style="font-size:12px;color:#333;padding:1px 0;">'
-          + (floor ? '<b style="color:#1d4ed8;">'+floor+'</b> ' : '')
-          + floorMap[floor].join(' / ') + '</div>';
+        return floorMap[floor].map(function(t, idx) {
+          const prefix = (idx === 0 && floor)
+            ? '<b style="color:#1d4ed8;">' + floor + '</b> '
+            : '';
+          return formatTteokItem(t.baseName || t.name, t.qty, {
+            headerSize: 12, compSize: 10, headerColor: '#333', prefix: prefix
+          });
+        }).join('');
       }).join('');
+    } else if (o.tteokType) {
+      const parts = smartSplitTteokType(o.tteokType);
+      itemsHtml = parts.length > 0
+        ? parts.map(function(s){ return formatTteokItem(s, '', {headerSize: 12, compSize: 10, headerColor: '#333'}); }).join('')
+        : '<div style="font-size:12px;color:#999;">-</div>';
     } else {
-      itemsHtml = '<div style="font-size:12px;color:#333;">'+(o.tteokType||'-')+'</div>';
+      itemsHtml = '<div style="font-size:12px;color:#999;">-</div>';
     }
     const timeStr = normalizeTimeStr(o.deliveryTime) || '';
     return '<div style="' + (isLast ? '' : 'border-right:1px solid #e5e7eb;') + 'padding:10px 14px;min-width:150px;flex:1;">'
@@ -9462,28 +9539,28 @@ function printOrders() {
   const weddingSection = todayWedding.length === 0 ? '' :
     mkVenueBlock('#eff6ff', '#1d4ed8', '#bfdbfe', '💒 웨딩홀 발주 ('+todayWedding.length+'건)', weddingBlocks);
 
-  // 충대식당 (시간 정보 없으면 시간 줄 자체 생략)
+  // 충대식당 (시간 정보 없으면 시간 줄 자체 생략, 세트는 두 줄로 분리)
   const chungdaeBlocks = todayChungdae.map(function(o, i) {
     const isLast = i === todayChungdae.length - 1;
-    const items = o.tteokItems && o.tteokItems.length ? o.tteokItems.map(function(t){return t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
+    const itemsHtml = renderTteokItems(o, {headerSize: 12, compSize: 10, headerColor: '#333'});
     const timeStr = normalizeTimeStr(o.deliveryTime) || '';
     return '<div style="' + (isLast ? '' : 'border-right:1px solid #e5e7eb;') + 'padding:10px 14px;min-width:150px;flex:1;">'
       + '<div style="font-size:14px;font-weight:700;color:#15803d;margin-bottom:6px;">'+(o.funeralName||'-')+'</div>'
-      + '<div style="font-size:12px;color:#333;padding:1px 0;">'+items+'</div>'
+      + itemsHtml
       + (timeStr ? '<div style="font-size:11px;color:#666;margin-top:6px;">' + timeStr + '</div>' : '')
       + '</div>';
   }).join('');
   const chungdaeSection = todayChungdae.length === 0 ? '' :
     mkVenueBlock('#f0fdf4', '#15803d', '#bbf7d0', '🍽️ 충대식당 발주 ('+todayChungdae.length+'건)', chungdaeBlocks);
 
-  // 기타거래처
+  // 기타거래처 (세트는 두 줄로 분리)
   const otherBlocks = todayOther.map(function(o, i) {
     const isLast = i === todayOther.length - 1;
-    const items = o.tteokItems && o.tteokItems.length ? o.tteokItems.map(function(t){return t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
+    const itemsHtml = renderTteokItems(o, {headerSize: 12, compSize: 10, headerColor: '#333'});
     const timeStr = normalizeTimeStr(o.deliveryTime) || '';
     return '<div style="' + (isLast ? '' : 'border-right:1px solid #e5e7eb;') + 'padding:10px 14px;min-width:150px;flex:1;">'
       + '<div style="font-size:14px;font-weight:700;color:#0891b2;margin-bottom:6px;">'+(o.venueName||'-')+'</div>'
-      + '<div style="font-size:12px;color:#333;padding:1px 0;">'+items+'</div>'
+      + itemsHtml
       + (timeStr ? '<div style="font-size:11px;color:#666;margin-top:6px;">' + timeStr + '</div>' : '')
       + '</div>';
   }).join('');
