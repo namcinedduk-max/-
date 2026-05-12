@@ -7186,7 +7186,7 @@ function loadProductionPlan() {
     // ── 2. 코리아(대) / 코리아(소)
     //    saveName 형식: "코리아(대)(흰모찌 10개/쑥모찌 5개)"
     //    qty 형식: "1세트" (항상 1세트)
-    const koreaMatch = name.match(/^(코리아\([대소]\))\((.+)\)$/);
+    const koreaMatch = name.match(/^(코리아\([대소]\)|쿠키상자\([대소]\))\((.+)\)$/);
     if (koreaMatch) {
       const innerStr = koreaMatch[2];
       const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
