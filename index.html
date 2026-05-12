@@ -9348,7 +9348,7 @@ function printOrders() {
       + '<td style="padding:6px 8px;font-size:11px;">' + normalizeDateStr(String(o.deliveryDate||'')) + '<br>' + (normalizeTimeStr(o.deliveryTime)||'-') + '</td>'
       + '<td style="padding:6px 8px;">' + (o.receiverName||'-') + '<br><span style="color:#999;font-size:11px;">' + (o.receiverPhone||'') + '</span></td>'
       + '<td style="padding:6px 8px;font-size:11px;">' + (o.senderName||'-') + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;">' + (o.deliveryAddr1||'-') + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px;">' + ([o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ') || '-') + '</td>'
       + '<td style="padding:6px 8px;font-size:11px;color:#dc2626;">' + (o.memo ? '⚠️ '+o.memo : '') + '</td>'
       + '<td style="padding:6px 8px;font-size:11px;">' + tteok + '</td>'
       + '<td style="padding:6px 8px;font-size:11px;text-align:right;">' + (Number(o.priceTotal)||0).toLocaleString() + '원<br>' + (o.payMethod||'') + '</td>'
