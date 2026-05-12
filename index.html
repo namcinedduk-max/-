@@ -1643,8 +1643,8 @@
         <div class="stat-value" id="fstat-total">0</div>
         <div class="stat-sub">건</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">미수금</div>
+      <div class="stat-card" title="결제완료가 아닌 모든 주문 합계 (월말정산 예정)">
+        <div class="stat-label">미정산</div>
         <div class="stat-value" id="fstat-unpaid" style="color:var(--accent-red)">0</div>
         <div class="stat-sub">원</div>
       </div>
@@ -1843,8 +1843,8 @@
         <div class="stat-value" id="wstat-total">0</div>
         <div class="stat-sub">건</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">미수금</div>
+      <div class="stat-card" title="결제완료가 아닌 모든 주문 합계 (월말정산 예정)">
+        <div class="stat-label">미정산</div>
         <div class="stat-value" id="wstat-unpaid" style="color:var(--accent-red)">0</div>
         <div class="stat-sub">원</div>
       </div>
@@ -2001,8 +2001,8 @@
         <div class="stat-value" id="otstat-total">0</div>
         <div class="stat-sub">건</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">미수금</div>
+      <div class="stat-card" title="결제완료가 아닌 모든 주문 합계 (월말정산 예정)">
+        <div class="stat-label">미정산</div>
         <div class="stat-value" id="otstat-unpaid">0</div>
         <div class="stat-sub">원</div>
       </div>
@@ -8413,7 +8413,7 @@ function updateStats() {
   const nowStr = new Date().toLocaleDateString('ko-KR');
   const createdToday = orders.filter(o => String(o.createdAt||'').startsWith(nowStr));
   const salesToday = createdToday.reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
-  const unpaid = orders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
+  const unpaid = orders.filter(o => o.payStatus === '입금대기' || o.payStatus === '미수금' || o.payStatus === '부분결제').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
   document.getElementById('stat-today').textContent = createdToday.length.toLocaleString();
   document.getElementById('stat-sales').textContent = salesToday.toLocaleString();
   document.getElementById('stat-total').textContent = orders.length.toLocaleString();
@@ -8502,7 +8502,14 @@ function renderList() {
 
   let filtered = orders.filter(o => {
     if (o.deliveryMethod === '택배') return false;
-    if (window._filterPayStatus && o.payStatus !== window._filterPayStatus) return false;
+    if (window._filterPayStatus) {
+      if (window._filterPayStatus === '__UNPAID__') {
+        const isUnpaid = o.payStatus === '입금대기' || o.payStatus === '미수금' || o.payStatus === '부분결제';
+        if (!isUnpaid) return false;
+      } else if (o.payStatus !== window._filterPayStatus) {
+        return false;
+      }
+    }
     let matchDate = true;
     if (filterDate) {
       if (filterType === 'delivery') {
@@ -8794,10 +8801,10 @@ function clearFilter() {
 }
 
 function filterByUnpaid() {
-  if (window._filterPayStatus === '입금대기') {
+  if (window._filterPayStatus === '__UNPAID__') {
     window._filterPayStatus = null;
   } else {
-    window._filterPayStatus = '입금대기';
+    window._filterPayStatus = '__UNPAID__';
     document.getElementById('filterDate').value = '';
   }
   renderList();
@@ -10531,7 +10538,7 @@ function updateFuneralStats() {
   const nowStr = new Date().toLocaleDateString('ko-KR');
   const createdToday = funeralOrders.filter(o => String(o.createdAt).startsWith(nowStr));
   const salesToday = createdToday.reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
-  const unpaid = funeralOrders.filter(o => o.payStatus === '입금대기').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
+  const unpaid = funeralOrders.filter(o => o.payStatus === '입금대기' || o.payStatus === '미수금' || o.payStatus === '부분결제').reduce((s,o) => s + (Number(o.priceTotal)||0), 0);
   document.getElementById('fstat-today').textContent = createdToday.length.toLocaleString();
   document.getElementById('fstat-sales').textContent = salesToday.toLocaleString();
   document.getElementById('fstat-total').textContent = funeralOrders.length.toLocaleString();
@@ -11802,7 +11809,7 @@ function updateWeddingStats() {
   const nowStr = new Date().toLocaleDateString('ko-KR');
   const createdToday = weddingOrders.filter(o => String(o.createdAt||'').startsWith(nowStr));
   const todaySales = createdToday.reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
-  const unpaid = weddingOrders.filter(o => o.payStatus === '입금대기').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
+  const unpaid = weddingOrders.filter(o => o.payStatus === '입금대기' || o.payStatus === '미수금' || o.payStatus === '부분결제').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
   const el = id => document.getElementById(id);
   if (el('wstat-today')) el('wstat-today').textContent = createdToday.length.toLocaleString();
   if (el('wstat-sales')) el('wstat-sales').textContent = todaySales.toLocaleString();
@@ -12762,7 +12769,7 @@ function updateOtherStats() {
   const nowStr = new Date().toLocaleDateString('ko-KR');
   const createdToday = otherOrders.filter(o => String(o.createdAt||'').startsWith(nowStr));
   const todaySales = createdToday.reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
-  const unpaid = otherOrders.filter(o => o.payStatus === '입금대기' || o.payStatus === '미수금').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
+  const unpaid = otherOrders.filter(o => o.payStatus === '입금대기' || o.payStatus === '미수금' || o.payStatus === '부분결제').reduce((s, o) => s + (Number(o.priceTotal) || 0), 0);
   const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
   el('otstat-today', createdToday.length.toLocaleString());
   el('otstat-sales', todaySales.toLocaleString());
@@ -12878,9 +12885,103 @@ function updateSettleVenueSelect() {
     sel.innerHTML = '<option value="">거래처 없음</option>';
     return;
   }
-  sel.innerHTML = '<option value="">전체</option>' +
-    Array.from(venues).sort().map(v => `<option value="${v}">${v}</option>`).join('');
+  sel.innerHTML = '<option value="">전체</option>'
+    + '<option value="__PERSONAL__">👤 개인 주문</option>'
+    + Array.from(venues).sort().map(v => `<option value="${v}">${v}</option>`).join('');
   if (cur) sel.value = cur;
+}
+
+// ── 개인 주문 월별 정산 렌더 ──────────────────────────────
+function renderPersonalSettlement(ym) {
+  // 해당 월의 개인 주문 (대기 상태는 아직 확정 아니므로 제외)
+  const monthOrders = (orders||[]).filter(function(o) {
+    const d = normalizeDateStr(String(o.deliveryDate||''));
+    if (!d || !d.startsWith(ym)) return false;
+    if (o.payStatus === '대기') return false;
+    return true;
+  });
+
+  if (monthOrders.length === 0) {
+    return '<div style="border:1.5px solid #e5e7eb;border-radius:12px;overflow:hidden;">'
+      + '<div style="background:#fef3c7;padding:12px 16px;border-bottom:1px solid #e5e7eb;">'
+      + '<span style="font-size:14px;font-weight:700;color:#92400e;">👤 개인 주문</span>'
+      + '<span style="font-size:12px;color:#666;margin-left:10px;">해당 월 주문 없음</span>'
+      + '</div></div>';
+  }
+
+  const totalSales = monthOrders.reduce(function(s,o){ return s + (Number(o.priceTotal)||0); }, 0);
+  const paid = monthOrders.filter(function(o){ return o.payStatus === '결제완료'; })
+    .reduce(function(s,o){ return s + (Number(o.priceTotal)||0); }, 0);
+  const unpaidTotal = totalSales - paid;
+
+  const unpaidOrders = monthOrders.filter(function(o){ return o.payStatus !== '결제완료'; })
+    .sort(function(a,b){
+      const da = normalizeDateStr(String(a.deliveryDate||''));
+      const db = normalizeDateStr(String(b.deliveryDate||''));
+      return da < db ? -1 : (da > db ? 1 : 0);
+    });
+
+  // 미수자 명단 행
+  const unpaidRows = unpaidOrders.map(function(o) {
+    const tteok = (o.tteokItems && o.tteokItems.length)
+      ? o.tteokItems.map(function(t){
+          // 세트는 세트명만, 일반은 그대로 (좁은 공간 절약)
+          const name = String(t.name||'');
+          const m = name.match(/^(.+?)\(/);
+          const setName = m ? m[1].trim() : name;
+          return setName + (t.qty ? ' '+t.qty : '');
+        }).join(', ')
+      : String(o.tteokType||'-').slice(0, 40);
+    const statusColor = {
+      '입금대기': {bg:'#fef3c7', fg:'#92400e'},
+      '미수금':   {bg:'#fee2e2', fg:'#991b1b'},
+      '부분결제': {bg:'#dbeafe', fg:'#1e40af'},
+    }[o.payStatus] || {bg:'#f3f4f6', fg:'#6b7280'};
+    return '<tr style="border-bottom:1px solid #f0f0f0;">'
+      + '<td style="padding:7px 8px;color:#666;font-size:11px;">' + normalizeDateStr(String(o.deliveryDate||'')) + '</td>'
+      + '<td style="padding:7px 8px;font-weight:700;font-size:12px;">' + (o.receiverName||'-') + '</td>'
+      + '<td style="padding:7px 8px;color:#666;font-size:11px;">' + (o.receiverPhone||'-') + '</td>'
+      + '<td style="padding:7px 8px;font-size:11px;color:#444;">' + tteok + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-weight:700;font-size:12px;">' + (Number(o.priceTotal)||0).toLocaleString() + '원</td>'
+      + '<td style="padding:7px 8px;"><span style="background:' + statusColor.bg + ';color:' + statusColor.fg + ';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;">' + (o.payStatus||'-') + '</span></td>'
+      + '</tr>';
+  }).join('');
+
+  const unpaidTable = unpaidOrders.length > 0
+    ? '<div style="padding:12px 16px;background:#fff;">'
+      + '<div style="font-size:12px;font-weight:600;color:#666;margin-bottom:8px;">⚠️ 미수자 명단 (' + unpaidOrders.length + '건)</div>'
+      + '<div style="overflow-x:auto;">'
+      + '<table style="width:100%;border-collapse:collapse;min-width:600px;">'
+      + '<thead><tr style="background:#f9fafb;">'
+      + '<th style="padding:7px 8px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;font-size:11px;">배송일</th>'
+      + '<th style="padding:7px 8px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;font-size:11px;">받는분</th>'
+      + '<th style="padding:7px 8px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;font-size:11px;">전화</th>'
+      + '<th style="padding:7px 8px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;font-size:11px;">떡 종류</th>'
+      + '<th style="padding:7px 8px;text-align:right;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;font-size:11px;">금액</th>'
+      + '<th style="padding:7px 8px;text-align:left;font-weight:600;color:#666;border-bottom:1px solid #e5e7eb;font-size:11px;">상태</th>'
+      + '</tr></thead><tbody>' + unpaidRows + '</tbody></table></div></div>'
+    : '<div style="padding:12px 16px;background:#f0fdf4;text-align:center;color:#16a34a;font-size:13px;font-weight:600;">✓ 이번달 미수금 없음</div>';
+
+  return '<div style="border:1.5px solid #e5e7eb;border-radius:12px;overflow:hidden;">'
+    + '<div style="background:#fef3c7;padding:12px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'
+    + '<div style="display:flex;align-items:center;gap:10px;">'
+    + '<span style="font-size:14px;font-weight:700;color:#92400e;">👤 개인 주문</span>'
+    + '<span style="font-size:12px;color:#666;">' + monthOrders.length + '건</span>'
+    + '</div></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);">'
+    + '<div style="padding:14px 16px;border-right:1px solid #e5e7eb;">'
+    + '<div style="font-size:11px;color:#888;margin-bottom:4px;">이번달 총매출</div>'
+    + '<div style="font-size:17px;font-weight:700;color:#333;">' + totalSales.toLocaleString() + '원</div></div>'
+    + '<div style="padding:14px 16px;border-right:1px solid #e5e7eb;background:#f0fdf4;">'
+    + '<div style="font-size:11px;color:#888;margin-bottom:4px;">결제완료</div>'
+    + '<div style="font-size:17px;font-weight:700;color:#16a34a;">' + paid.toLocaleString() + '원</div></div>'
+    + '<div style="padding:14px 16px;background:' + (unpaidTotal>0?'#fef9c3':'#f0fdf4') + ';">'
+    + '<div style="font-size:11px;color:#888;margin-bottom:4px;">미수금</div>'
+    + '<div style="font-size:17px;font-weight:700;color:' + (unpaidTotal>0?'#d97706':'#16a34a') + ';">' + unpaidTotal.toLocaleString() + '원</div></div>'
+    + '</div>'
+    + '<div style="border-top:1px solid #e5e7eb;"></div>'
+    + unpaidTable
+    + '</div>';
 }
 
 function runSettlement() {
@@ -12926,41 +13027,54 @@ function runSettlement() {
       return d && d.startsWith(targetYm);
     }
 
+    // 개인/거래처 표시 여부
+    const showPersonal = !venueFilter || venueFilter === '__PERSONAL__';
+    const showVendors = venueFilter !== '__PERSONAL__';
+
     // 거래처별 집계 + 월별 맵 구성
     const venueMap = {};
-    // 월별 납품맵: venueName → { 'YYYY-MM': [orders] }
     const venueMonthMap = {};
 
-    allOrders.forEach(function(o) {
-      if (!o._venue) return;
-      const orderYm = normalizeDateStr(String(o.deliveryDate||'')).slice(0,7);
-
-      // 월별 맵 구성 (이월 계산용)
-      if (!venueMonthMap[o._venue]) venueMonthMap[o._venue] = {};
-      if (orderYm) {
-        if (!venueMonthMap[o._venue][orderYm]) venueMonthMap[o._venue][orderYm] = [];
-        venueMonthMap[o._venue][orderYm].push(o);
+    if (showVendors) {
+      allOrders.forEach(function(o) {
+        if (!o._venue) return;
+        const orderYm = normalizeDateStr(String(o.deliveryDate||'')).slice(0,7);
+        if (!venueMonthMap[o._venue]) venueMonthMap[o._venue] = {};
+        if (orderYm) {
+          if (!venueMonthMap[o._venue][orderYm]) venueMonthMap[o._venue][orderYm] = [];
+          venueMonthMap[o._venue][orderYm].push(o);
+        }
+        if (venueFilter && venueFilter !== '__PERSONAL__' && o._venue !== venueFilter) return;
+        if (!venueMap[o._venue]) venueMap[o._venue] = { type: o._type, thisMonth:[] };
+        if (inMonth(o, ym)) venueMap[o._venue].thisMonth.push(o);
+      });
+      // venueFilter 만 선택됐는데 주문이 없어도 표시
+      if (venueFilter && venueFilter !== '__PERSONAL__' && !venueMap[venueFilter]) {
+        venueMap[venueFilter] = { type: 'other', thisMonth:[] };
       }
-
-      if (venueFilter && o._venue !== venueFilter) return;
-      if (!venueMap[o._venue]) venueMap[o._venue] = { type: o._type, thisMonth:[] };
-      if (inMonth(o, ym)) venueMap[o._venue].thisMonth.push(o);
-    });
-
-    // venueFilter만 선택됐는데 주문이 없어도 표시
-    if (venueFilter && !venueMap[venueFilter]) {
-      venueMap[venueFilter] = { type: 'other', thisMonth:[] };
     }
 
+    // 개인 섹션
+    const personalHtml = showPersonal ? renderPersonalSettlement(ym) : '';
+
+    // 거래처 섹션
     const entries = Object.entries(venueMap);
-    if (entries.length === 0) {
+    const vendorHtml = (showVendors && entries.length > 0)
+      ? entries.map(function([venueName, data]) {
+          return renderVenueSettlement(venueName, data, ym, venueMonthMap[venueName] || {});
+        }).join('<div style="height:20px;"></div>')
+      : '';
+
+    // 합치기
+    if (!personalHtml && !vendorHtml) {
       resultEl.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;">해당 월에 주문이 없어요.</div>';
       return;
     }
-
-    resultEl.innerHTML = entries.map(function([venueName, data]) {
-      return renderVenueSettlement(venueName, data, ym, venueMonthMap[venueName] || {});
-    }).join('<div style="height:20px;"></div>');
+    let combined = '';
+    if (personalHtml) combined += personalHtml;
+    if (personalHtml && vendorHtml) combined += '<div style="height:20px;"></div>';
+    if (vendorHtml) combined += vendorHtml;
+    resultEl.innerHTML = combined;
 
   }).catch(function() {
     showToast('데이터 불러오기 실패', 'error');
