@@ -1612,7 +1612,23 @@
         <div class="filter-divider"></div>
         <input type="date" id="fFilterDate" onchange="renderFuneralList()">
       </div>
-      <input type="text" class="search-input" id="fSearchInput" placeholder="🔍 장례식장, 빈소, 떡 종류 검색..." oninput="renderFuneralList()">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <select id="fVenueFilter" onchange="onFuneralVenueFilterChange()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--warm-white);">
+          <option value="">전체 거래처</option>
+          <optgroup label="충대병원">
+            <option value="충대장례식장">충대장례식장</option>
+            <option value="충대본관영양">충대본관영양</option>
+            <option value="소비조합">소비조합</option>
+            <option value="재활환자">재활환자</option>
+            <option value="재활직원">재활직원</option>
+          </optgroup>
+          <optgroup label="대청">
+            <option value="대청장례식장">대청장례식장</option>
+          </optgroup>
+        </select>
+        <input type="text" class="search-input" id="fSearchInput" placeholder="🔍 장례식장, 빈소, 떡 종류 검색..." oninput="renderFuneralList()" style="flex:1;min-width:180px;">
+        <input type="text" id="fDeceasedSearch" placeholder="🔍 고인명 검색..." oninput="renderFuneralList()" style="display:none;padding:8px 12px;border:1.5px solid var(--accent-orange, #d97706);border-radius:8px;font-size:13px;width:180px;">
+      </div>
       <button class="btn-small btn-secondary" onclick="clearFuneralFilter()">전체보기</button>
       <button class="btn-small" onclick="loadFuneralOrdersFromSheet()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printFuneralOrders()">🖨️ 출력/PDF</button>
@@ -10257,10 +10273,22 @@ function updateFuneralStats() {
   document.getElementById('fstat-unpaid').textContent = unpaid.toLocaleString();
 }
 
+function onFuneralVenueFilterChange() {
+  const venue = (document.getElementById('fVenueFilter')||{}).value || '';
+  const deceasedEl = document.getElementById('fDeceasedSearch');
+  if (deceasedEl) {
+    deceasedEl.style.display = venue === '대청장례식장' ? 'block' : 'none';
+    if (venue !== '대청장례식장') deceasedEl.value = '';
+  }
+  renderFuneralList();
+}
+
 function renderFuneralList() {
   const filterDate = document.getElementById('fFilterDate').value;
   const filterType = document.getElementById('fFilterDateType').value;
   const search = document.getElementById('fSearchInput').value.trim().toLowerCase();
+  const venueFilter = (document.getElementById('fVenueFilter')||{}).value || '';
+  const deceasedSearch = ((document.getElementById('fDeceasedSearch')||{}).value||'').trim().toLowerCase();
 
   let filtered = funeralOrders.filter(o => {
     let matchDate = true;
@@ -10271,11 +10299,13 @@ function renderFuneralList() {
         matchDate = normalizeDateStr(String(o.createdAt||'')) === filterDate;
       }
     }
+    const matchVenue = !venueFilter || (o.funeralName||'') === venueFilter;
+    const matchDeceased = !deceasedSearch || String(o.deceasedName||'').toLowerCase().includes(deceasedSearch);
     const matchSearch = !search ||
       String(o.funeralName||'').toLowerCase().includes(search) ||
       String(o.binsoLocation||'').toLowerCase().includes(search) ||
       String(o.tteokType||'').toLowerCase().includes(search);
-    return matchDate && matchSearch;
+    return matchDate && matchVenue && matchDeceased && matchSearch;
   });
 
   filtered = applySort(filtered, funeralSortKey, funeralSortDir);
