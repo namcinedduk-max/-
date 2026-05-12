@@ -1476,14 +1476,7 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>결제 상태</label>
-          <select id="f_payStatus">
-            <option value="결제완료">✅ 결제완료</option>
-            <option value="입금대기">⏳ 입금대기</option>
-            <option value="부분결제">🔸 부분결제</option>
-          </select>
-        </div>
+        <input type="hidden" id="f_payStatus" value="결제완료">
 
         <div class="form-group">
           <label>담당 직원</label>
@@ -1756,14 +1749,7 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>결제 상태</label>
-          <select id="w_payStatus">
-            <option value="결제완료">✅ 결제완료</option>
-            <option value="입금대기">⏳ 입금대기</option>
-            <option value="부분결제">🔸 부분결제</option>
-          </select>
-        </div>
+        <input type="hidden" id="w_payStatus" value="결제완료">
         <div class="form-group">
           <label>담당 직원</label>
           <select id="w_staffName">
@@ -1918,15 +1904,7 @@
           <label>총금액</label>
           <div class="price-display" id="ot_priceTotal">0 원</div>
         </div>
-        <div class="form-group" style="grid-column:1/-1;">
-          <label>결제상태</label>
-          <div class="pay-btn-group">
-            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'미수금')">미수금</button>
-            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'완료')">완료</button>
-            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'선불')">선불</button>
-          </div>
-          <input type="hidden" id="ot_payStatus" value="미수금">
-        </div>
+        <input type="hidden" id="ot_payStatus" value="결제완료">
         <div class="form-group" style="grid-column:1/-1;">
           <label>메모</label>
           <textarea id="ot_memo" rows="2" placeholder="메모를 입력하세요"></textarea>
@@ -8704,7 +8682,6 @@ function renderModalView(o) {
     <div class="modal-detail-row"><span class="modal-detail-label">할인</span><span class="modal-detail-value">-${(o.priceDiscount||0).toLocaleString()}원</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span class="modal-detail-value" style="color:var(--accent-red);font-size:18px;font-weight:700;">${(o.priceTotal||0).toLocaleString()}원 ${priceNote}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">결제 방법</span><span class="modal-detail-value">${o.payMethod}</span></div>
-    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span><span class="modal-detail-value">${o.payStatus}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span><span class="modal-detail-value">${o.staffName}</span></div>
 
     <!-- 이전 주문 이력 -->
@@ -9843,7 +9820,7 @@ function printInvoice(order, orderType) {
     '<tr><td style="border:0.5px solid #999;height:22px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
   ).join('');
 
-  const makeSlip = (copy) => `
+  const makeSlip = (copy, accumUnpaid=0) => `
     <div style="flex:1;min-width:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;">
       <div style="text-align:center;margin-bottom:6px;">
         <div style="font-size:14px;font-weight:bold;letter-spacing:4px;margin-bottom:3px;">거 래 명 세 표</div>
@@ -9884,7 +9861,9 @@ function printInvoice(order, orderType) {
         <tfoot><tr style="background:#f5f5f5;">
           <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">합 계</td>
           <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">${displayTotal.toLocaleString()}</td>
-        </tr></tfoot>
+        </tr>
+        ${accumUnpaid > 0 ? `<tr><td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#d97706;">누적 미수금</td><td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#d97706;">${accumUnpaid.toLocaleString()}</td></tr><tr><td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#dc2626;">총 합 계</td><td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#dc2626;">${(displayTotal+accumUnpaid).toLocaleString()}</td></tr>` : ''}
+        </tfoot>
       </table>
       <div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;height:28px;">
         <div style="font-size:7px;color:#aaa;">메 모</div>
@@ -9901,14 +9880,16 @@ function printInvoice(order, orderType) {
 
   // 웨딩홀 전용 명세서 (품목/수량/단가/금액 + 부가세10%포함 + 정산)
   const makeWeddingSlip = (copy) => {
-    // 정산 정보 (전미수금)
+    // 전월 이월 방식 누적 미수금 (정산탭과 동일)
     const ym = (order.deliveryDate||'').slice(0,7);
-    const prevDate = new Date((order.deliveryDate||'').slice(0,4), parseInt((order.deliveryDate||'0000-00').slice(5,7))-2, 1);
-    const prevYm = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
-    const prevOrders = (window._allWeddingOrders||[]).filter(o => (o.weddingName||o.hallName||'') === venueName && String(o.deliveryDate||'').startsWith(prevYm));
-    const prevTotal = prevOrders.reduce((s,o) => s+(Number(o.priceTotal)||0), 0);
-    const prevPaid = ((paymentRecords||{})[venueName+'_'+prevYm]||[]).reduce((s,p) => s+(Number(p.amount)||0), 0);
-    const prevCarryover = Math.max(0, prevTotal - prevPaid);
+    const wAllOrdersMap = {};
+    (weddingOrders||[]).filter(o=>(o.weddingName||o.hallName||'')===venueName).forEach(o => {
+      const oym = normalizeDateStr(String(o.deliveryDate||'')).slice(0,7);
+      if (!oym) return;
+      if (!wAllOrdersMap[oym]) wAllOrdersMap[oym] = [];
+      wAllOrdersMap[oym].push(o);
+    });
+    const prevCarryover = ym ? calcCarryover(venueName, ym, wAllOrdersMap, 0) : 0;
     const todaySales = displayTotal;
     const grandTotal = prevCarryover + todaySales;
 
@@ -9975,12 +9956,29 @@ function printInvoice(order, orderType) {
     </div>`;
   };
 
-  // 웨딩홀은 전용 슬립 사용
+  // 웨딩홀은 전용 슬립, 기타거래처도 누적 미수금 포함
   const isWedding = orderType === 'wedding';
+  const isOther = orderType === 'other';
+
+  // 기타거래처 누적 미수금 계산 (정산탭과 동일한 전월이월 방식)
+  const otherAccumUnpaid = (() => {
+    if (!isOther) return 0;
+    const ym = (order.deliveryDate||'').slice(0,7);
+    if (!ym) return 0;
+    // 월별 주문 맵 구성
+    const allOrdersMap = {};
+    (otherOrders||[]).filter(o=>(o.venueName||'')===venueName).forEach(o => {
+      const oym = normalizeDateStr(String(o.deliveryDate||'')).slice(0,7);
+      if (!oym) return;
+      if (!allOrdersMap[oym]) allOrdersMap[oym] = [];
+      allOrdersMap[oym].push(o);
+    });
+    return calcCarryover(venueName, ym, allOrdersMap, 0);
+  })();
 
   const dividers = copies.map((copy, i) => {
     const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
-    const slipContent = isWedding ? makeWeddingSlip(copy) : makeSlip(copy);
+    const slipContent = isWedding ? makeWeddingSlip(copy) : makeSlip(copy, isOther ? otherAccumUnpaid : 0);
     return `<div style="flex:1;min-width:0;${borderRight}">${slipContent}</div>`;
   }).join('');
 
@@ -10420,13 +10418,7 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">배송비</span><input id="ef_priceDelivery" type="number" value="${o.priceDelivery||0}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;" oninput="calcFuneralEditTotal()">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">할인</span><input id="ef_priceDiscount" type="number" value="${o.priceDiscount||0}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;" oninput="calcFuneralEditTotal()">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span id="ef_priceTotal" style="color:var(--accent-red);font-weight:700;font-size:16px;">${(Number(o.priceTotal)||0).toLocaleString()}원</span></div>
-    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span>
-      <select id="ef_payStatus" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-        <option value="결제완료" ${o.payStatus==='결제완료'?'selected':''}>✅ 결제완료</option>
-        <option value="입금대기" ${o.payStatus==='입금대기'?'selected':''}>⏳ 입금대기</option>
-        <option value="부분결제" ${o.payStatus==='부분결제'?'selected':''}>🔸 부분결제</option>
-      </select>
-    </div>
+    <input type="hidden" id="ef_payStatus" value="결제완료">
     <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ef_memo" value="${o.memo||''}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
       <select id="ef_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
@@ -11676,14 +11668,7 @@ function openWeddingModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">배송비</span><input id="ew_priceDelivery" type="number" value="${o.priceDelivery||0}" oninput="calcWeddingEditTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">할인</span><input id="ew_priceDiscount" type="number" value="${o.priceDiscount||0}" oninput="calcWeddingEditTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span id="ew_priceTotal_display" style="font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</span></div>
-    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span>
-      <select id="ew_payStatus" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-        <option value="입금대기" ${o.payStatus==='입금대기'?'selected':''}>⏳ 입금대기</option>
-        <option value="결제완료" ${o.payStatus==='결제완료'?'selected':''}>✅ 결제완료</option>
-        <option value="부분결제" ${o.payStatus==='부분결제'?'selected':''}>🔸 부분결제</option>
-        <option value="미수금" ${o.payStatus==='미수금'?'selected':''}>🔴 미수금</option>
-      </select>
-    </div>
+    <input type="hidden" id="ew_payStatus" value="결제완료">
     <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ew_memo" value="${(o.memo||'').replace(/"/g,'&quot;')}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
       <select id="ew_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
