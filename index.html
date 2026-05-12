@@ -9370,9 +9370,6 @@ function printOrders() {
   });
 
   filtered = applySort(filtered, sortKey, sortDir);
-  if (filtered.length === 0 && weddingOrders.filter(o => !filterDate || normalizeDateStr(String(o.deliveryDate||''))===filterDate).length === 0) {
-    showToast('출력할 주문이 없습니다.', 'error'); return;
-  }
 
   const dateLabel = filterDate || '전체';
 
@@ -9386,102 +9383,138 @@ function printOrders() {
   const todayWedding = weddingOrders.filter(matchD);
   const todayOther = (typeof otherOrders !== 'undefined' ? otherOrders : []).filter(matchD);
 
-  // 충대식당과 장례식장 분리 (개인목록 화면 8549-8559줄과 동일 로직)
+  // 충대식당만 분리 (장례식장은 인쇄 대상에서 제외)
   const chungdaeExtraForPrint = (typeof extraVenues !== 'undefined' && extraVenues.funeral)
     ? extraVenues.funeral.filter(v=>v.group==='chungdae').map(v=>v.name) : [];
   const chungdaeNamesForPrint = ['소비조합','본관영양','재활환자','재활직원'].concat(chungdaeExtraForPrint);
   const isChungdaePrint = o => chungdaeNamesForPrint.some(n => String(o.funeralName||'').includes(n));
   const todayChungdae = todayFuneralAll.filter(isChungdaePrint);
-  const todayFuneral = todayFuneralAll.filter(o => !isChungdaePrint(o));
 
+  if (filtered.length === 0 && todayWedding.length === 0 && todayChungdae.length === 0 && todayOther.length === 0) {
+    showToast('출력할 주문이 없습니다.', 'error'); return;
+  }
+
+  // ── 개인 주문 테이블 행 (받는분/보낸이 선으로 구분, 전화번호 한 줄) ──
   const rows = filtered.map((o, i) => {
     const tteok = (o.tteokItems && o.tteokItems.length) ? o.tteokItems.map(t => t.name + (t.qty ? ' '+t.qty : '')).join('<br>') : String(o.tteokType||'').split(', ').join('<br>');
-    return '<tr style="border-bottom:1px solid #E8D5BB;background:'+(i%2?'#FFF9F2':'#fff')+';">'
-      + '<td style="padding:6px 8px;">' + getOrderNo(o) + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;">' + normalizeDateStr(String(o.deliveryDate||'')) + '<br>' + (normalizeTimeStr(o.deliveryTime)||'-') + '</td>'
-      + '<td style="padding:6px 8px;">' + (o.receiverName||'-') + '<br><span style="color:#999;font-size:11px;">' + (o.receiverPhone||'') + '</span></td>'
-      + '<td style="padding:6px 8px;font-size:11px;">' + (o.senderName||'-') + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;">' + ([o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ') || '-') + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;color:#dc2626;">' + (o.memo ? '⚠️ '+o.memo : '') + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;">' + tteok + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;text-align:right;">' + (Number(o.priceTotal)||0).toLocaleString() + '원<br>' + (o.payMethod||'') + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;">' + (o.payStatus||'-') + '</td>'
+    const isLast = i === filtered.length - 1;
+    const rowBorder = isLast ? '' : 'border-bottom:1.5px dashed #888;';
+    const bg = i % 2 ? '#FFF9F2' : '#fff';
+
+    const senderName = String(o.senderName || '').trim();
+    const recipientCell = '<div style="font-weight:700;font-size:13px;">' + (o.receiverName||'-') + '</div>'
+      + (senderName ? '<div style="border-top:1px solid #ccc;margin-top:5px;padding-top:5px;color:#666;font-size:11px;">' + senderName + '</div>' : '');
+
+    const senderPhone = String(o.senderPhone || '').trim();
+    const phoneCell = '<div style="font-weight:600;font-size:12px;">' + (o.receiverPhone||'-') + '</div>'
+      + (senderPhone ? '<div style="border-top:1px solid #ccc;margin-top:5px;padding-top:5px;color:#666;font-size:11px;">' + senderPhone + '</div>' : '');
+
+    const addr = [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ') || '-';
+    const memo = o.memo ? '<div style="margin-top:4px;color:#dc2626;font-weight:700;font-size:10px;">⚠️ ' + o.memo + '</div>' : '';
+
+    return '<tr style="' + rowBorder + 'background:' + bg + ';">'
+      + '<td style="padding:10px 5px;text-align:center;font-weight:700;">' + getOrderNo(o) + '</td>'
+      + '<td style="padding:10px 5px;font-size:13px;font-weight:700;">' + (normalizeTimeStr(o.deliveryTime) || '-') + '</td>'
+      + '<td style="padding:10px 5px;font-size:11px;line-height:1.4;">' + recipientCell + '</td>'
+      + '<td style="padding:10px 5px;font-size:11px;line-height:1.4;white-space:nowrap;">' + phoneCell + '</td>'
+      + '<td style="padding:10px 5px;font-size:11px;line-height:1.5;">' + addr + memo + '</td>'
+      + '<td style="padding:10px 5px;font-size:11px;">' + tteok + '</td>'
+      + '<td style="padding:10px 5px;font-size:11px;text-align:right;font-weight:700;">' + (Number(o.priceTotal)||0).toLocaleString() + '원' + (o.payMethod ? '<br><span style="font-size:10px;font-weight:400;color:#666;">' + o.payMethod + '</span>' : '') + '</td>'
+      + '<td style="padding:10px 5px;font-size:10px;">' + (o.payStatus||'-') + '</td>'
       + '</tr>';
   }).join('');
 
-  function mkTable(title, color, headers, dataRows, footer) {
-    return '<div style="margin-top:24px;page-break-inside:avoid;">'
-      + '<h2 style="font-size:14px;font-weight:700;color:'+color+';margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid '+color+';">'+title+'</h2>'
-      + '<table style="width:100%;border-collapse:collapse;">'
-      + '<thead><tr style="background:'+color+';color:#fff;">' + headers + '</tr></thead>'
-      + '<tbody>' + dataRows + '</tbody>'
-      + '<tfoot>' + footer + '</tfoot>'
-      + '</table></div>';
+  // ── 거래처 발주 블록 생성기 (가로 컬럼 레이아웃, 금액 없음) ─────
+  function mkVenueBlock(headerBg, headerColor, borderColor, title, innerBlocks) {
+    return '<div style="margin-bottom:14px;border:1.5px solid '+borderColor+';border-radius:6px;overflow:hidden;page-break-inside:avoid;">'
+      + '<div style="background:'+headerBg+';padding:8px 12px;font-size:13px;font-weight:700;color:'+headerColor+';border-bottom:1px solid '+borderColor+';">' + title + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;background:#fff;">' + innerBlocks + '</div>'
+      + '</div>';
   }
 
-  function th(t) { return '<th style="padding:6px 8px;font-size:11px;text-align:left;">'+t+'</th>'; }
-  function thr(t) { return '<th style="padding:6px 8px;font-size:11px;text-align:right;">'+t+'</th>'; }
-  function td(t, w) { return '<td style="padding:6px 8px;font-size:11px;'+(w||'')+'">'+(t||'-')+'</td>'; }
-
-  // 장례식장
-  const funeralRows = todayFuneral.map(function(o,i) {
-    const items = o.tteokItems&&o.tteokItems.length ? o.tteokItems.map(function(t){return t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
-    return '<tr style="border-bottom:1px solid #dcfce7;background:'+(i%2?'#f0fdf4':'#fff')+';"><td style="padding:6px 8px;font-weight:700;">'+(o.funeralName||'-')+'</td>'
-      + td(o.binsoLocation) + '<td style="padding:6px 8px;font-size:11px;font-weight:700;">'+(o.deceasedName||'-')+'</td>'
-      + td(items) + td(normalizeDateStr(String(o.deliveryDate||'')))
-      + '<td style="padding:6px 8px;text-align:right;font-weight:700;">'+(Number(o.priceTotal)||0).toLocaleString()+'원</td></tr>';
+  // 웨딩홀 (층별 정리, 시간만 표시)
+  const weddingBlocks = todayWedding.map(function(o, i) {
+    const isLast = i === todayWedding.length - 1;
+    let itemsHtml = '';
+    if (o.tteokItems && o.tteokItems.length > 0) {
+      const floorMap = {};
+      o.tteokItems.forEach(function(t) {
+        const floor = t.floor || '';
+        if (!floorMap[floor]) floorMap[floor] = [];
+        floorMap[floor].push((t.baseName || t.name) + (t.qty ? ' '+t.qty : ''));
+      });
+      const sorted = Object.keys(floorMap).sort(function(a, b){ return a ? (b ? a.localeCompare(b, 'ko') : -1) : 1; });
+      itemsHtml = sorted.map(function(floor) {
+        return '<div style="font-size:12px;color:#333;padding:1px 0;">'
+          + (floor ? '<b style="color:#1d4ed8;">'+floor+'</b> ' : '')
+          + floorMap[floor].join(' / ') + '</div>';
+      }).join('');
+    } else {
+      itemsHtml = '<div style="font-size:12px;color:#333;">'+(o.tteokType||'-')+'</div>';
+    }
+    const timeStr = normalizeTimeStr(o.deliveryTime) || '';
+    return '<div style="' + (isLast ? '' : 'border-right:1px solid #e5e7eb;') + 'padding:10px 14px;min-width:150px;flex:1;">'
+      + '<div style="font-size:14px;font-weight:700;color:#1e3a8a;margin-bottom:6px;">'+(o.weddingName||o.hallName||'-')+'</div>'
+      + itemsHtml
+      + (timeStr ? '<div style="font-size:11px;color:#666;margin-top:6px;">' + timeStr + '</div>' : '')
+      + '</div>';
   }).join('');
-  const funeralTotal = todayFuneral.reduce(function(s,o){return s+(Number(o.priceTotal)||0);},0);
-  const funeralFooter = '<tr style="background:#dcfce7;font-weight:700;"><td colspan="5" style="padding:6px 8px;">합계</td><td style="padding:6px 8px;text-align:right;">'+funeralTotal.toLocaleString()+'원</td></tr>';
-  const funeralSection = todayFuneral.length === 0 ? '' : mkTable('🏥 장례식장 발주 ('+todayFuneral.length+'건)', '#166534', th('장례식장')+th('빈소')+th('고인명')+th('떡 종류')+th('배송일')+thr('금액'), funeralRows, funeralFooter);
+  const weddingSection = todayWedding.length === 0 ? '' :
+    mkVenueBlock('#eff6ff', '#1d4ed8', '#bfdbfe', '💒 웨딩홀 발주 ('+todayWedding.length+'건)', weddingBlocks);
 
-  // 충대식당
-  const chungdaeRows = todayChungdae.map(function(o,i) {
-    const items = o.tteokItems&&o.tteokItems.length ? o.tteokItems.map(function(t){return t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
-    return '<tr style="border-bottom:1px solid #bbf7d0;background:'+(i%2?'#f0fdf4':'#fff')+';"><td style="padding:6px 8px;font-weight:700;">'+(o.funeralName||'-')+'</td>'
-      + td(items) + td(normalizeDateStr(String(o.deliveryDate||'')))
-      + '<td style="padding:6px 8px;text-align:right;font-weight:700;">'+(Number(o.priceTotal)||0).toLocaleString()+'원</td></tr>';
+  // 충대식당 (시간 정보 없으면 시간 줄 자체 생략)
+  const chungdaeBlocks = todayChungdae.map(function(o, i) {
+    const isLast = i === todayChungdae.length - 1;
+    const items = o.tteokItems && o.tteokItems.length ? o.tteokItems.map(function(t){return t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
+    const timeStr = normalizeTimeStr(o.deliveryTime) || '';
+    return '<div style="' + (isLast ? '' : 'border-right:1px solid #e5e7eb;') + 'padding:10px 14px;min-width:150px;flex:1;">'
+      + '<div style="font-size:14px;font-weight:700;color:#15803d;margin-bottom:6px;">'+(o.funeralName||'-')+'</div>'
+      + '<div style="font-size:12px;color:#333;padding:1px 0;">'+items+'</div>'
+      + (timeStr ? '<div style="font-size:11px;color:#666;margin-top:6px;">' + timeStr + '</div>' : '')
+      + '</div>';
   }).join('');
-  const chungdaeTotal = todayChungdae.reduce(function(s,o){return s+(Number(o.priceTotal)||0);},0);
-  const chungdaeFooter = '<tr style="background:#bbf7d0;font-weight:700;"><td colspan="3" style="padding:6px 8px;">합계</td><td style="padding:6px 8px;text-align:right;">'+chungdaeTotal.toLocaleString()+'원</td></tr>';
-  const chungdaeSection = todayChungdae.length === 0 ? '' : mkTable('🍽️ 충대 식당 발주 ('+todayChungdae.length+'건)', '#15803d', th('식당명')+th('떡 종류')+th('배송일')+thr('금액'), chungdaeRows, chungdaeFooter);
+  const chungdaeSection = todayChungdae.length === 0 ? '' :
+    mkVenueBlock('#f0fdf4', '#15803d', '#bbf7d0', '🍽️ 충대식당 발주 ('+todayChungdae.length+'건)', chungdaeBlocks);
 
-  // 웨딩홀
-  const weddingRows = todayWedding.map(function(o,i) {
-    const items = o.tteokItems&&o.tteokItems.length ? o.tteokItems.map(function(t){return (t.floor?'['+t.floor+'] ':'')+t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
-    return '<tr style="border-bottom:1px solid #e0e7ff;background:'+(i%2?'#eff6ff':'#fff')+';"><td style="padding:6px 8px;font-weight:700;">'+(o.weddingName||o.hallName||'-')+'</td>'
-      + td(items) + td(normalizeDateStr(String(o.deliveryDate||''))+' '+(normalizeTimeStr(o.deliveryTime)||''))
-      + '<td style="padding:6px 8px;text-align:right;font-weight:700;">'+(Number(o.priceTotal)||0).toLocaleString()+'원</td>'
-      + td(o.payStatus) + '</tr>';
+  // 기타거래처
+  const otherBlocks = todayOther.map(function(o, i) {
+    const isLast = i === todayOther.length - 1;
+    const items = o.tteokItems && o.tteokItems.length ? o.tteokItems.map(function(t){return t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
+    const timeStr = normalizeTimeStr(o.deliveryTime) || '';
+    return '<div style="' + (isLast ? '' : 'border-right:1px solid #e5e7eb;') + 'padding:10px 14px;min-width:150px;flex:1;">'
+      + '<div style="font-size:14px;font-weight:700;color:#0891b2;margin-bottom:6px;">'+(o.venueName||'-')+'</div>'
+      + '<div style="font-size:12px;color:#333;padding:1px 0;">'+items+'</div>'
+      + (timeStr ? '<div style="font-size:11px;color:#666;margin-top:6px;">' + timeStr + '</div>' : '')
+      + '</div>';
   }).join('');
-  const weddingTotal = todayWedding.reduce(function(s,o){return s+(Number(o.priceTotal)||0);},0);
-  const weddingFooter = '<tr style="background:#dbeafe;font-weight:700;"><td colspan="3" style="padding:6px 8px;">합계</td><td style="padding:6px 8px;text-align:right;">'+weddingTotal.toLocaleString()+'원</td><td></td></tr>';
-  const weddingSection = todayWedding.length === 0 ? '' : mkTable('💒 웨딩홀 발주 ('+todayWedding.length+'건)', '#1d4ed8', th('웨딩홀')+th('떡 종류')+th('배송일')+thr('금액')+th('결제'), weddingRows, weddingFooter);
+  const otherSection = todayOther.length === 0 ? '' :
+    mkVenueBlock('#ecfeff', '#0891b2', '#a5f3fc', '🏢 기타거래처 발주 ('+todayOther.length+'건)', otherBlocks);
 
-  // 기타업체
-  const otherRows = todayOther.map(function(o,i) {
-    const items = o.tteokItems&&o.tteokItems.length ? o.tteokItems.map(function(t){return t.name+(t.qty?' '+t.qty:'');}).join(' / ') : (o.tteokType||'-');
-    return '<tr style="border-bottom:1px solid #cffafe;background:'+(i%2?'#ecfeff':'#fff')+';"><td style="padding:6px 8px;font-weight:700;">'+(o.venueName||'-')+'</td>'
-      + td(items) + td(normalizeDateStr(String(o.deliveryDate||''))+' '+(normalizeTimeStr(o.deliveryTime)||''))
-      + '<td style="padding:6px 8px;text-align:right;font-weight:700;">'+(Number(o.priceTotal)||0).toLocaleString()+'원</td>'
-      + td(o.payStatus) + '</tr>';
-  }).join('');
-  const otherTotal = todayOther.reduce(function(s,o){return s+(Number(o.priceTotal)||0);},0);
-  const otherFooter = '<tr style="background:#cffafe;font-weight:700;"><td colspan="3" style="padding:6px 8px;">합계</td><td style="padding:6px 8px;text-align:right;">'+otherTotal.toLocaleString()+'원</td><td></td></tr>';
-  const otherSection = todayOther.length === 0 ? '' : mkTable('🏢 기타업체 발주 ('+todayOther.length+'건)', '#0891b2', th('업체명')+th('떡 종류')+th('배송일')+thr('금액')+th('결제'), otherRows, otherFooter);
-
-  const allTotal = filtered.reduce(function(s,o){return s+(Number(o.priceTotal)||0);},0) + funeralTotal + chungdaeTotal + weddingTotal + otherTotal;
+  // 개인 주문 섹션 (8컬럼, table-layout: fixed, 합계 없음)
+  const personalSection = filtered.length === 0 ? '' :
+    '<h2 style="font-size:14px;font-weight:700;color:#3D2314;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #3D2314;margin-top:20px;">👤 개인 주문 ('+filtered.length+'건)</h2>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">'
+    + '<colgroup>'
+    + '<col style="width:4%;"><col style="width:7%;"><col style="width:12%;"><col style="width:14%;"><col style="width:26%;"><col style="width:14%;"><col style="width:13%;"><col style="width:10%;">'
+    + '</colgroup>'
+    + '<thead><tr style="background:#3D2314;color:#FAF6EF;">'
+    + '<th style="padding:6px 5px;font-size:10px;">No.</th>'
+    + '<th style="padding:6px 5px;text-align:left;font-size:11px;">시간</th>'
+    + '<th style="padding:6px 5px;text-align:left;font-size:11px;">받는분</th>'
+    + '<th style="padding:6px 5px;text-align:left;font-size:11px;">전화번호</th>'
+    + '<th style="padding:6px 5px;text-align:left;font-size:11px;">주소 · 메모</th>'
+    + '<th style="padding:6px 5px;text-align:left;font-size:11px;">떡 종류</th>'
+    + '<th style="padding:6px 5px;text-align:right;font-size:11px;">금액</th>'
+    + '<th style="padding:6px 5px;text-align:left;font-size:11px;">결제</th>'
+    + '</tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>';
 
   const printHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>떡 주문 장부 - '+dateLabel+'</title>'
-    + '<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:\'Malgun Gothic\',sans-serif;font-size:12px;color:#222;padding:20px;}h1{font-size:18px;font-weight:700;color:#3D2314;margin-bottom:4px;}table{width:100%;border-collapse:collapse;}@media print{@page{margin:10mm;}}</style></head><body>'
+    + '<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:\'Malgun Gothic\',sans-serif;font-size:12px;color:#222;padding:20px;}h1{font-size:18px;font-weight:700;color:#3D2314;margin-bottom:4px;text-align:center;}table{width:100%;border-collapse:collapse;}tr{page-break-inside:avoid;}@media print{@page{margin:10mm;}}</style></head><body>'
     + '<h1>🍡 남씨네떡집 주문 장부</h1>'
-    + '<p style="font-size:12px;color:#888;margin-bottom:16px;">날짜: '+dateLabel+' · 출력: '+new Date().toLocaleString('ko-KR')+'</p>'
-    + '<h2 style="font-size:14px;font-weight:700;color:#3D2314;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #3D2314;">👤 개인 주문 ('+filtered.length+'건)</h2>'
-    + '<table><thead><tr style="background:#3D2314;color:#FAF6EF;"><th style="padding:6px 8px;">No.</th><th style="padding:6px 8px;">배송일</th><th style="padding:6px 8px;">받는분</th><th style="padding:6px 8px;">보내는분</th><th style="padding:6px 8px;">주소</th><th style="padding:6px 8px;">메모</th><th style="padding:6px 8px;">떡 종류</th><th style="padding:6px 8px;text-align:right;">금액</th><th style="padding:6px 8px;">결제</th></tr></thead>'
-    + '<tbody>' + rows + '</tbody></table>'
-    + '<div style="margin-top:8px;font-size:11px;color:#555;text-align:right;">개인 '+filtered.length+'건 · '+filtered.reduce(function(s,o){return s+(Number(o.priceTotal)||0);},0).toLocaleString()+'원</div>'
-    + funeralSection + chungdaeSection + weddingSection + otherSection
-    + '<div style="margin-top:20px;padding-top:12px;border-top:2px solid #3D2314;font-size:14px;font-weight:700;text-align:right;color:#3D2314;">전체 합계: '+allTotal.toLocaleString()+'원</div>'
+    + '<p style="font-size:12px;color:#888;margin-bottom:18px;text-align:center;padding-bottom:10px;border-bottom:2px solid #333;">날짜: '+dateLabel+' · 출력: '+new Date().toLocaleString('ko-KR')+'</p>'
+    + weddingSection + chungdaeSection + otherSection
+    + personalSection
     + '<script>window.onload=function(){window.print();}<\/script></body></html>';
 
   const w = window.open('', '_blank');
