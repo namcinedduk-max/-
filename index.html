@@ -449,6 +449,44 @@
     padding: 8px 14px;
     font-size: 14px;
   }
+  /* 장례식장 카테고리 필터 pills */
+  .venue-cat-filter {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    background: var(--warm-white);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .venue-cat-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: var(--brown-mid);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .venue-cat-btn:hover:not(.active) { background: var(--brown-pale); }
+  .venue-cat-btn.active {
+    background: var(--brown-deep);
+    color: #fff;
+    font-weight: 700;
+  }
+  .venue-cat-btn.cat-chungdae.active { background: #E65100; }
+  .venue-cat-btn.cat-restaurant.active { background: #2E7D32; }
+  .venue-cat-btn.cat-daecheong.active { background: #1565C0; }
+  .deceased-search-input {
+    flex: 0 1 220px;
+    min-width: 160px;
+    padding: 8px 14px;
+    font-size: 14px;
+  }
   .btn-small {
     padding: 8px 16px;
     border: none;
@@ -1621,7 +1659,14 @@
         <div class="filter-divider"></div>
         <input type="date" id="fFilterDate" onchange="renderFuneralList()">
       </div>
+      <div class="venue-cat-filter" id="fVenueCatFilter">
+        <button type="button" class="venue-cat-btn active" data-cat="all" onclick="setFuneralCategory('all')">전체</button>
+        <button type="button" class="venue-cat-btn cat-chungdae" data-cat="chungdae" onclick="setFuneralCategory('chungdae')">충대</button>
+        <button type="button" class="venue-cat-btn cat-restaurant" data-cat="restaurant" onclick="setFuneralCategory('restaurant')">충대식당</button>
+        <button type="button" class="venue-cat-btn cat-daecheong" data-cat="daecheong" onclick="setFuneralCategory('daecheong')">대청병원</button>
+      </div>
       <input type="text" class="search-input" id="fSearchInput" placeholder="🔍 장례식장, 빈소, 떡 종류 검색..." oninput="renderFuneralList()">
+      <input type="text" class="deceased-search-input" id="fDeceasedSearchInput" placeholder="🕯️ 고인명 검색..." oninput="renderFuneralList()">
       <button class="btn-small btn-secondary" onclick="clearFuneralFilter()">전체보기</button>
       <button class="btn-small" onclick="loadFuneralOrdersFromSheet()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printFuneralOrders()">🖨️ 출력/PDF</button>
@@ -10367,10 +10412,43 @@ function updateFuneralStats() {
   document.getElementById('fstat-unpaid').textContent = unpaid.toLocaleString();
 }
 
+// 현재 선택된 장례식장 카테고리 ('all' | 'chungdae' | 'restaurant' | 'daecheong')
+let funeralCategoryFilter = 'all';
+
+// 장례식장 이름 → 카테고리 매핑
+function getFuneralCategory(venueName) {
+  if (!venueName) return 'other';
+  const restaurantVenues = ['충대본관영양','소비조합','재활환자','재활직원'];
+  if (restaurantVenues.includes(venueName)) return 'restaurant';
+  if (venueName === '충대장례식장') return 'chungdae';
+  if (venueName === '대청장례식장') return 'daecheong';
+  // 사용자가 추가한 거래처도 그룹별로 분류
+  const extras = (typeof extraVenues !== 'undefined' && extraVenues.funeral) ? extraVenues.funeral : [];
+  const found = extras.find(v => (typeof v === 'object' ? v.name : v) === venueName);
+  if (found && typeof found === 'object') {
+    if (found.group === 'chungdae') return 'chungdae';
+    if (found.group === 'daecheong') return 'daecheong';
+  }
+  return 'other';
+}
+
+// 카테고리 버튼 클릭 핸들러
+function setFuneralCategory(cat) {
+  funeralCategoryFilter = cat;
+  const buttons = document.querySelectorAll('#fVenueCatFilter .venue-cat-btn');
+  buttons.forEach(b => {
+    if (b.dataset.cat === cat) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+  renderFuneralList();
+}
+
 function renderFuneralList() {
   const filterDate = document.getElementById('fFilterDate').value;
   const filterType = document.getElementById('fFilterDateType').value;
   const search = document.getElementById('fSearchInput').value.trim().toLowerCase();
+  const deceasedInput = document.getElementById('fDeceasedSearchInput');
+  const deceasedSearch = deceasedInput ? deceasedInput.value.trim().toLowerCase() : '';
 
   let filtered = funeralOrders.filter(o => {
     let matchDate = true;
@@ -10385,16 +10463,29 @@ function renderFuneralList() {
       String(o.funeralName||'').toLowerCase().includes(search) ||
       String(o.binsoLocation||'').toLowerCase().includes(search) ||
       String(o.tteokType||'').toLowerCase().includes(search);
-    return matchDate && matchSearch;
+    const matchDeceased = !deceasedSearch ||
+      String(o.deceasedName||'').toLowerCase().includes(deceasedSearch);
+    const matchCategory = funeralCategoryFilter === 'all' ||
+      getFuneralCategory(o.funeralName) === funeralCategoryFilter;
+    return matchDate && matchSearch && matchDeceased && matchCategory;
   });
 
   filtered = applySort(filtered, funeralSortKey, funeralSortDir);
 
   const resultBar = document.getElementById('fFilterResultBar');
+  const activeFilters = [];
   if (filterDate) {
     const typeLabel = filterType === 'delivery' ? '📦 배송일' : '📋 접수일';
+    activeFilters.push(typeLabel + ' ' + filterDate);
+  }
+  if (funeralCategoryFilter !== 'all') {
+    const catLabel = { chungdae:'충대', restaurant:'충대식당', daecheong:'대청병원' }[funeralCategoryFilter] || '';
+    if (catLabel) activeFilters.push('🏥 ' + catLabel);
+  }
+  if (deceasedSearch) activeFilters.push('🕯️ 고인명: ' + deceasedSearch);
+  if (activeFilters.length > 0) {
     resultBar.classList.add('visible');
-    document.getElementById('fFilterResultText').textContent = typeLabel + ' ' + filterDate + ' 기준';
+    document.getElementById('fFilterResultText').textContent = activeFilters.join(' · ') + ' 기준';
     document.getElementById('fFilterResultCount').textContent = filtered.length + '건';
   } else {
     resultBar.classList.remove('visible');
@@ -10406,7 +10497,9 @@ function renderFuneralList() {
   if (filtered.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
-    empty.innerHTML = filterDate ? '<div class="icon">🔍</div><p>해당 날짜의 주문이 없습니다.</p>' : '<div class="icon">📭</div><p>장례식장 주문 내역이 없습니다.</p>';
+    empty.innerHTML = (activeFilters.length > 0)
+      ? '<div class="icon">🔍</div><p>해당 조건의 주문이 없습니다.</p>'
+      : '<div class="icon">📭</div><p>장례식장 주문 내역이 없습니다.</p>';
     return;
   }
   empty.style.display = 'none';
@@ -10449,6 +10542,14 @@ function clearFuneralFilter() {
   document.getElementById('fFilterDate').value = '';
   document.getElementById('fSearchInput').value = '';
   document.getElementById('fFilterDateType').value = 'delivery';
+  const dInput = document.getElementById('fDeceasedSearchInput');
+  if (dInput) dInput.value = '';
+  funeralCategoryFilter = 'all';
+  const buttons = document.querySelectorAll('#fVenueCatFilter .venue-cat-btn');
+  buttons.forEach(b => {
+    if (b.dataset.cat === 'all') b.classList.add('active');
+    else b.classList.remove('active');
+  });
   renderFuneralList();
 }
 
