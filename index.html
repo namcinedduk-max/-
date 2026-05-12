@@ -1076,6 +1076,8 @@
                     <button type="button" onclick="chooseSetType('은혜세트')" id="setbtn-은혜세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 은혜세트</button>
                     <button type="button" onclick="chooseSetType('코리아(대)')" id="setbtn-코리아(대)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(대)</button>
                     <button type="button" onclick="chooseSetType('코리아(소)')" id="setbtn-코리아(소)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(소)</button>
+                    <button type="button" onclick="chooseSetType('쿠키상자(대)')" id="setbtn-쿠키상자(대)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(대)</button>
+                    <button type="button" onclick="chooseSetType('쿠키상자(소)')" id="setbtn-쿠키상자(소)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(소)</button>
                     <button type="button" onclick="chooseSetType('덕세트')" id="setbtn-덕세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕세트</button>
                     <button type="button" onclick="chooseSetType('덕6구세트')" id="setbtn-덕6구세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕6구세트</button>
 
@@ -1476,7 +1478,14 @@
           </div>
         </div>
 
-        <input type="hidden" id="f_payStatus" value="결제완료">
+        <div class="form-group">
+          <label>결제 상태</label>
+          <select id="f_payStatus">
+            <option value="결제완료">✅ 결제완료</option>
+            <option value="입금대기">⏳ 입금대기</option>
+            <option value="부분결제">🔸 부분결제</option>
+          </select>
+        </div>
 
         <div class="form-group">
           <label>담당 직원</label>
@@ -1528,7 +1537,7 @@
           <option value="created">📋 접수일</option>
         </select>
         <div class="filter-divider"></div>
-        <input type="date" id="filterDate" onchange="loadFuneralOrdersFromSheet(true).then(()=>renderList())">
+        <input type="date" id="filterDate" onchange="loadFuneralOrdersFromSheet(true,true).then(()=>renderList())">
       </div>
       <input type="text" class="search-input" id="searchInput" placeholder="🔍 이름, 전화번호, 떡 종류 검색..." oninput="renderList()">
       <button class="btn-small btn-secondary" onclick="clearFilter()">전체보기</button>
@@ -1612,23 +1621,7 @@
         <div class="filter-divider"></div>
         <input type="date" id="fFilterDate" onchange="renderFuneralList()">
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <select id="fVenueFilter" onchange="onFuneralVenueFilterChange()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--warm-white);">
-          <option value="">전체 거래처</option>
-          <optgroup label="충대병원">
-            <option value="충대장례식장">충대장례식장</option>
-            <option value="충대본관영양">충대본관영양</option>
-            <option value="소비조합">소비조합</option>
-            <option value="재활환자">재활환자</option>
-            <option value="재활직원">재활직원</option>
-          </optgroup>
-          <optgroup label="대청">
-            <option value="대청장례식장">대청장례식장</option>
-          </optgroup>
-        </select>
-        <input type="text" class="search-input" id="fSearchInput" placeholder="🔍 장례식장, 빈소, 떡 종류 검색..." oninput="renderFuneralList()" style="flex:1;min-width:180px;">
-        <input type="text" id="fDeceasedSearch" placeholder="🔍 고인명 검색..." oninput="renderFuneralList()" style="display:none;padding:8px 12px;border:1.5px solid var(--accent-orange, #d97706);border-radius:8px;font-size:13px;width:180px;">
-      </div>
+      <input type="text" class="search-input" id="fSearchInput" placeholder="🔍 장례식장, 빈소, 떡 종류 검색..." oninput="renderFuneralList()">
       <button class="btn-small btn-secondary" onclick="clearFuneralFilter()">전체보기</button>
       <button class="btn-small" onclick="loadFuneralOrdersFromSheet()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printFuneralOrders()">🖨️ 출력/PDF</button>
@@ -1765,7 +1758,14 @@
           </div>
         </div>
 
-        <input type="hidden" id="w_payStatus" value="결제완료">
+        <div class="form-group">
+          <label>결제 상태</label>
+          <select id="w_payStatus">
+            <option value="결제완료">✅ 결제완료</option>
+            <option value="입금대기">⏳ 입금대기</option>
+            <option value="부분결제">🔸 부분결제</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>담당 직원</label>
           <select id="w_staffName">
@@ -1920,7 +1920,15 @@
           <label>총금액</label>
           <div class="price-display" id="ot_priceTotal">0 원</div>
         </div>
-        <input type="hidden" id="ot_payStatus" value="결제완료">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>결제상태</label>
+          <div class="pay-btn-group">
+            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'미수금')">미수금</button>
+            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'완료')">완료</button>
+            <button type="button" class="pay-btn" onclick="selectOtherPay(this,'선불')">선불</button>
+          </div>
+          <input type="hidden" id="ot_payStatus" value="미수금">
+        </div>
         <div class="form-group" style="grid-column:1/-1;">
           <label>메모</label>
           <textarea id="ot_memo" rows="2" placeholder="메모를 입력하세요"></textarea>
@@ -2541,6 +2549,16 @@
             <input type="number" id="koreaSmallBoxFee" style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="SET_DB['코리아(소)'].boxFee=Number(this.value)">
             <span style="font-size:13px;color:#888;">원</span>
           </div>
+          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">쿠키상자(대) 박스값 (세트당)</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <input type="number" id="cookieLargeBoxFee" style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="SET_DB['쿠키상자(대)'].boxFee=Number(this.value)">
+            <span style="font-size:13px;color:#888;">원</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">쿠키상자(소) 박스값 (세트당)</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <input type="number" id="cookieSmallBoxFee" style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="SET_DB['쿠키상자(소)'].boxFee=Number(this.value)">
+            <span style="font-size:13px;color:#888;">원</span>
+          </div>
           <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;margin-top:16px;">덕세트 기준단가 설정</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:6px;">
@@ -2616,6 +2634,18 @@
             </div>
           </div>
           <div id="korea-small-preset-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;margin-top:12px;">
+            <div style="font-size:13px;font-weight:700;color:var(--brown-mid);">쿠키상자(대) 구성 프리셋</div>
+            <button onclick="showAddKoreaPresetForm('쿠키상자(대)')" style="padding:4px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 구성 추가</button>
+          </div>
+          <div id="cookie-large-preset-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-size:13px;font-weight:700;color:var(--brown-mid);">쿠키상자(소) 구성 프리셋</div>
+            <button onclick="showAddKoreaPresetForm('쿠키상자(소)')" style="padding:4px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ 구성 추가</button>
+          </div>
+          <div id="cookie-small-preset-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
 
           <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;margin-top:8px;">이바지 세트 기본가 (고정금액)</div>
           <div id="ibaji-price-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;"></div>
@@ -3099,6 +3129,8 @@ const SET_DB = {
   }},
   '코리아(대)': { boxFee: 2000 },
   '코리아(소)': { boxFee: 1500 },
+  '쿠키상자(대)': { boxFee: 2000 },
+  '쿠키상자(소)': { boxFee: 1500 },
   '덕세트': { baseMocciPrice: 1800, baseChalPrice: 1000 }, // 모찌 기준단가 1800원, 찰떡류 기준단가 1000원
   '덕6구세트': { baseMocciPrice: 1800, baseChalPrice: 1000 },
 };
@@ -3128,7 +3160,9 @@ const IBAJI_SET_CONFIGS = [
 // 코리아 세트 프리셋
 window.KOREA_PRESETS = {
   '코리아(대)': [],
-  '코리아(소)': []
+  '코리아(소)': [],
+  '쿠키상자(대)': [],
+  '쿠키상자(소)': []
 };
 
 // 덕세트 구성 정의
@@ -3186,7 +3220,7 @@ const DEOK_SET_CONFIGS = [
 ];
 
 function getTteokUnitPrice(name, setType, unitType) {
-  if (setType === '분홍세트' || setType === '코리아(대)' || setType === '코리아(소)') {
+  if (setType === '분홍세트' || setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)') {
     const db = TTEOK_DB[name];
     return db ? (db.unitPrice || 0) : 0;
   }
@@ -3230,7 +3264,6 @@ function loadTteokPriceSettings() {
       if (d.weddingHallPresets) { try {
         weddingHallPresets = d.weddingHallPresets;
         localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
-        applyExtraVenuesToSelects();
       } catch(e){} }
       if (d.priceSettings) { try {
         priceSettings = d.priceSettings;
@@ -3247,6 +3280,8 @@ function loadTteokPriceSettings() {
       if (d.pinkBoxFee !== undefined) SET_DB['분홍세트'].boxFee = d.pinkBoxFee;
       if (d.koreaLargeBoxFee !== undefined && SET_DB['코리아(대)']) SET_DB['코리아(대)'].boxFee = d.koreaLargeBoxFee;
       if (d.koreaSmallBoxFee !== undefined && SET_DB['코리아(소)']) SET_DB['코리아(소)'].boxFee = d.koreaSmallBoxFee;
+      if (d.cookieLargeBoxFee !== undefined && SET_DB['쿠키상자(대)']) SET_DB['쿠키상자(대)'].boxFee = d.cookieLargeBoxFee;
+      if (d.cookieSmallBoxFee !== undefined && SET_DB['쿠키상자(소)']) SET_DB['쿠키상자(소)'].boxFee = d.cookieSmallBoxFee;
       if (d.deokBaseMocciPrice !== undefined) { SET_DB['덕세트'].baseMocciPrice = d.deokBaseMocciPrice; SET_DB['덕6구세트'].baseMocciPrice = d.deokBaseMocciPrice; }
       if (d.ibajiSetConfigs) { d.ibajiSetConfigs.forEach(function(saved){ var cfg = IBAJI_SET_CONFIGS.find(function(c){ return c.id === saved.id; }); if(cfg){ cfg.basePrice = saved.basePrice; if(saved.customLabel) cfg.customLabel = saved.customLabel; } }); }
       if (d.deokSetConfigs) {
@@ -3456,7 +3491,11 @@ function renderTteokAllList() {
   const koreaL = document.getElementById('koreaLargeBoxFee');
   if (koreaL && SET_DB['코리아(대)']) koreaL.value = SET_DB['코리아(대)'].boxFee;
   const koreaS = document.getElementById('koreaSmallBoxFee');
+  const cookieL = document.getElementById('cookieLargeBoxFee');
+  const cookieS = document.getElementById('cookieSmallBoxFee');
   if (koreaS && SET_DB['코리아(소)']) koreaS.value = SET_DB['코리아(소)'].boxFee;
+  if (cookieL && SET_DB['쿠키상자(대)']) cookieL.value = SET_DB['쿠키상자(대)'].boxFee;
+  if (cookieS && SET_DB['쿠키상자(소)']) cookieS.value = SET_DB['쿠키상자(소)'].boxFee;
   // 덕세트 기준모찌단가
   const deokBase = document.getElementById('deokBaseMocciPrice');
   if (deokBase && SET_DB['덕세트']) deokBase.value = SET_DB['덕세트'].baseMocciPrice || 1800;
@@ -3534,6 +3573,46 @@ function renderTteokAllList() {
       }).join('');
     }
   }
+  // 쿠키상자(대) 프리셋 렌더링
+  const cookieLargeList = document.getElementById('cookie-large-preset-list');
+  if (cookieLargeList) {
+    const presetsC1 = window.KOREA_PRESETS['쿠키상자(대)'] || [];
+    if (presetsC1.length === 0) {
+      cookieLargeList.innerHTML = '<div style="font-size:12px;color:#aaa;padding:8px;">등록된 구성이 없어요. + 구성 추가를 눌러주세요.</div>';
+    } else {
+      cookieLargeList.innerHTML = presetsC1.map(function(p) {
+        const itemDesc = p.items.map(function(i){ return i.name + ' ' + i.qty + '개'; }).join(', ');
+        return '<div style="display:flex;align-items:center;gap:6px;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
+          '<div style="flex:1;">' +
+          '<div style="font-size:12px;font-weight:700;">' + p.label + '</div>' +
+          '<div style="font-size:11px;color:#888;">' + itemDesc + '</div>' +
+          '</div>' +
+          '<button onclick="deleteKoreaPreset(\'쿠키상자(대)\',\'' + p.id + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">✕</button>' +
+          '</div>';
+      }).join('');
+    }
+  }
+
+  // 쿠키상자(소) 프리셋 렌더링
+  const cookieSmallList = document.getElementById('cookie-small-preset-list');
+  if (cookieSmallList) {
+    const presetsC2 = window.KOREA_PRESETS['쿠키상자(소)'] || [];
+    if (presetsC2.length === 0) {
+      cookieSmallList.innerHTML = '<div style="font-size:12px;color:#aaa;padding:8px;">등록된 구성이 없어요. + 구성 추가를 눌러주세요.</div>';
+    } else {
+      cookieSmallList.innerHTML = presetsC2.map(function(p) {
+        const itemDesc = p.items.map(function(i){ return i.name + ' ' + i.qty + '개'; }).join(', ');
+        return '<div style="display:flex;align-items:center;gap:6px;background:#fafafa;border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
+          '<div style="flex:1;">' +
+          '<div style="font-size:12px;font-weight:700;">' + p.label + '</div>' +
+          '<div style="font-size:11px;color:#888;">' + itemDesc + '</div>' +
+          '</div>' +
+          '<button onclick="deleteKoreaPreset(\'쿠키상자(소)\',\'' + p.id + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">✕</button>' +
+          '</div>';
+      }).join('');
+    }
+  }
+
   const ehyeList = document.getElementById('ehye-price-list');
   if (ehyeList) {
     ehyeList.innerHTML = Object.keys(SET_DB['은혜세트'].prices).map(function(name) {
@@ -3622,6 +3701,8 @@ function saveTteokPriceSettings() {
       pinkBoxFee: SET_DB['분홍세트'].boxFee,
       koreaLargeBoxFee: SET_DB['코리아(대)'] ? SET_DB['코리아(대)'].boxFee : 2000,
       koreaSmallBoxFee: SET_DB['코리아(소)'] ? SET_DB['코리아(소)'].boxFee : 1500,
+      cookieLargeBoxFee: SET_DB['쿠키상자(대)'] ? SET_DB['쿠키상자(대)'].boxFee : 2000,
+      cookieSmallBoxFee: SET_DB['쿠키상자(소)'] ? SET_DB['쿠키상자(소)'].boxFee : 1500,
       ibajiSetConfigs: IBAJI_SET_CONFIGS.map(function(c){ return {id:c.id, basePrice:c.basePrice, customLabel:c.customLabel||''}; }),
       deokBaseMocciPrice: SET_DB['덕세트'] ? SET_DB['덕세트'].baseMocciPrice : 1800,
       deokSetConfigs: DEOK_SET_CONFIGS.map(function(c){ return {id:c.id, setType:c.setType, label:c.label, basePrice:c.basePrice, customName:c.customName||'', customLabel:c.customLabel||'', items:c.items||[], hasChalTteok:c.hasChalTteok||false, chalBasePrice:c.chalBasePrice||1000, chalTteokSlots:c.chalTteokSlots||[], isCustom:c.isCustom||false}; }),
@@ -3662,7 +3743,7 @@ function selectTteokCategory(cat) {
 function chooseSetType(setType) {
   window._currentSetType = setType;
   window._deokConfigId = null;
-  ['분홍세트','은혜세트','코리아(대)','코리아(소)','덕세트','덕6구세트','이바지大','이바지小'].forEach(function(s) {
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트','이바지大','이바지小'].forEach(function(s) {
     const b = document.getElementById('setbtn-' + s);
     if (b) {
       b.style.background = s === setType ? 'var(--brown-deep)' : '#fff';
@@ -3677,7 +3758,7 @@ function chooseSetType(setType) {
   document.getElementById('setTotalQty').value = '';
   document.getElementById('setPricePreview').textContent = '';
 
-  const isKorea = setType === '코리아(대)' || setType === '코리아(소)';
+  const isKorea = setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)';
   const isDeok = setType === '덕세트' || setType === '덕6구세트';
   const isIbaji = setType === '이바지大' || setType === '이바지小';
   const totalQtyRow = document.getElementById('setTotalQtyRow');
@@ -3702,7 +3783,7 @@ function chooseSetType(setType) {
 function addSetTteok() {
   const name = document.getElementById('setTteokSel').value;
   if (!name) { showToast('떡을 선택해주세요.', 'error'); return; }
-  const isKorea = window._currentSetType === '코리아(대)' || window._currentSetType === '코리아(소)';
+  const isKorea = window._currentSetType === '코리아(대)' || window._currentSetType === '코리아(소)' || window._currentSetType === '쿠키상자(대)' || window._currentSetType === '쿠키상자(소)';
   window._currentSetItems.push(isKorea ? { name: name, qty: 1 } : name);
   renderSetTteokList();
   updateSetPrice();
@@ -3722,7 +3803,7 @@ function renderSetTteokList() {
   const list = document.getElementById('setTteokList');
   if (!list) return;
   const setType = window._currentSetType;
-  const isKorea = setType === '코리아(대)' || setType === '코리아(소)';
+  const isKorea = setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)';
   // 코리아 프리셋 버튼 표시
   const presetArea = document.getElementById('korea-preset-area');
   if (presetArea) {
@@ -3775,7 +3856,7 @@ function renderSetTteokList() {
 function updateSetPrice() {
   const setType = window._currentSetType;
   const items = window._currentSetItems;
-  const isKorea = setType === '코리아(대)' || setType === '코리아(소)';
+  const isKorea = setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)';
   const preview = document.getElementById('setPricePreview') || document.getElementById('setPricePreview2');
 
   if (isKorea) {
@@ -4543,7 +4624,7 @@ function updateEditTteokPrice() {
 
 function editChooseSetType(setType) {
   window._editCurrentSetType = setType;
-  ['분홍세트','은혜세트','코리아(대)','코리아(소)','덕세트','덕6구세트'].forEach(function(s) {
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트'].forEach(function(s) {
     const b = document.getElementById('edit-setbtn-' + s);
     if (b) { b.style.background = s===setType?'var(--brown-deep)':'#fff'; b.style.color = s===setType?'#fff':'var(--brown-mid)'; b.style.borderColor = s===setType?'var(--brown-deep)':'var(--border)'; }
   });
@@ -4554,7 +4635,7 @@ function editChooseSetType(setType) {
   document.getElementById('edit-setTotalQty').value = '';
   document.getElementById('edit-setPricePreview').textContent = '';
 
-  const isKorea = setType === '코리아(대)' || setType === '코리아(소)';
+  const isKorea = setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)';
   const isDeok = setType === '덕세트' || setType === '덕6구세트';
 
   // 코리아/덕세트는 총수량 숨기고 전용 영역 표시
@@ -5573,13 +5654,13 @@ function deleteDeokConfig(id) {
 
 // ============ 코리아 세트 프리셋 추가/삭제 ============
 function showAddKoreaPresetForm(setType) {
-  const formId = setType === '코리아(대)' ? 'korea-large-add-form' : 'korea-small-add-form';
+  const formId = (setType === '코리아(대)' || setType === '쿠키상자(대)') ? 'korea-large-add-form' : 'korea-small-add-form';
   const form = document.getElementById(formId);
   if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
 function addKoreaPreset(setType) {
-  const isLarge = setType === '코리아(대)';
+  const isLarge = setType === '코리아(대)' || setType === '쿠키상자(대)';
   const labelEl = document.getElementById(isLarge ? 'korea-large-preset-label' : 'korea-small-preset-label');
   const itemsEl = document.getElementById(isLarge ? 'korea-large-preset-items' : 'korea-small-preset-items');
   const label = labelEl ? labelEl.value.trim() : '';
@@ -7782,7 +7863,7 @@ function addTteokItemFromSet() {
   if (!setType) { showToast('세트를 선택해주세요.', 'error'); return; }
   if (!items.length) { showToast('구성 떡을 추가해주세요.', 'error'); return; }
 
-  const isKorea = setType === '코리아(대)' || setType === '코리아(소)';
+  const isKorea = setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)';
   let price = 0;
   let setName = '';
   let qtyStr = '';
@@ -7821,7 +7902,7 @@ function addTteokItemFromSet() {
   document.getElementById('setTteokList').innerHTML = '';
   document.getElementById('setTotalQty').value = '';
   document.getElementById('setPricePreview').textContent = '';
-  ['분홍세트','은혜세트','코리아(대)','코리아(소)'].forEach(function(s) {
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)'].forEach(function(s) {
     const b = document.getElementById('setbtn-' + s);
     if (b) { b.style.background='#fff'; b.style.color='var(--brown-mid)'; b.style.borderColor='var(--border)'; }
   });
@@ -8356,9 +8437,21 @@ function normalizeDateStr(str) {
   return str.slice(0, 10);
 }
 
+function getFilterDateValue() {
+  const input = document.getElementById('filterDate');
+  if (!input || !input.value) return '';
+  // date input value는 항상 YYYY-MM-DD지만 브라우저 timezone에 따라 하루 밀릴 수 있음
+  // input.valueAsDate는 UTC 자정 기준이라 한국에선 하루 앞날짜로 보정 필요
+  const d = input.valueAsDate;
+  if (!d) return input.value;
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
 function renderList() {
   updatePendingBadge();
-  const filterDate = document.getElementById('filterDate').value;
+  const filterDate = getFilterDateValue();
   const filterType = document.getElementById('filterDateType').value;
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
 
@@ -8407,9 +8500,9 @@ function renderList() {
   if (filtered.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
-  } else {
-    empty.style.display = 'none';
+    return;
   }
+  empty.style.display = 'none';
 
   tbody.innerHTML = filtered.map((o, i) => {
     const payBadge = getPayBadge(o.payStatus);
@@ -8698,6 +8791,7 @@ function renderModalView(o) {
     <div class="modal-detail-row"><span class="modal-detail-label">할인</span><span class="modal-detail-value">-${(o.priceDiscount||0).toLocaleString()}원</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span class="modal-detail-value" style="color:var(--accent-red);font-size:18px;font-weight:700;">${(o.priceTotal||0).toLocaleString()}원 ${priceNote}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">결제 방법</span><span class="modal-detail-value">${o.payMethod}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span><span class="modal-detail-value">${o.payStatus}</span></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span><span class="modal-detail-value">${o.staffName}</span></div>
 
     <!-- 이전 주문 이력 -->
@@ -8790,6 +8884,8 @@ function renderModalEdit(o) {
             <button type="button" onclick="editChooseSetType('은혜세트')" id="edit-setbtn-은혜세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 은혜세트</button>
             <button type="button" onclick="editChooseSetType('코리아(대)')" id="edit-setbtn-코리아(대)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(대)</button>
             <button type="button" onclick="editChooseSetType('코리아(소)')" id="edit-setbtn-코리아(소)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(소)</button>
+            <button type="button" onclick="editChooseSetType('쿠키상자(대)')" id="edit-setbtn-쿠키상자(대)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(대)</button>
+            <button type="button" onclick="editChooseSetType('쿠키상자(소)')" id="edit-setbtn-쿠키상자(소)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(소)</button>
             <button type="button" onclick="editChooseSetType('덕세트')" id="edit-setbtn-덕세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕세트</button>
             <button type="button" onclick="editChooseSetType('덕6구세트')" id="edit-setbtn-덕6구세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕6구세트</button>
           </div>
@@ -9836,7 +9932,7 @@ function printInvoice(order, orderType) {
     '<tr><td style="border:0.5px solid #999;height:22px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
   ).join('');
 
-  const makeSlip = (copy, accumUnpaid=0) => `
+  const makeSlip = (copy) => `
     <div style="flex:1;min-width:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;">
       <div style="text-align:center;margin-bottom:6px;">
         <div style="font-size:14px;font-weight:bold;letter-spacing:4px;margin-bottom:3px;">거 래 명 세 표</div>
@@ -9877,9 +9973,7 @@ function printInvoice(order, orderType) {
         <tfoot><tr style="background:#f5f5f5;">
           <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">합 계</td>
           <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">${displayTotal.toLocaleString()}</td>
-        </tr>
-        ${accumUnpaid > 0 ? `<tr><td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#d97706;">누적 미수금</td><td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#d97706;">${accumUnpaid.toLocaleString()}</td></tr><tr><td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#dc2626;">총 합 계</td><td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;color:#dc2626;">${(displayTotal+accumUnpaid).toLocaleString()}</td></tr>` : ''}
-        </tfoot>
+        </tr></tfoot>
       </table>
       <div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;height:28px;">
         <div style="font-size:7px;color:#aaa;">메 모</div>
@@ -9896,16 +9990,14 @@ function printInvoice(order, orderType) {
 
   // 웨딩홀 전용 명세서 (품목/수량/단가/금액 + 부가세10%포함 + 정산)
   const makeWeddingSlip = (copy) => {
-    // 전월 이월 방식 누적 미수금 (정산탭과 동일)
+    // 정산 정보 (전미수금)
     const ym = (order.deliveryDate||'').slice(0,7);
-    const wAllOrdersMap = {};
-    (weddingOrders||[]).filter(o=>(o.weddingName||o.hallName||'')===venueName).forEach(o => {
-      const oym = normalizeDateStr(String(o.deliveryDate||'')).slice(0,7);
-      if (!oym) return;
-      if (!wAllOrdersMap[oym]) wAllOrdersMap[oym] = [];
-      wAllOrdersMap[oym].push(o);
-    });
-    const prevCarryover = ym ? calcCarryover(venueName, ym, wAllOrdersMap, 0) : 0;
+    const prevDate = new Date((order.deliveryDate||'').slice(0,4), parseInt((order.deliveryDate||'0000-00').slice(5,7))-2, 1);
+    const prevYm = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
+    const prevOrders = (window._allWeddingOrders||[]).filter(o => (o.weddingName||o.hallName||'') === venueName && String(o.deliveryDate||'').startsWith(prevYm));
+    const prevTotal = prevOrders.reduce((s,o) => s+(Number(o.priceTotal)||0), 0);
+    const prevPaid = ((paymentRecords||{})[venueName+'_'+prevYm]||[]).reduce((s,p) => s+(Number(p.amount)||0), 0);
+    const prevCarryover = Math.max(0, prevTotal - prevPaid);
     const todaySales = displayTotal;
     const grandTotal = prevCarryover + todaySales;
 
@@ -9972,29 +10064,12 @@ function printInvoice(order, orderType) {
     </div>`;
   };
 
-  // 웨딩홀은 전용 슬립, 기타거래처도 누적 미수금 포함
+  // 웨딩홀은 전용 슬립 사용
   const isWedding = orderType === 'wedding';
-  const isOther = orderType === 'other';
-
-  // 기타거래처 누적 미수금 계산 (정산탭과 동일한 전월이월 방식)
-  const otherAccumUnpaid = (() => {
-    if (!isOther) return 0;
-    const ym = (order.deliveryDate||'').slice(0,7);
-    if (!ym) return 0;
-    // 월별 주문 맵 구성
-    const allOrdersMap = {};
-    (otherOrders||[]).filter(o=>(o.venueName||'')===venueName).forEach(o => {
-      const oym = normalizeDateStr(String(o.deliveryDate||'')).slice(0,7);
-      if (!oym) return;
-      if (!allOrdersMap[oym]) allOrdersMap[oym] = [];
-      allOrdersMap[oym].push(o);
-    });
-    return calcCarryover(venueName, ym, allOrdersMap, 0);
-  })();
 
   const dividers = copies.map((copy, i) => {
     const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
-    const slipContent = isWedding ? makeWeddingSlip(copy) : makeSlip(copy, isOther ? otherAccumUnpaid : 0);
+    const slipContent = isWedding ? makeWeddingSlip(copy) : makeSlip(copy);
     return `<div style="flex:1;min-width:0;${borderRight}">${slipContent}</div>`;
   }).join('');
 
@@ -10273,22 +10348,10 @@ function updateFuneralStats() {
   document.getElementById('fstat-unpaid').textContent = unpaid.toLocaleString();
 }
 
-function onFuneralVenueFilterChange() {
-  const venue = (document.getElementById('fVenueFilter')||{}).value || '';
-  const deceasedEl = document.getElementById('fDeceasedSearch');
-  if (deceasedEl) {
-    deceasedEl.style.display = venue === '대청장례식장' ? 'block' : 'none';
-    if (venue !== '대청장례식장') deceasedEl.value = '';
-  }
-  renderFuneralList();
-}
-
 function renderFuneralList() {
   const filterDate = document.getElementById('fFilterDate').value;
   const filterType = document.getElementById('fFilterDateType').value;
   const search = document.getElementById('fSearchInput').value.trim().toLowerCase();
-  const venueFilter = (document.getElementById('fVenueFilter')||{}).value || '';
-  const deceasedSearch = ((document.getElementById('fDeceasedSearch')||{}).value||'').trim().toLowerCase();
 
   let filtered = funeralOrders.filter(o => {
     let matchDate = true;
@@ -10299,13 +10362,11 @@ function renderFuneralList() {
         matchDate = normalizeDateStr(String(o.createdAt||'')) === filterDate;
       }
     }
-    const matchVenue = !venueFilter || (o.funeralName||'') === venueFilter;
-    const matchDeceased = !deceasedSearch || String(o.deceasedName||'').toLowerCase().includes(deceasedSearch);
     const matchSearch = !search ||
       String(o.funeralName||'').toLowerCase().includes(search) ||
       String(o.binsoLocation||'').toLowerCase().includes(search) ||
       String(o.tteokType||'').toLowerCase().includes(search);
-    return matchDate && matchVenue && matchDeceased && matchSearch;
+    return matchDate && matchSearch;
   });
 
   filtered = applySort(filtered, funeralSortKey, funeralSortDir);
@@ -10396,10 +10457,6 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">장례식장</span>
       <select id="ef_funeralName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
         <option value="충대장례식장" ${(o.funeralName||o.receiverName)==='충대장례식장'?'selected':''}>충대장례식장</option>
-        <option value="충대본관영양" ${(o.funeralName||o.receiverName)==='충대본관영양'?'selected':''}>충대본관영양</option>
-        <option value="소비조합" ${(o.funeralName||o.receiverName)==='소비조합'?'selected':''}>소비조합</option>
-        <option value="재활환자" ${(o.funeralName||o.receiverName)==='재활환자'?'selected':''}>재활환자</option>
-        <option value="재활직원" ${(o.funeralName||o.receiverName)==='재활직원'?'selected':''}>재활직원</option>
         <option value="대청장례식장" ${(o.funeralName||o.receiverName)==='대청장례식장'?'selected':''}>대청장례식장</option>
       </select>
     </div>
@@ -10448,7 +10505,13 @@ function openFuneralModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">배송비</span><input id="ef_priceDelivery" type="number" value="${o.priceDelivery||0}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;" oninput="calcFuneralEditTotal()">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">할인</span><input id="ef_priceDiscount" type="number" value="${o.priceDiscount||0}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;" oninput="calcFuneralEditTotal()">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span id="ef_priceTotal" style="color:var(--accent-red);font-weight:700;font-size:16px;">${(Number(o.priceTotal)||0).toLocaleString()}원</span></div>
-    <input type="hidden" id="ef_payStatus" value="결제완료">
+    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span>
+      <select id="ef_payStatus" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+        <option value="결제완료" ${o.payStatus==='결제완료'?'selected':''}>✅ 결제완료</option>
+        <option value="입금대기" ${o.payStatus==='입금대기'?'selected':''}>⏳ 입금대기</option>
+        <option value="부분결제" ${o.payStatus==='부분결제'?'selected':''}>🔸 부분결제</option>
+      </select>
+    </div>
     <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ef_memo" value="${o.memo||''}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
       <select id="ef_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
@@ -11328,7 +11391,6 @@ function renderWeddingPresetList() {
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <button onclick="event.stopPropagation();editHallPreset('${safeId}')" style="font-size:11px;padding:3px 10px;background:var(--brown-pale);color:var(--brown-deep);border:none;border-radius:6px;cursor:pointer;">수정</button>
-          <button onclick="event.stopPropagation();deleteHallPreset('${safeId}')" style="font-size:11px;padding:3px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;cursor:pointer;">삭제</button>
           <span id="preset-arrow-${safeId}" style="font-size:13px;color:var(--brown-light);display:inline-block;transform:rotate(${isOpen?'180deg':'0deg'});transition:transform .25s;">▼</span>
         </div>
       </div>
@@ -11341,18 +11403,6 @@ function renderWeddingPresetList() {
     el._hallKeyMap[hall.replace(/[^a-zA-Z0-9가-힣]/g, '_')] = hall;
   });
 }
-function deleteHallPreset(safeId) {
-  const el = document.getElementById('weddingPresetList');
-  const hallName = (el && el._hallKeyMap) ? (el._hallKeyMap[safeId] || safeId) : safeId;
-  if (!confirm(hallName + ' 홀 떡 목록을 삭제할까요?')) return;
-  delete weddingHallPresets[hallName];
-  localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
-  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { weddingHallPresets } }).catch(() => {});
-  renderWeddingPresetList();
-  renderPresetHallSelect();
-  showToast('🗑 ' + hallName + ' 떡 목록 삭제됐어요.', '');
-}
-
 function editHallPreset(safeId) {
   // safeId → 실제 hall 이름 역변환
   const el = document.getElementById('weddingPresetList');
@@ -11698,7 +11748,14 @@ function openWeddingModal(id) {
     <div class="modal-detail-row"><span class="modal-detail-label">배송비</span><input id="ew_priceDelivery" type="number" value="${o.priceDelivery||0}" oninput="calcWeddingEditTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">할인</span><input id="ew_priceDiscount" type="number" value="${o.priceDiscount||0}" oninput="calcWeddingEditTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
     <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span id="ew_priceTotal_display" style="font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</span></div>
-    <input type="hidden" id="ew_payStatus" value="결제완료">
+    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span>
+      <select id="ew_payStatus" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+        <option value="입금대기" ${o.payStatus==='입금대기'?'selected':''}>⏳ 입금대기</option>
+        <option value="결제완료" ${o.payStatus==='결제완료'?'selected':''}>✅ 결제완료</option>
+        <option value="부분결제" ${o.payStatus==='부분결제'?'selected':''}>🔸 부분결제</option>
+        <option value="미수금" ${o.payStatus==='미수금'?'selected':''}>🔴 미수금</option>
+      </select>
+    </div>
     <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ew_memo" value="${(o.memo||'').replace(/"/g,'&quot;')}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
       <select id="ew_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
@@ -13022,29 +13079,20 @@ function addVenueName(type) {
 }
 
 function removeVenueName(type, name) {
-  if (!confirm(name + ' 거래처를 삭제할까요?\n홀별 기본 떡 목록도 같이 삭제됩니다.')) return;
   if (type === 'funeral') {
     extraVenues.funeral = (extraVenues.funeral || []).filter(v => v.name !== name);
+    // 해당 거래처 단가 데이터도 삭제
     if (venuePrices[name]) {
       delete venuePrices[name];
       saveVenuePriceData();
     }
   } else {
-    extraVenues.wedding = (extraVenues.wedding || []).filter(v => (typeof v === 'object' ? v.name : v) !== name);
-    // 홀별 기본 떡 목록도 같이 삭제
-    if (weddingHallPresets[name]) {
-      delete weddingHallPresets[name];
-      localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
-      if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { weddingHallPresets } }).catch(() => {});
-    }
+    extraVenues.wedding = (extraVenues.wedding || []).filter(n => n !== name);
   }
   saveExtraVenues();
   renderVenueList();
-  renderWeddingPresetList();
-  renderPresetHallSelect();
   renderExtraFuneralPriceSections();
   applyExtraVenuesToSelects();
-  showToast('🗑 ' + name + ' 삭제됐어요.', '');
 }
 
 function renderExtraFuneralPriceSections() {
