@@ -8552,11 +8552,10 @@ function renderList() {
   if (filtered.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
+  } else {
+    empty.style.display = 'none';
 
-  tbody.innerHTML = filtered.map((o, i) => {
+    tbody.innerHTML = filtered.map((o, i) => {
     const payBadge = getPayBadge(o.payStatus);
     const methodBadge = getMethodBadge(o.payMethod);
     const isBundle = o.orderType === '묶음';
@@ -8595,7 +8594,8 @@ function renderList() {
       <td>${getPayBadge(o.payStatus)}</td>
       <td>${actionBtns}</td>
     </tr>`;
-  }).join('');
+    }).join('');
+  }
 
   // ── 충대 발주 섹션 ────────────────────────────────────────────
   const chungdaeExtra = (extraVenues.funeral||[]).filter(v=>v.group==='chungdae').map(v=>v.name);
