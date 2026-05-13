@@ -6177,12 +6177,49 @@ let multiEditIdx = -1; // 수정 중인 받는분 인덱스
 let bundleCounter = parseInt(localStorage.getItem('bundleCounter') || '0');
 
 // 배송일 기준 번호 계산 - 같은 배송일 내 접수 순서대로 1,2,3...
+// 주문에 영구 번호 부여 (한번 부여된 번호는 다른 주문 삭제해도 유지)
+function assignOrderSeqNo(order) {
+  if (order.seqNo) return;
+  const date = normalizeDateStr(String(order.deliveryDate || ''));
+  if (!date) return;
+  const maxSeqNo = orders
+    .filter(function(o){ return normalizeDateStr(String(o.deliveryDate||'')) === date && o.seqNo; })
+    .reduce(function(max, o){ return Math.max(max, o.seqNo || 0); }, 0);
+  order.seqNo = maxSeqNo + 1;
+}
+
+// 기존 주문에 seqNo 일괄 부여 (최초 1회 마이그레이션)
+function migrateOrderSeqNos() {
+  const needsMigration = orders.some(function(o){ return !o.seqNo && o.deliveryDate; });
+  if (!needsMigration) return;
+  // 배송일별로 그룹화
+  const dateGroups = {};
+  orders.forEach(function(o) {
+    const date = normalizeDateStr(String(o.deliveryDate || ''));
+    if (!date || o.seqNo) return;
+    if (!dateGroups[date]) dateGroups[date] = [];
+    dateGroups[date].push(o);
+  });
+  Object.keys(dateGroups).forEach(function(date) {
+    const maxExisting = orders
+      .filter(function(o){ return normalizeDateStr(String(o.deliveryDate||'')) === date && o.seqNo; })
+      .reduce(function(max, o){ return Math.max(max, o.seqNo || 0); }, 0);
+    // 오래된 주문(작은 id)이 앞 번호 받도록 오름차순 정렬
+    dateGroups[date].sort(function(a, b){ return String(a.id).localeCompare(String(b.id)); });
+    dateGroups[date].forEach(function(o, idx) {
+      o.seqNo = maxExisting + idx + 1;
+    });
+  });
+  localStorage.setItem('orders', JSON.stringify(orders));
+}
+
 function getOrderNo(order) {
+  if (order.seqNo) return order.seqNo;
+  // seqNo 없는 경우 fallback (마이그레이션 전 구 데이터)
   const date = normalizeDateStr(String(order.deliveryDate || ''));
   if (!date) return '-';
-  // 같은 배송일 주문만 필터, 오래된 순 정렬
   const sameDay = orders.filter(o => normalizeDateStr(String(o.deliveryDate || '')) === date)
-    .slice().reverse(); // reverse: 오래된 것이 앞
+    .slice().reverse();
   const idx = sameDay.findIndex(o => String(o.id) === String(order.id));
   return idx >= 0 ? idx + 1 : '-';
 }
@@ -6377,6 +6414,11 @@ function submitMultiOrder(baseOrder) {
     saveSequentially(0);
   } else {
     // 로컬: 역순으로 unshift해야 목록 순서 맞음
+    const _delivDate = normalizeDateStr(String(baseOrder.deliveryDate||''));
+    const _startSeqNo = orders
+      .filter(function(o){ return normalizeDateStr(String(o.deliveryDate||'')) === _delivDate && o.seqNo; })
+      .reduce(function(max, o){ return Math.max(max, o.seqNo||0); }, 0);
+    ordersToSave.forEach(function(order, i){ order.seqNo = _startSeqNo + i + 1; });
     [...ordersToSave].reverse().forEach(order => orders.unshift(order));
     updateStats(); renderList();
     showToast(`✅ 묶음 주문 ${multiReceivers.length}명 접수! (${bundleId}) — 합계 ${baseOrder.priceTotal.toLocaleString()}원`, 'success');
@@ -6773,6 +6815,8 @@ document.addEventListener('DOMContentLoaded', () => {
   requestNotifPermission();
   // GAS 연결된 경우 즉시 고객주문 폴링 시작
   if (gasUrl) _initPendingPoller();
+  // GAS 비연결 시에도 기존 주문에 seqNo 부여 (마이그레이션)
+  setTimeout(migrateOrderSeqNos, 500);
   if (gasUrl) {
     document.getElementById('gasUrl').value = gasUrl;
     document.getElementById('sheetStatus').textContent = '연결됨';
@@ -10061,6 +10105,7 @@ function confirmApprove() {
   orders = orders.filter(o2 => String(o2.id) !== String(id));
   o.orderType = '개인';
   o.id = Date.now();
+  assignOrderSeqNo(o);  // 영구 번호 부여
   orders.unshift(o);
   updateStats(); renderList();
   showToast('✅ 주문이 승인됐어요!', 'success');
@@ -10626,6 +10671,7 @@ function loadOrdersFromSheet(silent, force) {
       if (data.success) {
         orders = data.orders || [];
         _cacheTs.orders = Date.now();
+        migrateOrderSeqNos();  // 서버에서 받은 데이터에도 seqNo 부여
         if (_prevPendingIds === null) {
           _prevPendingIds = new Set(orders.filter(o => o.orderType === '고객신청').map(o => String(o.id)));
         }
@@ -11325,6 +11371,7 @@ function sendToFuneralSheet(order) {
 }
 
 function sendToSheet(order) {
+  assignOrderSeqNo(order);  // 영구 번호 부여
   orders.unshift(order);
   updateStats(); renderList();
   resetForm();
