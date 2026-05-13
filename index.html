@@ -11439,87 +11439,6 @@ function updatePartnerSelect() {
   }
 }
 
-function onPurPartnerChange() {
-  const partner = document.getElementById('pur_partner').value;
-  const typeSel = document.getElementById('pur_type');
-  const p = purchasePartners.find(function(x){ return x.name === partner; });
-  if (p && typeSel) typeSel.value = p.type;
-
-  const products = (purchaseVendorProducts[partner] || []);
-  const itemSel = document.getElementById('pur_item_sel');
-  const itemNew = document.getElementById('pur_item_new');
-  if (!itemSel) return;
-
-  itemSel.innerHTML = products.length === 0
-    ? '<option value="__new__">직접 입력...</option>'
-    : products.map(function(prod) {
-        return '<option value="' + prod.name + '" data-unit="' + prod.unit + '" data-lastprice="' + (prod.lastPrice||0) + '">' + prod.name + ' (' + prod.unit + ')</option>';
-      }).join('') + '<option value="__new__">✏️ 직접 입력...</option>';
-
-  onPurItemSelect();
-
-  if (products.length === 0) {
-    itemSel.style.display = 'none';
-    itemNew.style.display = '';
-    itemNew.value = '';
-    itemNew.placeholder = '항목 이름 입력';
-  } else {
-    itemSel.style.display = '';
-    itemNew.style.display = 'none';
-  }
-}
-
-function onPurItemSelect() {
-  const sel = document.getElementById('pur_item_sel');
-  const itemNew = document.getElementById('pur_item_new');
-  const unitSel = document.getElementById('pur_unit');
-  const hint = document.getElementById('pur_lastprice_hint');
-  const unitpriceEl = document.getElementById('pur_unitprice');
-  if (!sel) return;
-
-  if (sel.value === '__new__') {
-    itemNew.style.display = '';
-    itemNew.value = '';
-    itemNew.placeholder = '새 항목 이름 입력';
-    itemNew.focus();
-    if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
-    return;
-  }
-  if (itemNew) itemNew.style.display = 'none';
-
-  const opt = sel.options[sel.selectedIndex];
-  if (!opt) return;
-  const unit = opt.dataset.unit;
-  const lastPrice = parseInt(opt.dataset.lastprice) || 0;
-
-  if (unit && unitSel) {
-    for (let i = 0; i < unitSel.options.length; i++) {
-      if (unitSel.options[i].value === unit) { unitSel.selectedIndex = i; break; }
-    }
-  }
-  if (hint) {
-    if (lastPrice > 0) {
-      hint.textContent = '지난 단가: ' + lastPrice.toLocaleString() + '원/' + (unit||'kg');
-      hint.style.display = '';
-    } else {
-      hint.style.display = 'none';
-    }
-  }
-  if (unitpriceEl && lastPrice > 0 && !unitpriceEl.value) {
-    unitpriceEl.value = lastPrice;
-    calcPurAmount();
-  }
-}
-
-function calcPurAmount() {
-  const qty = parseFloat(document.getElementById('pur_qty').value) || 0;
-  const unitprice = parseInt(document.getElementById('pur_unitprice').value) || 0;
-  const amountEl = document.getElementById('pur_amount');
-  if (qty > 0 && unitprice > 0 && amountEl) {
-    amountEl.value = Math.round(qty * unitprice);
-  }
-}
-
 function typeLabel(type) {
   const map = { material: '원재료', packaging: '포장재', utility: '공과금', delivery: '퀵/배송비', etc: '기타' };
   return map[type] || type;
@@ -11856,20 +11775,35 @@ let purItemRows = [];
 let purItemRowCounter = 0;
 
 function onPurPartnerChange() {
-  const partner = (document.getElementById('pur_partner') || {}).value || '';
-  const p = purchasePartners.find(function(x){ return x.name === partner; });
-  // 첫 행이 없으면 빈 행 하나 추가
-  if (purItemRows.length === 0) addPurItemRow();
-  else renderPurItemRows(); // 거래처 바뀌면 항목 드롭다운 갱신
+  // 기존 행 초기화 (거래처 바뀌면 품목도 초기화)
+  purItemRows = [];
+  purItemRowCounter = 0;
+  addPurItemRow();
+}
+
+// DOM 현재값 → purItemRows 배열 동기화 (리렌더 전에 호출해서 값 보존)
+function syncPurItemRowsFromDOM() {
+  purItemRows.forEach(function(row) {
+    var g = function(id) { var el = document.getElementById(id + row.id); return el ? el.value : ''; };
+    row.item = g('purRow-item-text-') || row.item;
+    row.qty = g('purRow-qty-') || row.qty;
+    row.unit = g('purRow-unit-') || row.unit;
+    row.unitprice = g('purRow-unitprice-') || row.unitprice;
+    row.amount = g('purRow-amount-') || row.amount;
+    row.type = g('purRow-type-') || row.type;
+    row.memo = g('purRow-memo-') || row.memo;
+  });
 }
 
 function addPurItemRow() {
+  syncPurItemRowsFromDOM();  // 기존 입력값 보존
   const rowId = ++purItemRowCounter;
   purItemRows.push({ id: rowId, item: '', isNew: false, unit: 'kg', qty: '', unitprice: '', amount: '', type: 'material', memo: '' });
   renderPurItemRows();
 }
 
 function removePurItemRow(rowId) {
+  syncPurItemRowsFromDOM();  // 기존 입력값 보존
   purItemRows = purItemRows.filter(function(r){ return r.id !== rowId; });
   renderPurItemRows();
 }
@@ -11998,11 +11932,11 @@ function renderPurItemRows() {
       '<span id="purRow-hint-' + row.id + '" style="display:none;font-size:10px;color:#2563eb;"></span>' +
       '</div>' +
       // 수량
-      '<input type="number" id="purRow-qty-' + row.id + '" value="' + (row.qty||'') + '" placeholder="0" min="0" step="0.1" oninput="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
+      '<input type="number" id="purRow-qty-' + row.id + '" value="' + (row.qty||'') + '" placeholder="0" min="0" step="0.1" oninput="calcPurRowAmount(' + row.id + ')" onchange="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
       // 단위
       '<select id="purRow-unit-' + row.id + '" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">' + unitOpts + '</select>' +
       // 단가
-      '<input type="number" id="purRow-unitprice-' + row.id + '" value="' + (row.unitprice||'') + '" placeholder="단가" min="0" oninput="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
+      '<input type="number" id="purRow-unitprice-' + row.id + '" value="' + (row.unitprice||'') + '" placeholder="단가" min="0" oninput="calcPurRowAmount(' + row.id + ')" onchange="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
       // 금액
       '<input type="number" id="purRow-amount-' + row.id + '" value="' + (row.amount||'') + '" placeholder="금액" min="0" oninput="updatePurItemsTotal()" style="padding:6px 8px;border:1.5px solid #3b82f6;border-radius:7px;font-size:13px;text-align:right;font-weight:700;">' +
       // 분류
@@ -12018,30 +11952,41 @@ function renderPurItemRows() {
 
 function savePurAllItems() {
   const date = document.getElementById('pur_date').value || getLocalDateStr();
-  const partner = (document.getElementById('pur_partner') || {}).value || '';
+  // 거래처: hidden 인풋 우선, 없으면 텍스트 인풋에서 읽기
+  const partnerHidden = (document.getElementById('pur_partner') || {}).value || '';
+  const partnerText = (document.getElementById('pur_partner_text') || {}).value || '';
+  const partner = partnerHidden || partnerText;
+  // 텍스트로만 입력됐으면 hidden도 동기화
+  if (!partnerHidden && partnerText) {
+    const h = document.getElementById('pur_partner');
+    if (h) h.value = partnerText;
+  }
   if (!partner) { showToast('거래처를 선택해주세요.', 'error'); return; }
   if (purItemRows.length === 0) { showToast('품목을 추가해주세요.', 'error'); return; }
+
+  syncPurItemRowsFromDOM();  // DOM → 배열 동기화
 
   const records = [];
   let hasError = false;
   purItemRows.forEach(function(row) {
-    const itemTextEl = document.getElementById('purRow-item-text-' + row.id);
-    const item = itemTextEl ? itemTextEl.value.trim() : (row.item || '');
+    const item = (document.getElementById('purRow-item-text-' + row.id) || {}).value || row.item || '';
     const isNew = item && !((purchaseVendorProducts[partner] || []).find(function(p){ return p.name === item; }));
     const unit = (document.getElementById('purRow-unit-' + row.id) || {}).value || 'kg';
     const qty = parseFloat((document.getElementById('purRow-qty-' + row.id) || {}).value) || 0;
     const unitprice = parseInt((document.getElementById('purRow-unitprice-' + row.id) || {}).value) || 0;
     let amount = parseInt((document.getElementById('purRow-amount-' + row.id) || {}).value) || 0;
+    // 금액 미계산된 경우 강제 계산
     if (!amount && qty > 0 && unitprice > 0) amount = Math.round(qty * unitprice);
+    // 금액만 있고 단가 없는 경우 단가 역산
+    const finalUP = unitprice || (qty > 0 && amount > 0 ? Math.round(amount / qty) : 0);
     const type = (document.getElementById('purRow-type-' + row.id) || {}).value || 'material';
     const memo = (document.getElementById('purRow-memo-' + row.id) || {}).value || '';
-    const finalUP = unitprice || (qty > 0 && amount > 0 ? Math.round(amount/qty) : 0);
 
-    if (!item || !amount) { hasError = true; return; }
+    if (!item) { hasError = true; return; }
+    if (!amount) { hasError = true; return; }
 
     records.push({ id: Date.now() + records.length, date, partner, item, type, qty, unit, amount, unitPrice: finalUP, memo });
 
-    // 새 항목이면 자동 등록
     if (isNew && item) {
       if (!purchaseVendorProducts[partner]) purchaseVendorProducts[partner] = [];
       if (!purchaseVendorProducts[partner].find(function(p){ return p.name === item; })) {
@@ -12049,7 +11994,6 @@ function savePurAllItems() {
         savePurchaseVendorProducts();
       }
     } else if (finalUP > 0 && item) {
-      // 최근 단가 업데이트
       if (purchaseVendorProducts[partner]) {
         const prod = purchaseVendorProducts[partner].find(function(p){ return p.name === item; });
         if (prod) { prod.lastPrice = finalUP; savePurchaseVendorProducts(); }
