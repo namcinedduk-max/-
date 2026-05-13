@@ -6188,29 +6188,64 @@ function assignOrderSeqNo(order) {
   order.seqNo = maxSeqNo + 1;
 }
 
-// 기존 주문에 seqNo 일괄 부여 (최초 1회 마이그레이션)
+// 기존 주문에 seqNo 일괄 부여 + 중복 충돌 자동 해결
 function migrateOrderSeqNos() {
-  const needsMigration = orders.some(function(o){ return !o.seqNo && o.deliveryDate; });
-  if (!needsMigration) return;
-  // 배송일별로 그룹화
+  let touched = false;
   const dateGroups = {};
   orders.forEach(function(o) {
     const date = normalizeDateStr(String(o.deliveryDate || ''));
-    if (!date || o.seqNo) return;
+    if (!date) return;
     if (!dateGroups[date]) dateGroups[date] = [];
     dateGroups[date].push(o);
   });
+
   Object.keys(dateGroups).forEach(function(date) {
-    const maxExisting = orders
-      .filter(function(o){ return normalizeDateStr(String(o.deliveryDate||'')) === date && o.seqNo; })
-      .reduce(function(max, o){ return Math.max(max, o.seqNo || 0); }, 0);
     // 오래된 주문(작은 id)이 앞 번호 받도록 오름차순 정렬
-    dateGroups[date].sort(function(a, b){ return String(a.id).localeCompare(String(b.id)); });
-    dateGroups[date].forEach(function(o, idx) {
-      o.seqNo = maxExisting + idx + 1;
+    const group = dateGroups[date].slice().sort(function(a, b) {
+      return String(a.id).localeCompare(String(b.id));
     });
+
+    // 1. seqNo 없는 주문에 번호 부여
+    const existingNos = new Set(group.filter(function(o){ return o.seqNo; }).map(function(o){ return o.seqNo; }));
+    let nextNo = existingNos.size > 0 ? Math.max.apply(null, Array.from(existingNos)) : 0;
+    group.forEach(function(o) {
+      if (!o.seqNo) {
+        // 빈 번호 찾아서 채우기 (1부터 순서대로)
+        let n = 1;
+        while (existingNos.has(n)) n++;
+        o.seqNo = n;
+        existingNos.add(n);
+        touched = true;
+      }
+    });
+
+    // 2. 중복 seqNo 감지 → 나중에 생성된 주문(큰 id)의 번호 재조정
+    const seqNoOwner = {};  // seqNo → 가장 오래된 주문
+    const conflicts = [];
+    group.forEach(function(o) {
+      if (!seqNoOwner[o.seqNo]) {
+        seqNoOwner[o.seqNo] = o;
+      } else {
+        // 같은 번호 있으면 나중 것을 충돌 목록에
+        const older = String(seqNoOwner[o.seqNo].id) <= String(o.id) ? seqNoOwner[o.seqNo] : o;
+        const newer = older === seqNoOwner[o.seqNo] ? o : seqNoOwner[o.seqNo];
+        seqNoOwner[o.seqNo] = older;
+        conflicts.push(newer);
+      }
+    });
+    if (conflicts.length > 0) {
+      const usedNos = new Set(Object.keys(seqNoOwner).map(Number));
+      conflicts.forEach(function(o) {
+        let n = 1;
+        while (usedNos.has(n)) n++;
+        o.seqNo = n;
+        usedNos.add(n);
+      });
+      touched = true;
+    }
   });
-  localStorage.setItem('orders', JSON.stringify(orders));
+
+  if (touched) localStorage.setItem('orders', JSON.stringify(orders));
 }
 
 function getOrderNo(order) {
@@ -11371,27 +11406,37 @@ function sendToFuneralSheet(order) {
 }
 
 function sendToSheet(order) {
-  assignOrderSeqNo(order);  // 영구 번호 부여
-  orders.unshift(order);
-  updateStats(); renderList();
   resetForm();
   showToast('⏳ 저장 중...', '');
-  if (!gasUrl) { showToast('⚠️ 구글 시트 미연결. 로컬에만 저장됩니다.', ''); return; }
-  gasPost({ action: 'save', data: order })
-    .then(data => {
-      if (data.success) {
-        showToast('✅ 주문 접수 완료!', 'success');
-      } else {
+
+  const doSave = function() {
+    assignOrderSeqNo(order);
+    orders.unshift(order);
+    updateStats(); renderList();
+    if (!gasUrl) { showToast('⚠️ 구글 시트 미연결. 로컬에만 저장됩니다.', ''); return; }
+    gasPost({ action: 'save', data: order })
+      .then(data => {
+        if (data.success) {
+          showToast('✅ 주문 접수 완료!', 'success');
+        } else {
+          orders = orders.filter(o => String(o.id) !== String(order.id));
+          updateStats(); renderList();
+          showToast('❌ 저장 실패: ' + (data.error || ''), 'error');
+        }
+      })
+      .catch(() => {
         orders = orders.filter(o => String(o.id) !== String(order.id));
         updateStats(); renderList();
-        showToast('❌ 저장 실패: ' + (data.error || ''), 'error');
-      }
-    })
-    .catch(() => {
-      orders = orders.filter(o => String(o.id) !== String(order.id));
-      updateStats(); renderList();
-      showToast('❌ 시트 저장 실패 - 다시 시도해주세요', 'error');
-    });
+        showToast('❌ 시트 저장 실패 - 다시 시도해주세요', 'error');
+      });
+  };
+
+  // 번호 배정 전 서버 최신 데이터 강제 확인 (동시 입력 충돌 방지)
+  if (gasUrl) {
+    loadOrdersFromSheet(true, true).then(doSave).catch(doSave);
+  } else {
+    doSave();
+  }
 }
 
 // ============ 매입 관리 ============
