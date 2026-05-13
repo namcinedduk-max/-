@@ -11360,24 +11360,34 @@ if (purchaseRecords.some(function(r){ return r.receiverName !== undefined; })) {
 // 기존 기록에서 거래처별 제품 목록 자동 추출 (최초 1회)
 function buildVendorProductsFromRecords() {
   if (localStorage.getItem('vendorProductsBuilt_v1') === 'yes') return;
-  const map = {};
-  purchaseRecords.forEach(function(r) {
-    if (!r.partner || !r.item) return;
-    if (!map[r.partner]) map[r.partner] = {};
-    const existing = map[r.partner][r.item];
-    if (!existing || String(r.date) > String(existing.lastDate || '')) {
-      map[r.partner][r.item] = { unit: r.unit || 'kg', lastPrice: r.unitPrice || 0, lastDate: r.date };
-    }
+  // 날짜순 정렬: 오래된 것부터 처리
+  const sortedRecords = purchaseRecords.slice().sort(function(a, b) {
+    return String(a.date).localeCompare(String(b.date));
   });
+  const firstMap = {};  // 최초 가격
+  const lastMap = {};   // 최근 가격
+
+  sortedRecords.forEach(function(r) {
+    if (!r.partner || !r.item) return;
+    const key = r.partner + '||' + r.item;
+    if (!firstMap[key]) firstMap[key] = { unit: r.unit || 'kg', price: r.unitPrice || 0 };
+    lastMap[key] = { unit: r.unit || 'kg', price: r.unitPrice || 0 };
+  });
+
   let added = 0;
-  Object.keys(map).forEach(function(vendor) {
+  Object.keys(firstMap).forEach(function(key) {
+    const parts = key.split('||');
+    const vendor = parts[0], item = parts[1];
     if (!purchaseVendorProducts[vendor]) purchaseVendorProducts[vendor] = [];
-    Object.keys(map[vendor]).forEach(function(item) {
-      if (!purchaseVendorProducts[vendor].find(function(p){ return p.name === item; })) {
-        purchaseVendorProducts[vendor].push({ name: item, unit: map[vendor][item].unit, lastPrice: map[vendor][item].lastPrice });
-        added++;
-      }
-    });
+    if (!purchaseVendorProducts[vendor].find(function(p){ return p.name === item; })) {
+      purchaseVendorProducts[vendor].push({
+        name: item,
+        unit: firstMap[key].unit,
+        basePrice: firstMap[key].price,   // 최초 등록가 = 기준단가
+        lastPrice: (lastMap[key] || firstMap[key]).price   // 최근 단가
+      });
+      added++;
+    }
   });
   if (added > 0) savePurchaseVendorProducts();
   localStorage.setItem('vendorProductsBuilt_v1', 'yes');
