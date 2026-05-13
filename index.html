@@ -11904,6 +11904,24 @@ function selectPurItem(rowId, name) {
 
 function onPurRowItemSelect(rowId) { /* 구버전 호환용, selectPurItem으로 대체 */ }
 
+function calcPurRowAmount(rowId) {
+  const qty = parseFloat((document.getElementById('purRow-qty-' + rowId) || {}).value) || 0;
+  const up = parseInt((document.getElementById('purRow-unitprice-' + rowId) || {}).value) || 0;
+  const amtEl = document.getElementById('purRow-amount-' + rowId);
+  if (qty > 0 && up > 0 && amtEl) amtEl.value = Math.round(qty * up);
+  updatePurItemsTotal();
+}
+
+function updatePurItemsTotal() {
+  let total = 0;
+  purItemRows.forEach(function(r) {
+    const amtEl = document.getElementById('purRow-amount-' + r.id);
+    total += parseInt((amtEl || {}).value) || 0;
+  });
+  const el = document.getElementById('purItemsTotal');
+  if (el) el.textContent = total.toLocaleString() + '원';
+}
+
 function renderPurItemRows() {
   const container = document.getElementById('purItemRowsContainer');
   if (!container) return;
