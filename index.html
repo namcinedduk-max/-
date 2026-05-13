@@ -6601,6 +6601,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof updatePartnerSelect === 'function') updatePartnerSelect();
       }
     }).catch(function(){});
+    // 매입기록도 앱 시작 시 미리 불러오기 (A↔B 컴퓨터 동기화)
+    gasGet({ action: 'getPurchases' }).then(function(data) {
+      if (data.success && data.records) {
+        purchaseRecords = data.records;
+        purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+        localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
+        if (typeof renderPurchaseTable === 'function') renderPurchaseTable();
+        if (typeof renderPurchaseSummary === 'function') renderPurchaseSummary();
+      }
+    }).catch(function(){});
   }
   initExtraVenues();
   startClock();
@@ -7737,6 +7747,7 @@ function switchTab(tab) {
     if (gasUrl) loadFuneralOrdersFromSheet(false); else { updateFuneralStats(); renderFuneralList(); }
   }
   if (tab === 'settlement') { initSettlementTab(); }
+  if (tab === 'purchase') { initPurchaseTab(); }
   if (tab === 'company') { loadCompanyInfo(); loadCompanySeal(); }
   if (tab === 'production') {
     document.getElementById('prodDate').value = getLocalDateStr();
