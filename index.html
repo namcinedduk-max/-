@@ -2339,11 +2339,29 @@
     <div class="form-card">
 
       <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-        <button class="settings-tab-btn active" id="stab-funeral" onclick="switchSettingsTab('funeral')">🏛️ 장례식장 단가</button>
-        <button class="settings-tab-btn" id="stab-wedding-price" onclick="switchSettingsTab('wedding-price')">💒 웨딩홀 단가</button>
-        <button class="settings-tab-btn" id="stab-other-price" onclick="switchSettingsTab('other-price')">🏢 기타업체 단가</button>
-        <button class="settings-tab-btn" id="stab-quickfee" onclick="switchSettingsTab('quickfee')">📦 퀵비 요금표</button>
+        <button class="settings-tab-btn active" id="stab-venues" onclick="switchSettingsTab('venues')">🏢 거래처</button>
         <button class="settings-tab-btn" id="stab-tteokprice" onclick="switchSettingsTab('tteokprice')">🍡 떡 단가</button>
+        <button class="settings-tab-btn" id="stab-quickfee" onclick="switchSettingsTab('quickfee')">📦 퀵비 요금표</button>
+      </div>
+
+      <div id="settings-venues" style="display:block;">
+        <div style="background:#dcfce7;border:1px solid #16a34a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.6;">
+          ✅ <b>거래처 통합 관리</b> — 모든 거래처를 한 곳에서 추가/편집/단가설정 할 수 있어요.<br>
+          카드를 클릭하면 펼쳐서 단가 목록과 정보를 보실 수 있어요.
+        </div>
+
+        <input type="text" id="venueSearchInput" oninput="renderVenuesList()" placeholder="🔍 거래처 이름 검색..." style="width:100%;padding:9px 12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;box-sizing:border-box;">
+
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;" id="venueFilterTabs">
+          <button class="venue-filter-pill" data-filter="all" onclick="filterVenueList('all')" style="flex:1;min-width:70px;padding:8px 10px;background:var(--brown-deep);color:#fff;border:1.5px solid var(--brown-deep);border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;">전체 <span id="vcount-all" style="opacity:0.8;">0</span></button>
+          <button class="venue-filter-pill" data-filter="funeral" onclick="filterVenueList('funeral')" style="flex:1;min-width:70px;padding:8px 10px;background:#fff;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:999px;font-size:12px;font-weight:400;cursor:pointer;">🏛️ 장례식 <span id="vcount-funeral" style="opacity:0.7;">0</span></button>
+          <button class="venue-filter-pill" data-filter="wedding" onclick="filterVenueList('wedding')" style="flex:1;min-width:70px;padding:8px 10px;background:#fff;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:999px;font-size:12px;font-weight:400;cursor:pointer;">💒 웨딩 <span id="vcount-wedding" style="opacity:0.7;">0</span></button>
+          <button class="venue-filter-pill" data-filter="other" onclick="filterVenueList('other')" style="flex:1;min-width:70px;padding:8px 10px;background:#fff;color:var(--brown-mid);border:1.5px solid var(--border);border-radius:999px;font-size:12px;font-weight:400;cursor:pointer;">🏢 기타 <span id="vcount-other" style="opacity:0.7;">0</span></button>
+        </div>
+
+        <div id="venueListContainer" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+        <button id="venueAddBtn" onclick="openVenueAddModal()" style="margin-top:14px;width:100%;padding:12px;background:var(--brown-deep);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">+ 새 거래처 추가</button>
       </div>
 
       <div id="settings-funeral" style="display:none;">
@@ -2791,98 +2809,87 @@
 <!-- ==================== 매입 관리 패널 ==================== -->
 <div class="panel" id="panel-purchase">
 
-  <!-- 거래처 관리 + 매입 입력 -->
   <div class="form-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <h2 style="margin:0;">🛒 매입 관리</h2>
       <div style="display:flex;gap:8px;">
-        <button class="btn-small btn-secondary" onclick="switchPurchaseView('record')">매입 기록</button>
-        <button class="btn-small btn-primary" onclick="switchPurchaseView('partner')">거래처 관리</button>
+        <button id="purViewBtn-record" class="btn-small btn-primary" onclick="switchPurchaseView('record')">매입 기록</button>
+        <button id="purViewBtn-partner" class="btn-small btn-secondary" onclick="switchPurchaseView('partner')">거래처 관리</button>
       </div>
     </div>
 
-    <!-- 이번 달 매입 요약 -->
     <div id="purchaseSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;padding:16px;background:var(--cream);border-radius:10px;"></div>
 
     <!-- 매입 기록 화면 -->
     <div id="purchase-record-view">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end;">
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">날짜</label>
-          <input type="date" id="pur_date" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처 *</label>
-          <select id="pur_partner" onchange="onPurPartnerChange()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <option value="">거래처 선택</option>
-          </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">항목 *</label>
-          <input type="text" id="pur_item" placeholder="예: 찹쌀" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">수량</label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="number" id="pur_qty" placeholder="0" min="0" step="0.1" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
-            <select id="pur_unit" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-              <option value="kg">kg</option>
-              <option value="개">개</option>
-              <option value="박스">박스</option>
-              <option value="포">포</option>
-              <option value="L">L</option>
-              <option value="기타">기타</option>
-            </select>
+      <!-- 입력 폼 -->
+      <!-- 매입 입력 폼 (다중 품목) -->
+      <div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <!-- 날짜 + 거래처 -->
+        <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">날짜</label>
+            <input type="date" id="pur_date" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;position:relative;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처 *</label>
+            <input type="text" id="pur_partner_text" placeholder="거래처 검색..." autocomplete="off"
+              oninput="filterPurPartnerDropdown()" onfocus="openPurPartnerDropdown()" onblur="setTimeout(closePurPartnerDropdown,200)"
+              style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <input type="hidden" id="pur_partner">
+            <div id="purPartnerDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;"></div>
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">분류</label>
-          <select id="pur_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <option value="material">원재료</option>
-            <option value="packaging">포장재</option>
-            <option value="utility">공과금(전기/가스)</option>
-            <option value="delivery">퀵/배송비</option>
-            <option value="etc">기타</option>
-          </select>
+
+        <!-- 품목 행 헤더 -->
+        <div style="display:grid;grid-template-columns:1fr 80px 70px 100px 110px 80px 1fr 32px;gap:5px;margin-bottom:4px;padding:0 4px;">
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">항목 *</span>
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">수량</span>
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">단위</span>
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">단가</span>
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">금액 *</span>
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">분류</span>
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">메모</span>
+          <span></span>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">금액 *</label>
-          <input type="number" id="pur_amount" placeholder="0" min="0" style="width:120px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+
+        <!-- 품목 행들 -->
+        <div id="purItemRowsContainer" style="display:flex;flex-direction:column;gap:5px;"></div>
+
+        <!-- 하단 버튼 -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+          <button onclick="addPurItemRow()" style="padding:8px 14px;background:#fff;border:1.5px dashed var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--brown-mid);cursor:pointer;">+ 품목 추가</button>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:13px;font-weight:700;color:var(--brown-mid);">합계: <span id="purItemsTotal" style="color:var(--brown-deep);">0원</span></span>
+            <button onclick="savePurAllItems()" style="padding:9px 20px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 전체 저장</button>
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">메모</label>
-          <input type="text" id="pur_memo" placeholder="참고사항" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-        </div>
-        <button class="btn-small btn-primary" onclick="savePurchaseRecord()" style="padding:9px 20px;white-space:nowrap;">+ 추가</button>
       </div>
 
       <!-- 필터 -->
-      <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;">
+      <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
         <input type="month" id="pur_filterMonth" onchange="renderPurchaseTable()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        <select id="pur_filterPartner" onchange="renderPurchaseTable()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <option value="">전체 거래처</option>
+        </select>
         <select id="pur_filterType" onchange="renderPurchaseTable()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <option value="">전체 분류</option>
           <option value="material">원재료</option>
           <option value="packaging">포장재</option>
-          <option value="utility">공과금(전기/가스)</option>
+          <option value="utility">공과금</option>
           <option value="delivery">퀵/배송비</option>
           <option value="etc">기타</option>
         </select>
-        <span style="font-size:13px;color:#888;" id="pur_totalLabel"></span>
+        <span style="font-size:13px;color:#888;margin-left:auto;" id="pur_totalLabel"></span>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>날짜</th>
-              <th>거래처</th>
-              <th>항목</th>
-              <th>분류</th>
-              <th style="text-align:right;">수량</th>
-              <th style="text-align:right;">단가</th>
-              <th style="text-align:right;">금액</th>
-              <th>메모</th>
-              <th></th>
+              <th>날짜</th><th>거래처</th><th>항목</th><th>분류</th>
+              <th style="text-align:right;">수량</th><th style="text-align:right;">단가</th>
+              <th style="text-align:right;">금액</th><th>메모</th><th></th>
             </tr>
           </thead>
           <tbody id="purchaseTableBody"></tbody>
@@ -2892,30 +2899,36 @@
 
     <!-- 거래처 관리 화면 -->
     <div id="purchase-partner-view" style="display:none;">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end;">
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처명 *</label>
-          <input type="text" id="part_name" placeholder="예: 대전농협, 삼성포장재" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+      <!-- 거래처 추가 폼 -->
+      <div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:10px;" id="partnerFormTitle">+ 새 거래처 추가</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처명 *</label>
+            <input type="text" id="part_name" placeholder="예: 대전농협" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">주요 분류</label>
+            <select id="part_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+              <option value="material">원재료</option>
+              <option value="packaging">포장재</option>
+              <option value="utility">공과금</option>
+              <option value="delivery">퀵/배송비</option>
+              <option value="etc">기타</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">연락처</label>
+            <input type="tel" id="part_phone" placeholder="010-0000-0000" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">메모</label>
+            <input type="text" id="part_memo" placeholder="월말 결제, 단골 등" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          </div>
+          <input type="hidden" id="part_editId" value="">
+          <button class="btn-small btn-primary" id="partnerSaveBtn" onclick="savePartner()" style="padding:9px 20px;">+ 거래처 추가</button>
+          <button class="btn-small btn-secondary" id="partnerCancelBtn" onclick="cancelPartnerEdit()" style="display:none;padding:9px 14px;">취소</button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">주요 분류</label>
-          <select id="part_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            <option value="material">원재료</option>
-            <option value="packaging">포장재</option>
-            <option value="utility">공과금(전기/가스)</option>
-            <option value="delivery">퀵/배송비</option>
-            <option value="etc">기타</option>
-          </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">연락처</label>
-          <input type="tel" id="part_phone" placeholder="010-0000-0000" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">메모</label>
-          <input type="text" id="part_memo" placeholder="예: 월말 결제, 단골 거래처 등" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-        </div>
-        <button class="btn-small btn-primary" onclick="savePartner()" style="padding:9px 20px;">+ 거래처 추가</button>
       </div>
       <div id="partnerList"></div>
     </div>
@@ -2938,6 +2951,143 @@
   </div>
 </div>
 
+<!-- 새 거래처 추가 모달 -->
+<div class="modal-overlay" id="venueAddModal" style="display:none;">
+  <div class="modal" style="max-width:480px;">
+    <h3>🏢 새 거래처 추가</h3>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:5px;">거래처 이름 *</label>
+      <input id="newVenueName" placeholder="예: △△장례식장" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:5px;">거래처 구분 *</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="newVenueTypeRow">
+        <button type="button" class="venue-type-btn" data-type="funeral" onclick="selectNewVenueType('funeral')" style="flex:1;min-width:80px;padding:9px;border:1.5px solid var(--border);background:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--brown-mid);">🏛️ 장례식</button>
+        <button type="button" class="venue-type-btn" data-type="wedding" onclick="selectNewVenueType('wedding')" style="flex:1;min-width:80px;padding:9px;border:1.5px solid var(--border);background:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--brown-mid);">💒 웨딩</button>
+        <button type="button" class="venue-type-btn" data-type="other" onclick="selectNewVenueType('other')" style="flex:1;min-width:80px;padding:9px;border:1.5px solid var(--border);background:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--brown-mid);">🏢 기타</button>
+      </div>
+    </div>
+
+    <div id="newVenueFuneralSection" style="display:none;margin-bottom:14px;padding:12px;background:#fef3c7;border-radius:8px;">
+      <label style="font-size:12px;font-weight:700;color:#92400e;display:block;margin-bottom:6px;">단가 방식</label>
+      <select id="newVenueFuneralGroup" style="width:100%;padding:8px 10px;border:1.5px solid #f59e0b;border-radius:7px;font-size:13px;background:#fff;">
+        <option value="own">자체 단가 (kg당 또는 자유)</option>
+        <option value="chungdae">5kg 고정 단가 방식 (충대장례식장과 같은 형식)</option>
+        <option value="daecheong">5kg / 10kg 별도 방식 (대청장례식장과 같은 형식)</option>
+      </select>
+    </div>
+
+    <div id="newVenueWeddingNote" style="display:none;margin-bottom:10px;font-size:11px;color:#666;background:#eff6ff;border-radius:6px;padding:7px 10px;">ℹ️ 웨딩홀 단가는 모든 웨딩홀이 공통으로 사용해요. 단가는 거래처 카드 펼침에서 등록하실 수 있어요.</div>
+
+    <div id="newVenueOtherSection" style="display:none;margin-bottom:14px;padding:12px;background:#eff6ff;border-radius:8px;">
+      <label style="font-size:12px;font-weight:700;color:#1e40af;display:block;margin-bottom:6px;">단가 단위</label>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="newOtherUnit-btn" data-unit="kg" onclick="selectNewOtherUnit('kg')" style="flex:1;padding:8px;border:1.5px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">kg당</button>
+        <button type="button" class="newOtherUnit-btn" data-unit="5kg" onclick="selectNewOtherUnit('5kg')" style="flex:1;padding:8px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">5kg 고정</button>
+      </div>
+    </div>
+
+    <div id="newVenueInfoSection" style="display:none;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">📋 거래처 정보 <span style="font-weight:400;color:#aaa;font-size:11px;">(선택)</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <input id="newVenueRegno" placeholder="사업자번호" style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;">
+        <input id="newVenueCeo" placeholder="대표자명" style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;">
+        <input id="newVenueTel" placeholder="전화번호" style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;">
+        <input id="newVenueManager" placeholder="담당자" style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;">
+        <input id="newVenueAddr" placeholder="주소" style="grid-column:1/-1;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;">
+        <input id="newVenueManagerTel" placeholder="담당자 전화번호" style="grid-column:1/-1;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;">
+      </div>
+      <div id="newVenueCopiesRow" style="display:none;align-items:center;gap:8px;margin-top:8px;">
+        <label style="font-size:11px;color:#666;">명세서 매수</label>
+        <select id="newVenueCopies" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
+          <option value="2">2장</option>
+          <option value="3">3장</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-small btn-secondary" onclick="closeVenueAddModal()">취소</button>
+      <button class="btn-small btn-primary" onclick="saveNewVenue()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 거래처 원장 모달 -->
+<div class="modal-overlay" id="partnerLedgerModal" style="display:none;">
+  <div class="modal" style="max-width:680px;max-height:80vh;overflow-y:auto;">
+    <h3 id="partnerLedgerTitle">📒 거래 원장</h3>
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+      <input type="month" id="ledger_filterMonth" oninput="renderPartnerLedger()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;">
+      <button onclick="document.getElementById('ledger_filterMonth').value='';renderPartnerLedger();" style="padding:6px 12px;background:#f3f4f6;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">전체 보기</button>
+      <span style="font-size:12px;color:#888;" id="ledger_totalLabel"></span>
+    </div>
+    <div id="partnerLedgerBody"></div>
+    <div class="modal-actions">
+      <button class="btn-small btn-secondary" onclick="document.getElementById('partnerLedgerModal').style.display='none'">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 매입 기록 수정 모달 --><div class="modal-overlay" id="purEditModal" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <h3>✏️ 매입 기록 수정</h3>
+    <input type="hidden" id="purEdit_id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">날짜</label>
+        <input type="date" id="purEdit_date" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처</label>
+        <select id="purEdit_partner" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">항목</label>
+        <input type="text" id="purEdit_item" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">분류</label>
+        <select id="purEdit_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <option value="material">원재료</option>
+          <option value="packaging">포장재</option>
+          <option value="utility">공과금</option>
+          <option value="delivery">퀵/배송비</option>
+          <option value="etc">기타</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">수량</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="purEdit_qty" min="0" step="0.1" oninput="calcPurEditAmount()" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+          <select id="purEdit_unit" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            <option>kg</option><option>g</option><option>개</option><option>박스</option><option>포</option><option>봉</option><option>L</option><option>기타</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">단가</label>
+        <input type="number" id="purEdit_unitprice" min="0" oninput="calcPurEditAmount()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">금액</label>
+        <input type="number" id="purEdit_amount" min="0" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">메모</label>
+        <input type="text" id="purEdit_memo" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-small btn-secondary" onclick="closePurEditModal()">취소</button>
+      <button class="btn-small btn-primary" onclick="savePurchaseEdit()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -2947,6 +3097,32 @@ let venuePrices = JSON.parse(localStorage.getItem('venuePrices') || '{"chungdae"
 if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
 let otherVenuePrices = JSON.parse(localStorage.getItem('otherVenuePrices') || '{}');
 let extraVenues = JSON.parse(localStorage.getItem('extraVenues') || '{"funeral":[],"wedding":[]}');
+
+// 일회성 마이그레이션: chungdae/daecheong 그룹 거래처가 공유 단가 쓰던 것 → 독립 사본으로 복사
+function migrateSharedFuneralPrices() {
+  if (localStorage.getItem('sharedPricesMigrated_v1') === 'yes') return;
+  let touched = false;
+  if (extraVenues && extraVenues.funeral) {
+    extraVenues.funeral.forEach(function(v) {
+      if (!v || !v.name) return;
+      if ((v.group === 'chungdae' || v.group === 'daecheong') && !venuePrices[v.name]) {
+        const src = (v.group === 'chungdae' ? venuePrices.chungdae : venuePrices.daecheong) || {};
+        if (Object.keys(src).length > 0) {
+          venuePrices[v.name] = JSON.parse(JSON.stringify(src));
+          touched = true;
+        }
+      }
+    });
+    if (touched) {
+      localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
+      if (typeof gasUrl !== 'undefined' && gasUrl && typeof gasPost === 'function') {
+        gasPost({ action: 'saveTteokSettings', data: { venuePrices: venuePrices } }).catch(function(){});
+      }
+    }
+  }
+  localStorage.setItem('sharedPricesMigrated_v1', 'yes');
+}
+migrateSharedFuneralPrices();
 
 
 
@@ -3344,12 +3520,23 @@ function loadTteokPriceSettings() {
       }
       if (d.koreaPresets) { try { window.KOREA_PRESETS = d.koreaPresets; } catch(e){} }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
+      if (d.purchaseVendorProducts) {
+        try {
+          purchaseVendorProducts = d.purchaseVendorProducts;
+          localStorage.setItem('purchaseVendorProducts', JSON.stringify(purchaseVendorProducts));
+        } catch(e) {}
+      }
       // ✅ 웨딩홀/장례식장 단가 구글 시트 동기화 (수정됨)
       if (d.venuePrices) {
         try {
           venuePrices = d.venuePrices;
           if (!venuePrices.chungdae_restaurant) venuePrices.chungdae_restaurant = {};
           localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
+          // 서버에서 받은 데이터에도 마이그레이션 필요 시 재실행 (다른 기기 동기화 안전망)
+          if (typeof migrateSharedFuneralPrices === 'function') {
+            localStorage.removeItem('sharedPricesMigrated_v1');
+            migrateSharedFuneralPrices();
+          }
           if (typeof initVenuePriceSettings === 'function') initVenuePriceSettings();
         } catch(e) {}
       }
@@ -6285,17 +6472,20 @@ function resetPriceSettings() {
   renderPriceSettings();
 }
 
-let currentSettingsTab = 'funeral';
+let currentSettingsTab = 'venues';
 
 function switchSettingsTab(type) {
   currentSettingsTab = type;
-  const tabs = ['funeral', 'wedding-price', 'other-price', 'quickfee', 'tteokprice'];
+  const tabs = ['venues', 'funeral', 'wedding-price', 'other-price', 'quickfee', 'tteokprice'];
   tabs.forEach(t => {
     const content = document.getElementById('settings-' + t);
     const btn = document.getElementById('stab-' + t);
     if (content) content.style.display = t === type ? 'block' : 'none';
     if (btn) btn.classList.toggle('active', t === type);
   });
+  if (type === 'venues') {
+    if (typeof renderVenuesList === 'function') renderVenuesList();
+  }
   if (type === 'quickfee') renderQuickFeeList();
   if (type === 'tteokprice') {
     // GAS에서 최신 데이터 불러온 후 렌더링
@@ -7749,6 +7939,9 @@ function switchTab(tab) {
   if (tab === 'settlement') { initSettlementTab(); }
   if (tab === 'purchase') { initPurchaseTab(); }
   if (tab === 'company') { loadCompanyInfo(); loadCompanySeal(); }
+  if (tab === 'settings') {
+    if (typeof renderVenuesList === 'function') renderVenuesList();
+  }
   if (tab === 'production') {
     document.getElementById('prodDate').value = getLocalDateStr();
     if (gasUrl) {
@@ -11157,29 +11350,70 @@ function sendToSheet(order) {
 // ============ 매입 관리 ============
 let purchasePartners = JSON.parse(localStorage.getItem('purchasePartners') || '[]');
 let purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
-// 잘못 저장된 개인주문 데이터 자동 정리 (receiverName이 있으면 주문데이터)
+let purchaseVendorProducts = JSON.parse(localStorage.getItem('purchaseVendorProducts') || '{}');
+// 잘못 저장된 개인주문 데이터 자동 정리
 if (purchaseRecords.some(function(r){ return r.receiverName !== undefined; })) {
   purchaseRecords = [];
   localStorage.removeItem('purchaseRecords');
 }
+
+// 기존 기록에서 거래처별 제품 목록 자동 추출 (최초 1회)
+function buildVendorProductsFromRecords() {
+  if (localStorage.getItem('vendorProductsBuilt_v1') === 'yes') return;
+  const map = {};
+  purchaseRecords.forEach(function(r) {
+    if (!r.partner || !r.item) return;
+    if (!map[r.partner]) map[r.partner] = {};
+    const existing = map[r.partner][r.item];
+    if (!existing || String(r.date) > String(existing.lastDate || '')) {
+      map[r.partner][r.item] = { unit: r.unit || 'kg', lastPrice: r.unitPrice || 0, lastDate: r.date };
+    }
+  });
+  let added = 0;
+  Object.keys(map).forEach(function(vendor) {
+    if (!purchaseVendorProducts[vendor]) purchaseVendorProducts[vendor] = [];
+    Object.keys(map[vendor]).forEach(function(item) {
+      if (!purchaseVendorProducts[vendor].find(function(p){ return p.name === item; })) {
+        purchaseVendorProducts[vendor].push({ name: item, unit: map[vendor][item].unit, lastPrice: map[vendor][item].lastPrice });
+        added++;
+      }
+    });
+  });
+  if (added > 0) savePurchaseVendorProducts();
+  localStorage.setItem('vendorProductsBuilt_v1', 'yes');
+}
+buildVendorProductsFromRecords();
 
 function savePurchaseData() {
   localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
   localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
 }
 
+function savePurchaseVendorProducts() {
+  localStorage.setItem('purchaseVendorProducts', JSON.stringify(purchaseVendorProducts));
+  if (typeof gasUrl !== 'undefined' && gasUrl) {
+    gasPost({ action: 'saveTteokSettings', data: { purchaseVendorProducts: purchaseVendorProducts } }).catch(function(){});
+  }
+}
+
 function switchPurchaseView(view) {
   const recordView = document.getElementById('purchase-record-view');
   const partnerView = document.getElementById('purchase-partner-view');
+  const btnRecord = document.getElementById('purViewBtn-record');
+  const btnPartner = document.getElementById('purViewBtn-partner');
   if (!recordView || !partnerView) return;
   if (view === 'record') {
     recordView.style.display = '';
     partnerView.style.display = 'none';
+    if (btnRecord) { btnRecord.className = 'btn-small btn-primary'; }
+    if (btnPartner) { btnPartner.className = 'btn-small btn-secondary'; }
     renderPurchaseTable();
     renderPurchaseSummary();
   } else {
     recordView.style.display = 'none';
     partnerView.style.display = '';
+    if (btnRecord) { btnRecord.className = 'btn-small btn-secondary'; }
+    if (btnPartner) { btnPartner.className = 'btn-small btn-primary'; }
     renderPartnerList();
   }
   updatePartnerSelect();
@@ -11187,21 +11421,103 @@ function switchPurchaseView(view) {
 
 function updatePartnerSelect() {
   const sel = document.getElementById('pur_partner');
+  const filterSel = document.getElementById('pur_filterPartner');
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">거래처 선택</option>' +
     purchasePartners.map(function(p) {
-      return '<option value="' + p.name + '">' + p.name + ' (' + typeLabel(p.type) + ')</option>';
+      return '<option value="' + p.name + '">' + p.name + '</option>';
     }).join('');
   sel.value = cur;
+  if (filterSel) {
+    const curFilter = filterSel.value;
+    filterSel.innerHTML = '<option value="">전체 거래처</option>' +
+      purchasePartners.map(function(p) {
+        return '<option value="' + p.name + '">' + p.name + '</option>';
+      }).join('');
+    filterSel.value = curFilter;
+  }
 }
 
 function onPurPartnerChange() {
-  const sel = document.getElementById('pur_partner');
+  const partner = document.getElementById('pur_partner').value;
   const typeSel = document.getElementById('pur_type');
-  if (!sel || !typeSel) return;
-  const partner = purchasePartners.find(function(p) { return p.name === sel.value; });
-  if (partner) typeSel.value = partner.type;
+  const p = purchasePartners.find(function(x){ return x.name === partner; });
+  if (p && typeSel) typeSel.value = p.type;
+
+  const products = (purchaseVendorProducts[partner] || []);
+  const itemSel = document.getElementById('pur_item_sel');
+  const itemNew = document.getElementById('pur_item_new');
+  if (!itemSel) return;
+
+  itemSel.innerHTML = products.length === 0
+    ? '<option value="__new__">직접 입력...</option>'
+    : products.map(function(prod) {
+        return '<option value="' + prod.name + '" data-unit="' + prod.unit + '" data-lastprice="' + (prod.lastPrice||0) + '">' + prod.name + ' (' + prod.unit + ')</option>';
+      }).join('') + '<option value="__new__">✏️ 직접 입력...</option>';
+
+  onPurItemSelect();
+
+  if (products.length === 0) {
+    itemSel.style.display = 'none';
+    itemNew.style.display = '';
+    itemNew.value = '';
+    itemNew.placeholder = '항목 이름 입력';
+  } else {
+    itemSel.style.display = '';
+    itemNew.style.display = 'none';
+  }
+}
+
+function onPurItemSelect() {
+  const sel = document.getElementById('pur_item_sel');
+  const itemNew = document.getElementById('pur_item_new');
+  const unitSel = document.getElementById('pur_unit');
+  const hint = document.getElementById('pur_lastprice_hint');
+  const unitpriceEl = document.getElementById('pur_unitprice');
+  if (!sel) return;
+
+  if (sel.value === '__new__') {
+    itemNew.style.display = '';
+    itemNew.value = '';
+    itemNew.placeholder = '새 항목 이름 입력';
+    itemNew.focus();
+    if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
+    return;
+  }
+  if (itemNew) itemNew.style.display = 'none';
+
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt) return;
+  const unit = opt.dataset.unit;
+  const lastPrice = parseInt(opt.dataset.lastprice) || 0;
+
+  if (unit && unitSel) {
+    for (let i = 0; i < unitSel.options.length; i++) {
+      if (unitSel.options[i].value === unit) { unitSel.selectedIndex = i; break; }
+    }
+  }
+  if (hint) {
+    if (lastPrice > 0) {
+      hint.textContent = '지난 단가: ' + lastPrice.toLocaleString() + '원/' + (unit||'kg');
+      hint.style.display = '';
+    } else {
+      hint.style.display = 'none';
+    }
+  }
+  if (unitpriceEl && lastPrice > 0 && !unitpriceEl.value) {
+    unitpriceEl.value = lastPrice;
+    calcPurAmount();
+  }
+}
+
+function calcPurAmount() {
+  const qty = parseFloat(document.getElementById('pur_qty').value) || 0;
+  const unitprice = parseInt(document.getElementById('pur_unitprice').value) || 0;
+  const amountEl = document.getElementById('pur_amount');
+  if (qty > 0 && unitprice > 0 && amountEl) {
+    amountEl.value = Math.round(qty * unitprice);
+  }
 }
 
 function typeLabel(type) {
@@ -11210,45 +11526,123 @@ function typeLabel(type) {
 }
 
 function savePartner() {
+  const editId = document.getElementById('part_editId').value;
   const name = document.getElementById('part_name').value.trim();
   const type = document.getElementById('part_type').value;
   const phone = document.getElementById('part_phone').value.trim();
   const memo = document.getElementById('part_memo').value.trim();
   if (!name) { showToast('거래처명을 입력해주세요.', 'error'); return; }
-  if (purchasePartners.find(function(p) { return p.name === name; })) {
-    showToast('이미 있는 거래처예요.', 'error'); return;
-  }
-  const newPartner = { id: Date.now(), name, type, phone, memo };
-  purchasePartners.push(newPartner);
-  savePurchaseData();
-  document.getElementById('part_name').value = '';
-  document.getElementById('part_phone').value = '';
-  document.getElementById('part_memo').value = '';
-  renderPartnerList();
-  updatePartnerSelect();
-  if (gasUrl) {
-    showToast('⏳ 저장 중...', '');
-    gasPost({ action: 'save', sheet: 'partner', data: newPartner })
-      .then(function(res) {
-        if (res && res.success) showToast('✅ ' + name + ' 거래처 추가됐어요!', 'success');
-        else showToast('❌ GAS 저장 실패', 'error');
-      }).catch(function(err) {
-        showToast('❌ 저장 실패: ' + (err.message||''), 'error');
-      });
+
+  if (editId) {
+    // 수정 모드
+    const idx = purchasePartners.findIndex(function(p){ return String(p.id) === editId; });
+    if (idx === -1) return;
+    purchasePartners[idx] = Object.assign(purchasePartners[idx], { name, type, phone, memo });
+    savePurchaseData();
+    cancelPartnerEdit();
+    renderPartnerList();
+    updatePartnerSelect();
+    showToast('✅ 거래처 수정됐어요!', 'success');
+    if (gasUrl) gasPost({ action: 'save', sheet: 'partner', data: purchasePartners[idx] }).catch(function(){});
   } else {
-    showToast('✅ ' + name + ' 거래처 추가됐어요!', 'success');
+    // 추가 모드
+    if (purchasePartners.find(function(p) { return p.name === name; })) {
+      showToast('이미 있는 거래처예요.', 'error'); return;
+    }
+    const newPartner = { id: Date.now(), name, type, phone, memo };
+    purchasePartners.push(newPartner);
+    savePurchaseData();
+    cancelPartnerEdit();
+    renderPartnerList();
+    updatePartnerSelect();
+    showToast('✅ ' + name + ' 추가됐어요!', 'success');
+    if (gasUrl) {
+      gasPost({ action: 'save', sheet: 'partner', data: newPartner }).catch(function(){});
+    }
   }
 }
 
+function editPartner(id) {
+  const p = purchasePartners.find(function(x){ return x.id === id; });
+  if (!p) return;
+  document.getElementById('part_editId').value = id;
+  document.getElementById('part_name').value = p.name;
+  document.getElementById('part_type').value = p.type;
+  document.getElementById('part_phone').value = p.phone || '';
+  document.getElementById('part_memo').value = p.memo || '';
+  document.getElementById('partnerFormTitle').textContent = '✏️ "' + p.name + '" 편집';
+  document.getElementById('partnerSaveBtn').textContent = '💾 저장';
+  document.getElementById('partnerCancelBtn').style.display = '';
+  document.getElementById('part_name').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelPartnerEdit() {
+  document.getElementById('part_editId').value = '';
+  document.getElementById('part_name').value = '';
+  document.getElementById('part_phone').value = '';
+  document.getElementById('part_memo').value = '';
+  document.getElementById('partnerFormTitle').textContent = '+ 새 거래처 추가';
+  document.getElementById('partnerSaveBtn').textContent = '+ 거래처 추가';
+  document.getElementById('partnerCancelBtn').style.display = 'none';
+}
+
 function deletePartner(id) {
-  if (!confirm('이 거래처를 삭제할까요?')) return;
-  purchasePartners = purchasePartners.filter(function(p) { return p.id !== id; });
+  const p = purchasePartners.find(function(x){ return x.id === id; });
+  if (!confirm('"' + (p ? p.name : '') + '" 거래처를 삭제할까요?\n등록된 제품 목록도 함께 삭제돼요.')) return;
+  if (p && purchaseVendorProducts[p.name]) {
+    delete purchaseVendorProducts[p.name];
+    savePurchaseVendorProducts();
+  }
+  purchasePartners = purchasePartners.filter(function(x){ return x.id !== id; });
   savePurchaseData();
   renderPartnerList();
   updatePartnerSelect();
   showToast('🗑 거래처 삭제됐어요.', '');
-  if (gasUrl) {
-    gasPost({ action: 'delete', sheet: 'partner', id: id }).catch(function(){});
+  if (gasUrl) gasPost({ action: 'delete', sheet: 'partner', id: id }).catch(function(){});
+}
+
+let expandedPartner = null;
+
+function togglePartnerExpand(name) {
+  expandedPartner = (expandedPartner === name) ? null : name;
+  renderPartnerList();
+}
+
+function addProductToVendor(vendorName) {
+  const nameEl = document.getElementById('prodAdd-name-' + vendorName);
+  const unitEl = document.getElementById('prodAdd-unit-' + vendorName);
+  const priceEl = document.getElementById('prodAdd-price-' + vendorName);
+  const prodName = nameEl ? nameEl.value.trim() : '';
+  const unit = unitEl ? unitEl.value : 'kg';
+  const basePrice = priceEl ? (parseInt(priceEl.value) || 0) : 0;
+  if (!prodName) { showToast('제품명을 입력해주세요.', 'error'); return; }
+  if (!purchaseVendorProducts[vendorName]) purchaseVendorProducts[vendorName] = [];
+  if (purchaseVendorProducts[vendorName].find(function(p){ return p.name === prodName; })) {
+    showToast('이미 등록된 제품이에요.', 'error'); return;
+  }
+  purchaseVendorProducts[vendorName].push({ name: prodName, unit: unit, basePrice: basePrice, lastPrice: basePrice });
+  savePurchaseVendorProducts();
+  showToast('✅ ' + prodName + ' 추가됨', 'success');
+  renderPartnerList();
+}
+
+function removeProductFromVendor(vendorName, prodName) {
+  if (!confirm('"' + prodName + '" 제품을 삭제할까요?')) return;
+  if (!purchaseVendorProducts[vendorName]) return;
+  purchaseVendorProducts[vendorName] = purchaseVendorProducts[vendorName].filter(function(p){ return p.name !== prodName; });
+  if (purchaseVendorProducts[vendorName].length === 0) delete purchaseVendorProducts[vendorName];
+  savePurchaseVendorProducts();
+  showToast('🗑 삭제됨', '');
+  renderPartnerList();
+}
+
+function updateProductBasePrice(vendorName, prodName, price) {
+  if (!purchaseVendorProducts[vendorName]) return;
+  const prod = purchaseVendorProducts[vendorName].find(function(p){ return p.name === prodName; });
+  if (prod) {
+    prod.basePrice = parseInt(price) || 0;
+    savePurchaseVendorProducts();
   }
 }
 
@@ -11261,41 +11655,496 @@ function renderPartnerList() {
   }
   el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">' +
     purchasePartners.map(function(p) {
-      return '<div style="display:flex;align-items:center;gap:10px;background:var(--warm-white);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;">' +
-        '<div style="flex:1;">' +
-        '<div style="font-weight:700;font-size:14px;">' + p.name + '</div>' +
-        '<div style="font-size:12px;color:var(--brown-light);margin-top:2px;">' + typeLabel(p.type) + (p.phone ? ' · ' + p.phone : '') + (p.memo ? ' · ' + p.memo : '') + '</div>' +
-        '</div>' +
-        '<button onclick="deletePartner(' + p.id + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:700;">삭제</button>' +
-        '</div>';
+      const products = purchaseVendorProducts[p.name] || [];
+      const isExpanded = (expandedPartner === p.name);
+      const safeName = p.name.replace(/'/g, "\\'");
+      const arrow = isExpanded ? '▲' : '▼';
+      let detailHtml = '';
+      if (isExpanded) {
+        const prodRows = products.length === 0
+          ? '<div style="color:#aaa;font-size:12px;padding:6px 0;">등록된 제품 없음</div>'
+          : '<table style="width:100%;border-collapse:collapse;">' +
+            '<thead><tr style="font-size:11px;color:#666;">' +
+            '<th style="text-align:left;padding:3px 6px;font-weight:600;">제품명</th>' +
+            '<th style="text-align:center;padding:3px 6px;font-weight:600;">단위</th>' +
+            '<th style="text-align:right;padding:3px 6px;font-weight:600;">기준단가</th>' +
+            '<th style="text-align:right;padding:3px 6px;font-weight:600;">최근단가</th>' +
+            '<th></th></tr></thead><tbody>' +
+            products.map(function(prod) {
+              const safeProd = prod.name.replace(/'/g, "\\'");
+              const safeNameEsc = safeName.replace(/"/g, '&quot;');
+              const safeProdEsc = safeProd.replace(/"/g, '&quot;');
+              return '<tr style="border-top:1px solid #f3f4f6;">' +
+                '<td style="padding:5px 6px;font-size:13px;">' + prod.name + '</td>' +
+                '<td style="padding:5px 6px;font-size:12px;text-align:center;color:#888;">' + (prod.unit||'kg') + '</td>' +
+                '<td style="padding:5px 6px;text-align:right;">' +
+                '<input type="number" value="' + (prod.basePrice||0) + '" min="0" ' +
+                'onchange="updateProductBasePrice(\'' + safeName + '\',\'' + safeProd + '\',this.value)" ' +
+                'style="width:80px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:right;">' +
+                '</td>' +
+                '<td style="padding:5px 6px;font-size:12px;text-align:right;color:#2563eb;">' +
+                (prod.lastPrice > 0 ? prod.lastPrice.toLocaleString() + '원' : '-') + '</td>' +
+                '<td style="padding:5px 6px;text-align:center;">' +
+                '<button onclick="removeProductFromVendor(\'' + safeName + '\',\'' + safeProd + '\')" ' +
+                'style="background:#fee2e2;color:#991b1b;border:none;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">×</button>' +
+                '</td></tr>';
+            }).join('') + '</tbody></table>';
+
+        detailHtml = '<div style="border-top:1px dashed #ddd;margin-top:10px;padding-top:10px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+          '<div style="font-size:11px;font-weight:700;color:#666;">📦 등록 제품</div>' +
+          '<button onclick="openPartnerLedger(\'' + safeName + '\')" ' +
+          'style="padding:4px 10px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">📒 거래 원장</button>' +
+          '</div>' +
+          '<div style="background:#fafafa;border-radius:6px;padding:8px 12px;margin-bottom:8px;">' + prodRows + '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 70px 90px auto;gap:5px;">' +
+          '<input type="text" id="prodAdd-name-' + safeName + '" placeholder="제품명" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
+          '<select id="prodAdd-unit-' + safeName + '" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">' +
+          '<option>kg</option><option>g</option><option>개</option><option>박스</option><option>포</option><option>봉</option><option>L</option><option>기타</option>' +
+          '</select>' +
+          '<input type="number" id="prodAdd-price-' + safeName + '" placeholder="기준단가" min="0" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;">' +
+          '<button onclick="addProductToVendor(\'' + safeName + '\')" style="padding:6px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #eee;">' +
+          '<button onclick="editPartner(' + p.id + ')" style="flex:1;padding:8px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;color:var(--brown-mid);cursor:pointer;">✏️ 정보 편집</button>' +
+          '<button onclick="deletePartner(' + p.id + ')" style="flex:1;padding:8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;font-weight:600;color:#991b1b;cursor:pointer;">🗑 거래처 삭제</button>' +
+          '</div></div>';
+      }
+      return '<div style="background:#fff;border:0.5px solid ' + (isExpanded ? '#3D2314' : '#e5e7eb') + ';border-radius:10px;padding:12px 14px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="togglePartnerExpand(\'' + safeName + '\')">' +
+        '<div><div style="font-size:14px;font-weight:700;color:var(--brown-deep);">' + p.name + '</div>' +
+        '<div style="font-size:12px;color:var(--brown-light);margin-top:2px;">' +
+        typeLabel(p.type) + (p.phone ? ' · ' + p.phone : '') + (p.memo ? ' · ' + p.memo : '') +
+        ' · 제품 ' + products.length + '종</div></div>' +
+        '<span style="font-size:11px;color:#888;">' + arrow + '</span></div>' +
+        detailHtml + '</div>';
     }).join('') + '</div>';
 }
 
-function savePurchaseRecord() {
+// ── 거래처 원장 ─────────────────────────────────────
+let _ledgerVendorName = '';
+
+function openPartnerLedger(vendorName) {
+  _ledgerVendorName = vendorName;
+  document.getElementById('partnerLedgerTitle').textContent = '📒 ' + vendorName + ' 거래 원장';
+  document.getElementById('ledger_filterMonth').value = '';
+  renderPartnerLedger();
+  document.getElementById('partnerLedgerModal').style.display = 'flex';
+}
+
+function renderPartnerLedger() {
+  const body = document.getElementById('partnerLedgerBody');
+  if (!body) return;
+  const filterMonth = document.getElementById('ledger_filterMonth').value || '';
+  let records = purchaseRecords.filter(function(r) {
+    if (r.partner !== _ledgerVendorName) return false;
+    const dateStr = String(r.date || '').substring(0, 10);
+    if (filterMonth && !dateStr.startsWith(filterMonth)) return false;
+    return true;
+  }).slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+
+  if (records.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:30px;color:#aaa;font-size:14px;">기록이 없어요.</div>';
+    document.getElementById('ledger_totalLabel').textContent = '';
+    return;
+  }
+
+  const grandTotal = records.reduce(function(s, r) { return s + (r.amount||0); }, 0);
+  document.getElementById('ledger_totalLabel').textContent = '합계: ' + grandTotal.toLocaleString() + '원';
+
+  // 월별 그룹화
+  const byMonth = {};
+  records.forEach(function(r) {
+    const ym = String(r.date || '').substring(0, 7);
+    if (!byMonth[ym]) byMonth[ym] = [];
+    byMonth[ym].push(r);
+  });
+
+  body.innerHTML = Object.keys(byMonth).sort(function(a,b){ return b.localeCompare(a); }).map(function(ym) {
+    const rows = byMonth[ym];
+    const monthTotal = rows.reduce(function(s, r){ return s + (r.amount||0); }, 0);
+    return '<div style="margin-bottom:16px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--cream);border-radius:6px;margin-bottom:6px;">' +
+      '<span style="font-size:13px;font-weight:700;color:var(--brown-deep);">' + ym + '</span>' +
+      '<span style="font-size:13px;font-weight:700;color:var(--brown-deep);">' + monthTotal.toLocaleString() + '원</span>' +
+      '</div>' +
+      '<table style="width:100%;border-collapse:collapse;">' +
+      '<thead><tr style="font-size:11px;color:#888;">' +
+      '<th style="text-align:left;padding:4px 8px;">날짜</th><th style="text-align:left;padding:4px 8px;">항목</th>' +
+      '<th style="text-align:right;padding:4px 8px;">수량</th><th style="text-align:right;padding:4px 8px;">단가</th>' +
+      '<th style="text-align:right;padding:4px 8px;">금액</th><th style="text-align:left;padding:4px 8px;">메모</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function(r) {
+        const dateDisplay = String(r.date||'').substring(0,10);
+        const qtyStr = r.qty ? (r.qty + (r.unit||'kg')) : '-';
+        const upStr = r.unitPrice ? (r.unitPrice.toLocaleString() + '원/' + (r.unit||'kg')) : '-';
+        return '<tr style="border-top:1px solid #f3f4f6;">' +
+          '<td style="padding:6px 8px;font-size:12px;color:#666;">' + dateDisplay + '</td>' +
+          '<td style="padding:6px 8px;font-size:13px;font-weight:600;">' + r.item + '</td>' +
+          '<td style="padding:6px 8px;font-size:12px;text-align:right;">' + qtyStr + '</td>' +
+          '<td style="padding:6px 8px;font-size:12px;text-align:right;color:#888;">' + upStr + '</td>' +
+          '<td style="padding:6px 8px;font-size:13px;font-weight:700;text-align:right;">' + (r.amount||0).toLocaleString() + '원</td>' +
+          '<td style="padding:6px 8px;font-size:11px;color:#aaa;">' + (r.memo||'') + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }).join('');
+}
+
+// ── 거래처 검색 드롭다운 ───────────────────────────────
+function updatePartnerSelect() {
+  const sel = document.getElementById('pur_partner');  // hidden
+  const filterSel = document.getElementById('pur_filterPartner');
+  const dd = document.getElementById('purPartnerDropdown');
+  if (sel) {
+    sel.innerHTML = '<option value="">거래처 선택</option>' +
+      purchasePartners.map(function(p){ return '<option value="' + p.name + '">' + p.name + '</option>'; }).join('');
+  }
+  if (filterSel) {
+    const cur = filterSel.value;
+    filterSel.innerHTML = '<option value="">전체 거래처</option>' +
+      purchasePartners.map(function(p){ return '<option value="' + p.name + '">' + p.name + '</option>'; }).join('');
+    filterSel.value = cur;
+  }
+  if (dd) _renderPurPartnerDropdown('');
+}
+
+function _renderPurPartnerDropdown(query) {
+  const dd = document.getElementById('purPartnerDropdown');
+  if (!dd) return;
+  const q = query.toLowerCase();
+  const matched = purchasePartners.filter(function(p) { return !q || p.name.toLowerCase().indexOf(q) !== -1; });
+  if (matched.length === 0) {
+    dd.innerHTML = '<div style="padding:10px;font-size:12px;color:#aaa;text-align:center;">검색 결과 없음</div>';
+  } else {
+    dd.innerHTML = matched.map(function(p) {
+      return '<div onclick="selectPurPartner(\'' + p.name.replace(/'/g,"\\'") + '\')" ' +
+        'style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f3f4f6;" ' +
+        'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">' +
+        p.name + ' <span style="font-size:11px;color:#aaa;">(' + typeLabel(p.type) + ')</span></div>';
+    }).join('');
+  }
+}
+
+function filterPurPartnerDropdown() {
+  const q = (document.getElementById('pur_partner_text') || {}).value || '';
+  _renderPurPartnerDropdown(q);
+  document.getElementById('purPartnerDropdown').style.display = 'block';
+}
+
+function openPurPartnerDropdown() {
+  _renderPurPartnerDropdown((document.getElementById('pur_partner_text') || {}).value || '');
+  document.getElementById('purPartnerDropdown').style.display = 'block';
+}
+
+function closePurPartnerDropdown() {
+  const dd = document.getElementById('purPartnerDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function selectPurPartner(name) {
+  const textEl = document.getElementById('pur_partner_text');
+  const hiddenEl = document.getElementById('pur_partner');
+  if (textEl) textEl.value = name;
+  if (hiddenEl) hiddenEl.value = name;
+  closePurPartnerDropdown();
+  onPurPartnerChange();
+}
+
+// ── 다중 품목 행 ────────────────────────────────────────
+let purItemRows = [];
+let purItemRowCounter = 0;
+
+function onPurPartnerChange() {
+  const partner = (document.getElementById('pur_partner') || {}).value || '';
+  const p = purchasePartners.find(function(x){ return x.name === partner; });
+  // 첫 행이 없으면 빈 행 하나 추가
+  if (purItemRows.length === 0) addPurItemRow();
+  else renderPurItemRows(); // 거래처 바뀌면 항목 드롭다운 갱신
+}
+
+function addPurItemRow() {
+  const rowId = ++purItemRowCounter;
+  purItemRows.push({ id: rowId, item: '', isNew: false, unit: 'kg', qty: '', unitprice: '', amount: '', type: 'material', memo: '' });
+  renderPurItemRows();
+}
+
+function removePurItemRow(rowId) {
+  purItemRows = purItemRows.filter(function(r){ return r.id !== rowId; });
+  renderPurItemRows();
+}
+
+function openPurItemDropdown(rowId) {
+  const partner = (document.getElementById('pur_partner') || {}).value || '';
+  const products = purchaseVendorProducts[partner] || [];
+  const q = ((document.getElementById('purRow-item-text-' + rowId) || {}).value || '').toLowerCase();
+  const dd = document.getElementById('purRow-item-dd-' + rowId);
+  if (!dd) return;
+  const matched = products.filter(function(p){ return !q || p.name.toLowerCase().indexOf(q) !== -1; });
+  if (matched.length === 0 && !q) {
+    dd.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#aaa;">등록된 품목 없음 — 직접 입력하세요</div>';
+  } else {
+    dd.innerHTML = matched.map(function(p) {
+      const hint = p.basePrice > 0 ? ' <span style="color:#2563eb;font-size:11px;">' + p.basePrice.toLocaleString() + '원</span>' : '';
+      return '<div onclick="selectPurItem(' + rowId + ',\'' + p.name.replace(/'/g,"\\'") + '\')" ' +
+        'style="padding:7px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;" ' +
+        'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">' +
+        '<span>' + p.name + '</span>' + hint + '</div>';
+    }).join('') +
+    '<div onclick="selectPurItem(' + rowId + ',\'\')" ' +
+    'style="padding:7px 12px;font-size:12px;color:#3b82f6;cursor:pointer;border-top:1px solid #f0f0f0;" ' +
+    'onmouseenter="this.style.background=\'#eff6ff\'" onmouseleave="this.style.background=\'#fff\'">✏️ 직접 입력</div>';
+  }
+  dd.style.display = 'block';
+}
+
+function filterPurItemDropdown(rowId) {
+  const partner = (document.getElementById('pur_partner') || {}).value || '';
+  const products = purchaseVendorProducts[partner] || [];
+  const q = ((document.getElementById('purRow-item-text-' + rowId) || {}).value || '').toLowerCase();
+  const dd = document.getElementById('purRow-item-dd-' + rowId);
+  if (!dd) return;
+  const matched = q ? products.filter(function(p){ return p.name.toLowerCase().indexOf(q) !== -1; }) : products;
+  dd.innerHTML = matched.map(function(p) {
+    const hint = p.basePrice > 0 ? ' <span style="color:#2563eb;font-size:11px;">' + p.basePrice.toLocaleString() + '원</span>' : '';
+    return '<div onclick="selectPurItem(' + rowId + ',\'' + p.name.replace(/'/g,"\\'") + '\')" ' +
+      'style="padding:7px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;" ' +
+      'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">' +
+      '<span>' + p.name + '</span>' + hint + '</div>';
+  }).join('') + (q
+    ? '<div onclick="selectPurItem(' + rowId + ',\'\')" ' +
+      'style="padding:7px 12px;font-size:12px;color:#888;cursor:pointer;border-top:1px solid #f0f0f0;" ' +
+      'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">검색어로 새 항목 입력</div>'
+    : '<div onclick="selectPurItem(' + rowId + ',\'\')" ' +
+      'style="padding:7px 12px;font-size:12px;color:#3b82f6;cursor:pointer;border-top:1px solid #f0f0f0;" ' +
+      'onmouseenter="this.style.background=\'#eff6ff\'" onmouseleave="this.style.background=\'#fff\'">✏️ 직접 입력</div>');
+  dd.style.display = matched.length > 0 || q ? 'block' : 'none';
+}
+
+function selectPurItem(rowId, name) {
+  const textEl = document.getElementById('purRow-item-text-' + rowId);
+  const dd = document.getElementById('purRow-item-dd-' + rowId);
+  if (dd) dd.style.display = 'none';
+
+  const row = purItemRows.find(function(r){ return r.id === rowId; });
+  if (!row) return;
+
+  if (name === '') {
+    // 직접 입력 모드
+    if (textEl) { textEl.value = ''; textEl.placeholder = '품목 직접 입력'; textEl.focus(); }
+    row.item = '';
+    row.isNew = true;
+    return;
+  }
+
+  if (textEl) textEl.value = name;
+  row.item = name;
+  row.isNew = false;
+
+  // 단위 + 기준단가 자동채움
+  const partner = (document.getElementById('pur_partner') || {}).value || '';
+  const products = purchaseVendorProducts[partner] || [];
+  const prod = products.find(function(p){ return p.name === name; });
+  if (prod) {
+    row.unit = prod.unit || 'kg';
+    const unitSel = document.getElementById('purRow-unit-' + rowId);
+    if (unitSel) {
+      for (let i = 0; i < unitSel.options.length; i++) {
+        if (unitSel.options[i].value === row.unit) { unitSel.selectedIndex = i; break; }
+      }
+    }
+    const autoPrice = prod.basePrice > 0 ? prod.basePrice : (prod.lastPrice || 0);
+    if (autoPrice > 0) {
+      const upEl = document.getElementById('purRow-unitprice-' + rowId);
+      if (upEl) upEl.value = autoPrice;
+      row.unitprice = autoPrice;
+    }
+    const hint = document.getElementById('purRow-hint-' + rowId);
+    if (hint && prod.basePrice > 0) {
+      hint.textContent = '기준: ' + prod.basePrice.toLocaleString() + '원/' + prod.unit;
+      hint.style.display = '';
+    } else if (hint) hint.style.display = 'none';
+  }
+  calcPurRowAmount(rowId);
+}
+
+function onPurRowItemSelect(rowId) { /* 구버전 호환용, selectPurItem으로 대체 */ }
+
+function renderPurItemRows() {
+  const container = document.getElementById('purItemRowsContainer');
+  if (!container) return;
+  const UNITS = ['kg','g','개','박스','포','봉','L','기타'];
+  const TYPES = [{v:'material',l:'원재료'},{v:'packaging',l:'포장재'},{v:'utility',l:'공과금'},{v:'delivery',l:'배송비'},{v:'etc',l:'기타'}];
+
+  if (purItemRows.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">아래 "+ 품목 추가" 버튼을 눌러주세요.</div>';
+    return;
+  }
+
+  container.innerHTML = purItemRows.map(function(row) {
+    const unitOpts = UNITS.map(function(u){ return '<option value="' + u + '"' + (u===row.unit?' selected':'') + '>' + u + '</option>'; }).join('');
+    const typeOpts = TYPES.map(function(t){ return '<option value="' + t.v + '"' + (t.v===row.type?' selected':'') + '>' + t.l + '</option>'; }).join('');
+    return '<div style="display:grid;grid-template-columns:1fr 80px 70px 100px 110px 80px 1fr 32px;gap:5px;align-items:start;">' +
+      // 항목 (검색형)
+      '<div style="position:relative;display:flex;flex-direction:column;gap:2px;">' +
+      '<input type="text" id="purRow-item-text-' + row.id + '" ' +
+        'value="' + (row.item||'').replace(/"/g,'&quot;') + '" ' +
+        'placeholder="품목 검색..." autocomplete="off" ' +
+        'oninput="filterPurItemDropdown(' + row.id + ')" ' +
+        'onfocus="openPurItemDropdown(' + row.id + ')" ' +
+        'onblur="setTimeout(function(){var d=document.getElementById(\'purRow-item-dd-' + row.id + '\');if(d)d.style.display=\'none\';},200)" ' +
+        'style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;width:100%;box-sizing:border-box;">' +
+      '<div id="purRow-item-dd-' + row.id + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:#fff;border:1.5px solid var(--border);border-radius:7px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:160px;overflow-y:auto;"></div>' +
+      '<span id="purRow-hint-' + row.id + '" style="display:none;font-size:10px;color:#2563eb;"></span>' +
+      '</div>' +
+      // 수량
+      '<input type="number" id="purRow-qty-' + row.id + '" value="' + (row.qty||'') + '" placeholder="0" min="0" step="0.1" oninput="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
+      // 단위
+      '<select id="purRow-unit-' + row.id + '" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">' + unitOpts + '</select>' +
+      // 단가
+      '<input type="number" id="purRow-unitprice-' + row.id + '" value="' + (row.unitprice||'') + '" placeholder="단가" min="0" oninput="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
+      // 금액
+      '<input type="number" id="purRow-amount-' + row.id + '" value="' + (row.amount||'') + '" placeholder="금액" min="0" oninput="updatePurItemsTotal()" style="padding:6px 8px;border:1.5px solid #3b82f6;border-radius:7px;font-size:13px;text-align:right;font-weight:700;">' +
+      // 분류
+      '<select id="purRow-type-' + row.id + '" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">' + typeOpts + '</select>' +
+      // 메모
+      '<input type="text" id="purRow-memo-' + row.id + '" value="' + (row.memo||'').replace(/"/g,'&quot;') + '" placeholder="메모" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">' +
+      // 삭제
+      '<button onclick="removePurItemRow(' + row.id + ')" style="width:28px;height:28px;background:#fee2e2;color:#991b1b;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;">×</button>' +
+      '</div>';
+  }).join('');
+  updatePurItemsTotal();
+}
+
+function savePurAllItems() {
   const date = document.getElementById('pur_date').value || getLocalDateStr();
-  const partner = document.getElementById('pur_partner').value;
-  const item = document.getElementById('pur_item').value.trim();
-  const type = document.getElementById('pur_type').value;
-  const qty = parseFloat(document.getElementById('pur_qty').value) || 0;
-  const unit = document.getElementById('pur_unit').value || 'kg';
-  const amount = parseInt(document.getElementById('pur_amount').value) || 0;
-  const memo = document.getElementById('pur_memo').value.trim();
+  const partner = (document.getElementById('pur_partner') || {}).value || '';
   if (!partner) { showToast('거래처를 선택해주세요.', 'error'); return; }
-  if (!item) { showToast('항목을 입력해주세요.', 'error'); return; }
-  if (!amount) { showToast('금액을 입력해주세요.', 'error'); return; }
-  const unitPrice = (qty > 0) ? Math.round(amount / qty) : 0;
-  const record = { id: Date.now(), date, partner, item, type, qty, unit, amount, unitPrice, memo };
-  purchaseRecords.unshift(record);
+  if (purItemRows.length === 0) { showToast('품목을 추가해주세요.', 'error'); return; }
+
+  const records = [];
+  let hasError = false;
+  purItemRows.forEach(function(row) {
+    const itemTextEl = document.getElementById('purRow-item-text-' + row.id);
+    const item = itemTextEl ? itemTextEl.value.trim() : (row.item || '');
+    const isNew = item && !((purchaseVendorProducts[partner] || []).find(function(p){ return p.name === item; }));
+    const unit = (document.getElementById('purRow-unit-' + row.id) || {}).value || 'kg';
+    const qty = parseFloat((document.getElementById('purRow-qty-' + row.id) || {}).value) || 0;
+    const unitprice = parseInt((document.getElementById('purRow-unitprice-' + row.id) || {}).value) || 0;
+    let amount = parseInt((document.getElementById('purRow-amount-' + row.id) || {}).value) || 0;
+    if (!amount && qty > 0 && unitprice > 0) amount = Math.round(qty * unitprice);
+    const type = (document.getElementById('purRow-type-' + row.id) || {}).value || 'material';
+    const memo = (document.getElementById('purRow-memo-' + row.id) || {}).value || '';
+    const finalUP = unitprice || (qty > 0 && amount > 0 ? Math.round(amount/qty) : 0);
+
+    if (!item || !amount) { hasError = true; return; }
+
+    records.push({ id: Date.now() + records.length, date, partner, item, type, qty, unit, amount, unitPrice: finalUP, memo });
+
+    // 새 항목이면 자동 등록
+    if (isNew && item) {
+      if (!purchaseVendorProducts[partner]) purchaseVendorProducts[partner] = [];
+      if (!purchaseVendorProducts[partner].find(function(p){ return p.name === item; })) {
+        purchaseVendorProducts[partner].push({ name: item, unit, basePrice: finalUP, lastPrice: finalUP });
+        savePurchaseVendorProducts();
+      }
+    } else if (finalUP > 0 && item) {
+      // 최근 단가 업데이트
+      if (purchaseVendorProducts[partner]) {
+        const prod = purchaseVendorProducts[partner].find(function(p){ return p.name === item; });
+        if (prod) { prod.lastPrice = finalUP; savePurchaseVendorProducts(); }
+      }
+    }
+  });
+
+  if (hasError) { showToast('항목명과 금액을 모두 입력해주세요.', 'error'); return; }
+  if (records.length === 0) { showToast('저장할 기록이 없어요.', 'error'); return; }
+
+  records.forEach(function(r) { purchaseRecords.unshift(r); });
   savePurchaseData();
-  document.getElementById('pur_item').value = '';
-  document.getElementById('pur_qty').value = '';
-  document.getElementById('pur_amount').value = '';
-  document.getElementById('pur_memo').value = '';
+
+  // 폼 초기화
+  purItemRows = [];
+  purItemRowCounter = 0;
+  renderPurItemRows();
+  document.getElementById('purItemsTotal').textContent = '0원';
+
   renderPurchaseTable();
   renderPurchaseSummary();
-  showToast('✅ 매입 기록 추가됐어요!', 'success');
+  showToast('✅ 매입 ' + records.length + '건 저장됐어요!', 'success');
+
   if (gasUrl) {
-    gasPost({ action: 'save', sheet: 'purchase', data: record }).catch(function(){});
+    records.forEach(function(r) {
+      gasPost({ action: 'save', sheet: 'purchase', data: r }).catch(function(){});
+    });
+  }
+}
+
+// 기존 savePurchaseRecord는 제거 (다중 품목으로 대체됨)
+function savePurchaseRecord() { savePurAllItems(); }
+
+function openPurEditModal(id) {
+  const r = purchaseRecords.find(function(x){ return x.id === id; });
+  if (!r) return;
+  document.getElementById('purEdit_id').value = id;
+  document.getElementById('purEdit_date').value = String(r.date || '').substring(0, 10);
+  document.getElementById('purEdit_item').value = r.item || '';
+  document.getElementById('purEdit_type').value = r.type || 'material';
+  document.getElementById('purEdit_qty').value = r.qty || '';
+  document.getElementById('purEdit_unitprice').value = r.unitPrice || '';
+  document.getElementById('purEdit_amount').value = r.amount || '';
+  document.getElementById('purEdit_memo').value = r.memo || '';
+  const unitSel = document.getElementById('purEdit_unit');
+  if (unitSel) {
+    for (let i = 0; i < unitSel.options.length; i++) {
+      if (unitSel.options[i].value === (r.unit || 'kg')) { unitSel.selectedIndex = i; break; }
+    }
+  }
+  const partnerSel = document.getElementById('purEdit_partner');
+  if (partnerSel) {
+    partnerSel.innerHTML = purchasePartners.map(function(p) {
+      return '<option value="' + p.name + '"' + (p.name === r.partner ? ' selected' : '') + '>' + p.name + '</option>';
+    }).join('');
+    if (!purchasePartners.find(function(p){ return p.name === r.partner; })) {
+      partnerSel.innerHTML = '<option value="' + r.partner + '" selected>' + r.partner + '</option>' + partnerSel.innerHTML;
+    }
+  }
+  document.getElementById('purEditModal').style.display = 'flex';
+}
+
+function closePurEditModal() {
+  document.getElementById('purEditModal').style.display = 'none';
+}
+
+function calcPurEditAmount() {
+  const qty = parseFloat(document.getElementById('purEdit_qty').value) || 0;
+  const up = parseInt(document.getElementById('purEdit_unitprice').value) || 0;
+  if (qty > 0 && up > 0) document.getElementById('purEdit_amount').value = Math.round(qty * up);
+}
+
+function savePurchaseEdit() {
+  const id = parseInt(document.getElementById('purEdit_id').value);
+  const idx = purchaseRecords.findIndex(function(r){ return r.id === id; });
+  if (idx === -1) return;
+  const date = document.getElementById('purEdit_date').value;
+  const partner = document.getElementById('purEdit_partner').value;
+  const item = document.getElementById('purEdit_item').value.trim();
+  const type = document.getElementById('purEdit_type').value;
+  const qty = parseFloat(document.getElementById('purEdit_qty').value) || 0;
+  const unit = document.getElementById('purEdit_unit').value || 'kg';
+  const unitPrice = parseInt(document.getElementById('purEdit_unitprice').value) || 0;
+  let amount = parseInt(document.getElementById('purEdit_amount').value) || 0;
+  if (!amount && qty > 0 && unitPrice > 0) amount = Math.round(qty * unitPrice);
+  const memo = document.getElementById('purEdit_memo').value.trim();
+  if (!date || !partner || !item || !amount) { showToast('날짜·거래처·항목·금액은 필수예요.', 'error'); return; }
+  purchaseRecords[idx] = Object.assign({}, purchaseRecords[idx], { date, partner, item, type, qty, unit, unitPrice, amount, memo });
+  savePurchaseData();
+  closePurEditModal();
+  renderPurchaseTable();
+  renderPurchaseSummary();
+  showToast('✅ 기록 수정됐어요!', 'success');
+  if (gasUrl) {
+    gasPost({ action: 'save', sheet: 'purchase', data: purchaseRecords[idx] }).catch(function(){});
   }
 }
 
@@ -11314,33 +12163,40 @@ function deletePurchaseRecord(id) {
 function renderPurchaseTable() {
   const tbody = document.getElementById('purchaseTableBody');
   if (!tbody) return;
-  const filterMonth = document.getElementById('pur_filterMonth') ? document.getElementById('pur_filterMonth').value : '';
-  const filterType = document.getElementById('pur_filterType') ? document.getElementById('pur_filterType').value : '';
+  const filterMonth = (document.getElementById('pur_filterMonth') || {}).value || '';
+  const filterType = (document.getElementById('pur_filterType') || {}).value || '';
+  const filterPartner = (document.getElementById('pur_filterPartner') || {}).value || '';
   let filtered = purchaseRecords.filter(function(r) {
-    if (filterMonth && !r.date.startsWith(filterMonth)) return false;
+    const dateStr = String(r.date || '').substring(0, 10); // ISO → YYYY-MM-DD
+    if (filterMonth && !dateStr.startsWith(filterMonth)) return false;
     if (filterType && r.type !== filterType) return false;
+    if (filterPartner && r.partner !== filterPartner) return false;
     return true;
   });
   const total = filtered.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
   const labelEl = document.getElementById('pur_totalLabel');
   if (labelEl) labelEl.textContent = '합계: ' + total.toLocaleString() + '원';
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#aaa;">기록이 없어요.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#aaa;">기록이 없어요.</td></tr>';
     return;
   }
   tbody.innerHTML = filtered.map(function(r) {
+    const dateDisplay = String(r.date || '').substring(0, 10);
     const qtyStr = r.qty ? (r.qty + (r.unit||'kg')) : '-';
     const unitPriceStr = r.unitPrice ? (r.unitPrice.toLocaleString() + '원/'+(r.unit||'kg')) : '-';
     return '<tr style="border-bottom:1px solid var(--border);">' +
-      '<td style="padding:10px 12px;font-size:13px;">' + r.date + '</td>' +
+      '<td style="padding:10px 12px;font-size:13px;">' + dateDisplay + '</td>' +
       '<td style="padding:10px 12px;font-size:13px;font-weight:600;">' + r.partner + '</td>' +
       '<td style="padding:10px 12px;font-size:13px;">' + r.item + '</td>' +
       '<td style="padding:10px 12px;font-size:12px;"><span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:10px;">' + typeLabel(r.type) + '</span></td>' +
       '<td style="padding:10px 12px;font-size:13px;text-align:right;">' + qtyStr + '</td>' +
       '<td style="padding:10px 12px;font-size:12px;color:#888;text-align:right;">' + unitPriceStr + '</td>' +
-      '<td style="padding:10px 12px;font-size:13px;font-weight:700;text-align:right;">' + (r.amount || 0).toLocaleString() + '원</td>' +
-      '<td style="padding:10px 12px;font-size:12px;color:#888;">' + (r.memo || '') + '</td>' +
-      '<td style="padding:10px 12px;"><button onclick="deletePurchaseRecord(' + r.id + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button></td>' +
+      '<td style="padding:10px 12px;font-size:13px;font-weight:700;text-align:right;">' + (r.amount||0).toLocaleString() + '원</td>' +
+      '<td style="padding:10px 12px;font-size:12px;color:#888;">' + (r.memo||'') + '</td>' +
+      '<td style="padding:10px 12px;white-space:nowrap;">' +
+        '<button onclick="openPurEditModal(' + r.id + ')" style="background:#e0f2fe;color:#0369a1;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">수정</button>' +
+        '<button onclick="deletePurchaseRecord(' + r.id + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>' +
+      '</td>' +
       '</tr>';
   }).join('');
 }
@@ -11353,21 +12209,16 @@ function renderPurchaseSummary() {
   const thisMonthRecords = purchaseRecords.filter(function(r) { return r.date && r.date.startsWith(thisMonth); });
   const total = thisMonthRecords.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
   const byType = {};
-  thisMonthRecords.forEach(function(r) {
-    byType[r.type] = (byType[r.type] || 0) + (r.amount || 0);
-  });
-  const typeColors = { material: '#dbeafe', packaging: '#dcfce7', delivery: '#fef9c3', labor: '#ede9fe', etc: '#f3f4f6' };
+  thisMonthRecords.forEach(function(r) { byType[r.type] = (byType[r.type] || 0) + (r.amount || 0); });
+  const typeColors = { material: '#dbeafe', packaging: '#dcfce7', utility: '#fef9c3', delivery: '#ede9fe', etc: '#f3f4f6' };
   el.innerHTML = '<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:4px;">📊 ' + thisMonth + ' 이번 달 매입 현황</div>' +
     '<div style="background:#fff7ed;border-radius:8px;padding:10px 14px;border:1.5px solid #fed7aa;">' +
     '<div style="font-size:11px;color:#92400e;margin-bottom:4px;">총 매입</div>' +
-    '<div style="font-size:18px;font-weight:800;color:#c2410c;">' + total.toLocaleString() + '원</div>' +
-    '</div>' +
+    '<div style="font-size:18px;font-weight:800;color:#c2410c;">' + total.toLocaleString() + '원</div></div>' +
     Object.entries(byType).map(function(entry) {
-      const type = entry[0], amt = entry[1];
-      return '<div style="background:' + (typeColors[type] || '#f3f4f6') + ';border-radius:8px;padding:10px 14px;">' +
-        '<div style="font-size:11px;color:#555;margin-bottom:4px;">' + typeLabel(type) + '</div>' +
-        '<div style="font-size:15px;font-weight:700;">' + amt.toLocaleString() + '원</div>' +
-        '</div>';
+      return '<div style="background:' + (typeColors[entry[0]] || '#f3f4f6') + ';border-radius:8px;padding:10px 14px;">' +
+        '<div style="font-size:11px;color:#555;margin-bottom:4px;">' + typeLabel(entry[0]) + '</div>' +
+        '<div style="font-size:15px;font-weight:700;">' + entry[1].toLocaleString() + '원</div></div>';
     }).join('');
 }
 
@@ -11384,39 +12235,37 @@ function initPurchaseTab() {
   renderPurchaseSummary();
 
   if (gasUrl) {
-    // 거래처 불러오기 (항상 GAS에서 최신 데이터로 교체)
-    gasGet({ action: 'getPartners' })
-      .then(function(data) {
-        if (data.success && data.partners) {
-          purchasePartners = data.partners.map(function(p) {
-            return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
-          });
-          localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
-          updatePartnerSelect();
-          renderPartnerList();
-        } else {
-          console.error('[거래처] GAS 응답 실패:', data);
-        }
-      }).catch(function(err) {
-        console.error('[거래처] 불러오기 오류:', err);
-        showToast('거래처 불러오기 실패: ' + err.message, 'error');
-      });
+    gasGet({ action: 'getPartners' }).then(function(data) {
+      if (data.success && data.partners) {
+        purchasePartners = data.partners.map(function(p) {
+          return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
+        });
+        localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
+        updatePartnerSelect();
+        renderPartnerList();
+      }
+    }).catch(function(){});
 
-    // 매입기록 불러오기
-    gasGet({ action: 'getPurchases' })
-      .then(function(data) {
-        if (data.success && data.records) {
-          purchaseRecords = data.records;
-          purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
-          localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
-          renderPurchaseTable();
-          renderPurchaseSummary();
-        } else {
-          console.error('[매입기록] GAS 응답 실패:', data);
-        }
-      }).catch(function(err) {
-        console.error('[매입기록] 불러오기 오류:', err);
-      });
+    gasGet({ action: 'getPurchases' }).then(function(data) {
+      if (data.success && data.records) {
+        purchaseRecords = data.records;
+        purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+        localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
+        // 새 기록 들어오면 제품 목록 자동 보완
+        localStorage.removeItem('vendorProductsBuilt_v1');
+        buildVendorProductsFromRecords();
+        renderPurchaseTable();
+        renderPurchaseSummary();
+      }
+    }).catch(function(){});
+
+    // purchaseVendorProducts 서버에서 로드
+    gasGet({ action: 'getTteokSettings' }).then(function(data) {
+      if (data.success && data.data && data.data.purchaseVendorProducts) {
+        purchaseVendorProducts = data.data.purchaseVendorProducts;
+        localStorage.setItem('purchaseVendorProducts', JSON.stringify(purchaseVendorProducts));
+      }
+    }).catch(function(){});
   }
 }
 
@@ -12127,6 +12976,9 @@ let daecheongRate = parseFloat(localStorage.getItem('daecheongRate') || '0');
 
 function saveVenuePriceData() {
   localStorage.setItem('venuePrices', JSON.stringify(venuePrices));
+  if (typeof gasUrl !== 'undefined' && gasUrl) {
+    gasPost({ action: 'saveTteokSettings', data: { venuePrices: venuePrices, daecheongRate: (typeof daecheongRate !== 'undefined' ? daecheongRate : 0) } }).catch(function(){});
+  }
 }
 
 // 대청 전용: 5kg/10kg 이중 가격 등록
@@ -13402,6 +14254,629 @@ function confirmNewTteok(name) {
 
 // ============ 거래처 관리 ============
 // { funeral: [{name, group}], wedding: [name] }
+
+// ── 거래처 통합 관리 (settings → 거래처 탭) ──────────────────
+const FIXED_VENUES = [
+  { name: '충대장례식장', type: 'funeral', group: 'chungdae_fixed', isFixed: true, subtitle: '5kg 고정' },
+  { name: '대청장례식장', type: 'funeral', group: 'daecheong_fixed', isFixed: true, subtitle: '5kg/10kg + 수수료율' },
+  { name: '충대식당', type: 'funeral', group: 'chungdae_restaurant', isFixed: true, subtitle: '충대식당 그룹' },
+  { name: '본관영양', type: 'funeral', group: 'chungdae_restaurant', isFixed: true, subtitle: '충대식당 그룹' },
+  { name: '소비조합', type: 'funeral', group: 'chungdae_restaurant', isFixed: true, subtitle: '충대식당 그룹' },
+  { name: '재활환자', type: 'funeral', group: 'chungdae_restaurant', isFixed: true, subtitle: '충대식당 그룹' },
+  { name: '재활직원', type: 'funeral', group: 'chungdae_restaurant', isFixed: true, subtitle: '충대식당 그룹' },
+];
+
+function getAllVenues() {
+  const list = FIXED_VENUES.slice();
+  ((extraVenues && extraVenues.funeral) || []).forEach(function(v) {
+    if (!v || !v.name) return;
+    list.push({ name: v.name, type: 'funeral', group: v.group || 'own', isFixed: false, info: v });
+  });
+  ((extraVenues && extraVenues.wedding) || []).forEach(function(v) {
+    if (!v) return;
+    const obj = (typeof v === 'string') ? { name: v } : v;
+    if (!obj.name) return;
+    list.push({ name: obj.name, type: 'wedding', isFixed: false, info: obj });
+  });
+  ((typeof otherVenues !== 'undefined' && otherVenues) || []).forEach(function(v) {
+    if (!v || !v.name) return;
+    list.push({ name: v.name, type: 'other', isFixed: false, subtitle: v.type ? '단가 단위: ' + v.type : '', info: v });
+  });
+  return list;
+}
+
+// 거래처별 단가 데이터 + 형식 정보 + 저장 위치
+function getVenuePriceData(v) {
+  const venuePrices_ = (typeof venuePrices !== 'undefined' ? venuePrices : {}) || {};
+  const otherVenuePrices_ = (typeof otherVenuePrices !== 'undefined' ? otherVenuePrices : {}) || {};
+  const daecheongRate_ = (typeof daecheongRate !== 'undefined' ? daecheongRate : 0);
+
+  if (v.name === '충대장례식장') return { prices: venuePrices_.chungdae || {}, format: '5kg', storeKey: 'chungdae' };
+  if (v.name === '대청장례식장') return { prices: venuePrices_.daecheong || {}, format: '5kg-10kg', rate: daecheongRate_, storeKey: 'daecheong' };
+  if (['충대식당','본관영양','소비조합','재활환자','재활직원'].indexOf(v.name) !== -1)
+    return { prices: venuePrices_.chungdae_restaurant || {}, format: 'kg', sharedWith: '충대식당 그룹 공유', storeKey: 'chungdae_restaurant' };
+  if (v.type === 'wedding')
+    return { prices: venuePrices_.wedding || {}, format: 'wedding', sharedWith: '웨딩홀 공통 단가', storeKey: 'wedding' };
+  if (v.type === 'other')
+    return { prices: otherVenuePrices_[v.name] || {}, format: 'other', unit: (v.info && v.info.type) || 'kg', storeKey: 'other:' + v.name };
+  // 추가 장례식장 (group은 단가 입력 형식만 결정, 데이터는 독립)
+  if (v.type === 'funeral' && !v.isFixed) {
+    if (v.group === 'chungdae') return { prices: venuePrices_[v.name] || {}, format: '5kg', storeKey: v.name };
+    if (v.group === 'daecheong') return { prices: venuePrices_[v.name] || {}, format: '5kg-10kg', rate: daecheongRate_, storeKey: v.name };
+    return { prices: venuePrices_[v.name] || {}, format: 'own-funeral', storeKey: v.name };
+  }
+  return { prices: {}, format: 'unknown', storeKey: null };
+}
+
+function countVenuePrices(venueName, type) {
+  const data = getVenuePriceData({ name: venueName, type: type, isFixed: FIXED_VENUES.some(function(f){ return f.name === venueName; }) });
+  return Object.keys(data.prices || {}).length;
+}
+
+let currentVenueFilter = 'all';
+let expandedVenueName = null;
+
+function filterVenueList(filter) {
+  currentVenueFilter = filter;
+  document.querySelectorAll('.venue-filter-pill').forEach(function(btn) {
+    const isActive = btn.dataset.filter === filter;
+    if (isActive) {
+      btn.style.background = 'var(--brown-deep)'; btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--brown-deep)'; btn.style.fontWeight = '600';
+    } else {
+      btn.style.background = '#fff'; btn.style.color = 'var(--brown-mid)';
+      btn.style.borderColor = 'var(--border)'; btn.style.fontWeight = '400';
+    }
+  });
+  renderVenuesList();
+}
+
+function toggleVenueExpand(name) {
+  expandedVenueName = (expandedVenueName === name) ? null : name;
+  renderVenuesList();
+}
+
+function renderPriceRows(data, venueName) {
+  const entries = Object.entries(data.prices || {});
+  if (entries.length === 0) {
+    return '<div style="color:#aaa;font-size:12px;padding:6px 0;">등록된 단가 없음</div>';
+  }
+  const safeName = venueName.replace(/'/g,"\\'");
+  const safeStoreKey = (data.storeKey || '').replace(/'/g,"\\'");
+  return entries.map(function(kv) {
+    const name = kv[0], val = kv[1];
+    const safeTteok = name.replace(/'/g,"\\'");
+    const removeBtn = '<button onclick="event.stopPropagation();vCardRemovePrice(\'' + safeStoreKey + '\',\'' + safeTteok + '\',\'' + safeName + '\')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;margin-left:6px;">×</button>';
+    if (data.format === '5kg') {
+      const p5 = (typeof val === 'object') ? (val.price5 || 0) : val;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">'
+        + '<span>' + name + '</span>'
+        + '<span style="display:flex;align-items:center;"><span style="color:#2563eb;font-weight:600;">' + p5.toLocaleString() + '원 / 5kg</span>' + removeBtn + '</span></div>';
+    }
+    if (data.format === '5kg-10kg') {
+      const p5 = (typeof val === 'object') ? (val.price5 || 0) : 0;
+      const p10 = (typeof val === 'object') ? (val.price10 || 0) : 0;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">'
+        + '<span>' + name + '</span>'
+        + '<span style="display:flex;align-items:center;"><span><span style="color:#2563eb;font-weight:600;">' + p5.toLocaleString() + '원/5kg</span>'
+        + ' · <span style="color:#16a34a;font-weight:600;">' + p10.toLocaleString() + '원/10kg</span></span>' + removeBtn + '</span></div>';
+    }
+    if (data.format === 'other') {
+      const p = (typeof val === 'object') ? (val.price5 || val.price || 0) : val;
+      const unit = data.unit === '5kg' ? '/5kg' : '/kg';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">'
+        + '<span>' + name + '</span>'
+        + '<span style="display:flex;align-items:center;"><span style="color:#0891b2;font-weight:600;">' + p.toLocaleString() + '원' + unit + '</span>' + removeBtn + '</span></div>';
+    }
+    const p = (typeof val === 'object') ? (val.price5 || val.price || 0) : val;
+    const unit = data.format === 'kg' ? '/kg' : '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">'
+      + '<span>' + name + '</span>'
+      + '<span style="display:flex;align-items:center;"><span style="color:#2563eb;font-weight:600;">' + p.toLocaleString() + '원' + unit + '</span>' + removeBtn + '</span></div>';
+  }).join('');
+}
+
+function renderPriceAddForm(v, data) {
+  const safeName = v.name.replace(/'/g,"\\'");
+  if (data.format === '5kg-10kg') {
+    return '<div style="display:grid;grid-template-columns:1fr 70px 70px auto;gap:5px;margin-top:8px;" onclick="event.stopPropagation()">'
+      + '<input type="text" id="vCardAdd-name-' + safeName + '" placeholder="떡 이름" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+      + '<input type="number" id="vCardAdd-p5-' + safeName + '" placeholder="5kg" style="padding:6px 8px;border:1px solid #3b82f6;border-radius:6px;font-size:12px;text-align:right;">'
+      + '<input type="number" id="vCardAdd-p10-' + safeName + '" placeholder="10kg" style="padding:6px 8px;border:1px solid #16a34a;border-radius:6px;font-size:12px;text-align:right;">'
+      + '<button onclick="event.stopPropagation();vCardAddPrice(\'' + safeName + '\')" style="padding:6px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+      + '</div>';
+  }
+  const unitLabel = data.format === '5kg' ? '5kg 가격' : (data.format === 'other' ? (data.unit === '5kg' ? '5kg' : 'kg당') : (data.format === 'kg' ? 'kg당' : '단가'));
+  return '<div style="display:grid;grid-template-columns:1fr 90px auto;gap:5px;margin-top:8px;" onclick="event.stopPropagation()">'
+    + '<input type="text" id="vCardAdd-name-' + safeName + '" placeholder="떡 이름" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+    + '<input type="number" id="vCardAdd-p-' + safeName + '" placeholder="' + unitLabel + '" style="padding:6px 8px;border:1px solid #3b82f6;border-radius:6px;font-size:12px;text-align:right;">'
+    + '<button onclick="event.stopPropagation();vCardAddPrice(\'' + safeName + '\')" style="padding:6px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+    + '</div>';
+}
+
+function renderVenueDetail(v) {
+  const data = getVenuePriceData(v);
+  const info = v.info || {};
+  const fmtLabels = {
+    '5kg': '5kg 고정 (10kg = ×2 자동)',
+    '5kg-10kg': '5kg / 10kg 별도',
+    'kg': 'kg당',
+    'wedding': '웨딩홀 공통 (부가세 10% 포함)',
+    'other': '단가 단위: ' + (data.unit || 'kg'),
+    'own-funeral': '거래처 자체 단가',
+    'unknown': '-',
+  };
+  let infoHtml = '';
+  if (info.regno || info.ceo || info.addr || info.tel || info.manager) {
+    const rows = [
+      ['사업자번호', info.regno], ['대표자', info.ceo],
+      ['주소', info.addr], ['전화', info.tel],
+      ['담당자', info.manager + (info.managerTel ? ' (' + info.managerTel + ')' : '')]
+    ].filter(function(r){ return r[1] && String(r[1]).trim(); });
+    if (rows.length > 0) {
+      infoHtml = '<div style="border-top:1px solid #eee;padding-top:8px;margin-top:8px;">'
+        + '<div style="font-size:11px;font-weight:600;color:#666;margin-bottom:6px;">📋 거래처 정보</div>'
+        + rows.map(function(r){ return '<div style="display:flex;font-size:12px;padding:2px 0;"><span style="width:70px;color:#888;">' + r[0] + '</span><span style="flex:1;">' + r[1] + '</span></div>'; }).join('')
+        + '</div>';
+    }
+  }
+  let extraHtml = '';
+  if (typeof data.rate === 'number' && data.rate > 0) {
+    extraHtml = '<div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:#92400e;"><b>수수료율</b> ' + data.rate + '%</div>';
+  }
+  if (data.sharedWith) {
+    extraHtml += '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:11px;color:#1e40af;">🔗 ' + data.sharedWith + '</div>';
+  }
+
+  const safeName = v.name.replace(/'/g,"\\'");
+
+  // 웨딩홀 기본 떡 목록 (홀별 프리셋)
+  let presetHtml = '';
+  if (v.type === 'wedding') {
+    const presets = (typeof weddingHallPresets !== 'undefined' && weddingHallPresets[v.name]) || [];
+    const presetRows = presets.length === 0
+      ? '<div style="color:#aaa;font-size:12px;padding:6px 0;">등록된 기본 떡 없음</div>'
+      : presets.map(function(p, idx) {
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">'
+            + '<span>' + (p.name || '') + (p.floor ? ' <span style="color:#1d4ed8;font-size:11px;">(' + p.floor + ')</span>' : '') + '</span>'
+            + '<button onclick="event.stopPropagation();vCardRemoveHallPresetItem(\'' + safeName + '\',' + idx + ')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;">×</button>'
+            + '</div>';
+        }).join('');
+    presetHtml = '<div style="border-top:1px dashed #ddd;margin-top:10px;padding-top:10px;" onclick="event.stopPropagation()">'
+      + '<div style="font-size:11px;font-weight:600;color:#666;margin-bottom:6px;">🍡 기본 떡 목록 <span style="color:#aaa;font-weight:400;font-size:10px;">(웨딩홀 선택 시 자동으로 채워져요)</span></div>'
+      + '<div style="background:#fafafa;border-radius:6px;padding:8px 12px;">' + presetRows + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 80px auto;gap:5px;margin-top:8px;">'
+      + '<input type="text" id="vCardPreset-name-' + safeName + '" placeholder="떡 이름" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+      + '<input type="text" id="vCardPreset-floor-' + safeName + '" placeholder="층(선택)" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+      + '<button onclick="event.stopPropagation();vCardAddHallPresetItem(\'' + safeName + '\')" style="padding:6px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+      + '</div></div>';
+  }
+
+  let actionBtns = '';
+  if (!v.isFixed) {
+    actionBtns = '<div style="display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid #eee;" onclick="event.stopPropagation()">'
+      + '<button onclick="editVenueInfo(\'' + safeName + '\')" style="flex:1;padding:8px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;color:var(--brown-mid);cursor:pointer;">✏️ 정보 편집</button>'
+      + '<button onclick="deleteVenue(\'' + safeName + '\')" style="flex:1;padding:8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;font-weight:600;color:#991b1b;cursor:pointer;">🗑 거래처 삭제</button>'
+      + '</div>';
+  } else {
+    actionBtns = '<div style="margin-top:10px;font-size:11px;color:#888;text-align:center;padding:6px;background:#f9fafb;border-radius:6px;">🔒 고정 거래처는 삭제할 수 없어요 (단가 추가/삭제는 가능)</div>';
+  }
+
+  return '<div style="border-top:1px dashed #ddd;margin-top:10px;padding-top:10px;" onclick="event.stopPropagation()">'
+    + extraHtml
+    + '<div style="font-size:11px;font-weight:600;color:#666;margin-bottom:6px;">💰 등록된 단가 <span style="color:#aaa;font-weight:400;">(' + fmtLabels[data.format] + ')</span></div>'
+    + '<div style="background:#fafafa;border-radius:6px;padding:8px 12px;">' + renderPriceRows(data, v.name) + '</div>'
+    + renderPriceAddForm(v, data)
+    + presetHtml
+    + infoHtml
+    + actionBtns
+    + '</div>';
+}
+
+function renderVenuesList() {
+  const container = document.getElementById('venueListContainer');
+  if (!container) return;
+  const all = getAllVenues();
+  const counts = { all: all.length, funeral: 0, wedding: 0, other: 0 };
+  all.forEach(function(v){ counts[v.type] = (counts[v.type]||0) + 1; });
+  ['all','funeral','wedding','other'].forEach(function(k) {
+    const el = document.getElementById('vcount-' + k);
+    if (el) el.textContent = counts[k];
+  });
+
+  const searchEl = document.getElementById('venueSearchInput');
+  const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+  let filtered = currentVenueFilter === 'all' ? all : all.filter(function(v){ return v.type === currentVenueFilter; });
+  if (query) {
+    filtered = filtered.filter(function(v){ return v.name.toLowerCase().indexOf(query) !== -1; });
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;font-size:13px;">' + (query ? '"' + query + '" 검색 결과 없음' : '해당 거래처가 없어요.') + '</div>';
+    return;
+  }
+
+  const typeBadges = {
+    funeral: { bg:'#FAECE7', fg:'#712B13', label:'장례식' },
+    wedding: { bg:'#FBEAF0', fg:'#72243E', label:'웨딩' },
+    other:   { bg:'#E6F1FB', fg:'#0C447C', label:'기타' },
+  };
+  container.innerHTML = filtered.map(function(v) {
+    const b = typeBadges[v.type] || typeBadges.other;
+    const priceCount = countVenuePrices(v.name, v.type);
+    const priceText = priceCount > 0 ? '단가 ' + priceCount + '종' : '단가 미등록';
+    const fixedBadge = v.isFixed
+      ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:#F1EFE8;color:#444441;font-weight:600;">고정</span>'
+      : '';
+    const isExpanded = (expandedVenueName === v.name);
+    const detailHtml = isExpanded ? renderVenueDetail(v) : '';
+    const arrow = isExpanded ? '▲' : '▼';
+    return '<div style="background:#fff;border:0.5px solid ' + (isExpanded?'#3D2314':'#e5e7eb') + ';border-radius:10px;padding:12px 14px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;cursor:pointer;" onclick="toggleVenueExpand(\'' + v.name.replace(/'/g,"\\'") + '\')">'
+      + '<span style="font-size:14px;font-weight:700;color:var(--brown-deep);">' + v.name + '</span>'
+      + '<span style="display:flex;gap:4px;align-items:center;">'
+      + '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:' + b.bg + ';color:' + b.fg + ';font-weight:600;">' + b.label + '</span>'
+      + fixedBadge
+      + '<span style="font-size:11px;color:#888;margin-left:4px;">' + arrow + '</span>'
+      + '</span></div>'
+      + '<div style="font-size:11px;color:#888;cursor:pointer;" onclick="toggleVenueExpand(\'' + v.name.replace(/'/g,"\\'") + '\')">' + priceText + (v.subtitle ? ' · ' + v.subtitle : '') + '</div>'
+      + detailHtml
+      + '</div>';
+  }).join('');
+}
+
+// ── 새 거래처 추가 모달 ─────────────────────────────────────
+let newVenueType = null;
+let newVenueOtherUnit = 'kg';
+
+function openVenueAddModal() {
+  document.getElementById('newVenueName').value = '';
+  ['newVenueRegno','newVenueCeo','newVenueTel','newVenueManager','newVenueAddr','newVenueManagerTel'].forEach(function(id){
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const groupSel = document.getElementById('newVenueFuneralGroup');
+  if (groupSel) groupSel.value = 'own';
+  const copies = document.getElementById('newVenueCopies');
+  if (copies) copies.value = '2';
+  newVenueType = null;
+  newVenueOtherUnit = 'kg';
+  document.querySelectorAll('.venue-type-btn').forEach(function(b){
+    b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; b.style.borderColor = 'var(--border)';
+  });
+  selectNewOtherUnit('kg');
+  document.getElementById('newVenueFuneralSection').style.display = 'none';
+  document.getElementById('newVenueWeddingNote').style.display = 'none';
+  document.getElementById('newVenueOtherSection').style.display = 'none';
+  document.getElementById('newVenueInfoSection').style.display = 'none';
+  document.getElementById('newVenueCopiesRow').style.display = 'none';
+
+  // 편집 모드 잔여 상태 완전 리셋
+  const nameInput = document.getElementById('newVenueName');
+  if (nameInput) { nameInput.disabled = false; nameInput.style.background = '#fff'; }
+  document.querySelectorAll('.venue-type-btn').forEach(function(b){
+    b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer';
+  });
+  if (groupSel) { groupSel.disabled = false; groupSel.style.background = '#fff'; }
+  document.querySelectorAll('.newOtherUnit-btn').forEach(function(b){
+    b.disabled = false; b.style.opacity = '1';
+  });
+  const modal = document.querySelector('#venueAddModal .modal');
+  const h3 = modal && modal.querySelector('h3');
+  if (h3) h3.textContent = '🏢 새 거래처 추가';
+  const saveBtn = modal && modal.querySelector('.modal-actions .btn-primary');
+  if (saveBtn) { saveBtn.textContent = '💾 저장'; saveBtn.onclick = saveNewVenue; }
+
+  document.getElementById('venueAddModal').style.display = 'flex';
+}
+
+function closeVenueAddModal() {
+  document.getElementById('venueAddModal').style.display = 'none';
+}
+
+function selectNewVenueType(type) {
+  newVenueType = type;
+  document.querySelectorAll('.venue-type-btn').forEach(function(b){
+    const isActive = b.dataset.type === type;
+    if (isActive) {
+      b.style.background = 'var(--brown-deep)'; b.style.color = '#fff'; b.style.borderColor = 'var(--brown-deep)';
+    } else {
+      b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; b.style.borderColor = 'var(--border)';
+    }
+  });
+  document.getElementById('newVenueFuneralSection').style.display = type === 'funeral' ? 'block' : 'none';
+  document.getElementById('newVenueWeddingNote').style.display = type === 'wedding' ? 'block' : 'none';
+  document.getElementById('newVenueOtherSection').style.display = type === 'other' ? 'block' : 'none';
+  document.getElementById('newVenueInfoSection').style.display = (type === 'wedding' || type === 'other') ? 'block' : 'none';
+  document.getElementById('newVenueCopiesRow').style.display = type === 'wedding' ? 'flex' : 'none';
+}
+
+function selectNewOtherUnit(unit) {
+  newVenueOtherUnit = unit;
+  document.querySelectorAll('.newOtherUnit-btn').forEach(function(b){
+    const isActive = b.dataset.unit === unit;
+    if (isActive) { b.style.background = '#3b82f6'; b.style.color = '#fff'; b.style.borderColor = '#3b82f6'; }
+    else { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; b.style.borderColor = 'var(--border)'; }
+  });
+}
+
+function saveNewVenue() {
+  const name = document.getElementById('newVenueName').value.trim();
+  if (!name) { showToast('거래처 이름을 입력해주세요.', 'error'); return; }
+  if (!newVenueType) { showToast('거래처 구분을 선택해주세요.', 'error'); return; }
+
+  if (FIXED_VENUES.some(function(f){ return f.name === name; })) { showToast('이미 있는 고정 거래처와 이름이 같아요.', 'error'); return; }
+  if (newVenueType === 'funeral' && (extraVenues.funeral||[]).some(function(v){ return v.name === name; })) {
+    showToast('이미 등록된 장례식장이에요.', 'error'); return;
+  }
+  if (newVenueType === 'wedding' && (extraVenues.wedding||[]).some(function(v){ return (typeof v==='object'?v.name:v) === name; })) {
+    showToast('이미 등록된 웨딩홀이에요.', 'error'); return;
+  }
+  if (newVenueType === 'other' && (otherVenues||[]).some(function(v){ return v.name === name; })) {
+    showToast('이미 등록된 기타거래처예요.', 'error'); return;
+  }
+
+  if (newVenueType === 'funeral') {
+    const group = document.getElementById('newVenueFuneralGroup').value;
+    if (!extraVenues.funeral) extraVenues.funeral = [];
+    extraVenues.funeral.push({ name: name, group: group });
+    if (!venuePrices[name]) {
+      venuePrices[name] = {};
+      saveVenuePriceData();
+    }
+    saveExtraVenues();
+  } else if (newVenueType === 'wedding') {
+    if (!extraVenues.wedding) extraVenues.wedding = [];
+    extraVenues.wedding = extraVenues.wedding.map(function(v){ return typeof v==='string' ? {name:v} : v; });
+    extraVenues.wedding.push({
+      name: name,
+      regno: document.getElementById('newVenueRegno').value || '',
+      ceo: document.getElementById('newVenueCeo').value || '',
+      tel: document.getElementById('newVenueTel').value || '',
+      addr: document.getElementById('newVenueAddr').value || '',
+      manager: document.getElementById('newVenueManager').value || '',
+      managerTel: document.getElementById('newVenueManagerTel').value || '',
+      copies: parseInt(document.getElementById('newVenueCopies').value || '2'),
+    });
+    saveExtraVenues();
+  } else if (newVenueType === 'other') {
+    if (typeof otherVenues === 'undefined') return showToast('데이터 오류', 'error');
+    otherVenues.push({
+      name: name,
+      type: newVenueOtherUnit,
+      regno: document.getElementById('newVenueRegno').value || '',
+      ceo: document.getElementById('newVenueCeo').value || '',
+      tel: document.getElementById('newVenueTel').value || '',
+      addr: document.getElementById('newVenueAddr').value || '',
+      manager: document.getElementById('newVenueManager').value || '',
+      managerTel: document.getElementById('newVenueManagerTel').value || '',
+    });
+    localStorage.setItem('otherVenues', JSON.stringify(otherVenues));
+    if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(function(){});
+  }
+
+  showToast('✅ "' + name + '" 추가됐어요!', 'success');
+  closeVenueAddModal();
+  setTimeout(function() {
+    expandedVenueName = name;
+    renderVenuesList();
+    if (typeof renderVenueList === 'function') renderVenueList();
+    if (typeof renderExtraFuneralPriceSections === 'function') renderExtraFuneralPriceSections();
+    if (typeof applyExtraVenuesToSelects === 'function') applyExtraVenuesToSelects();
+    if (typeof updateSettleVenueSelect === 'function') updateSettleVenueSelect();
+  }, 80);
+}
+
+// ── 단가 추가/삭제 + 웨딩홀 프리셋 + 거래처 편집/삭제 ────────
+function vCardAddHallPresetItem(venueName) {
+  const nameEl = document.getElementById('vCardPreset-name-' + venueName);
+  const floorEl = document.getElementById('vCardPreset-floor-' + venueName);
+  const name = nameEl ? nameEl.value.trim() : '';
+  const floor = floorEl ? floorEl.value.trim() : '';
+  if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
+  if (typeof weddingHallPresets === 'undefined') return;
+  if (!weddingHallPresets[venueName]) weddingHallPresets[venueName] = [];
+  weddingHallPresets[venueName].push({ name: name, floor: floor });
+  localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
+  if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({ action: 'saveTteokSettings', data: { weddingHallPresets: weddingHallPresets } }).catch(function(){});
+  showToast('✅ 기본 떡 추가됨', 'success');
+  renderVenuesList();
+  if (typeof renderWeddingPresetList === 'function') renderWeddingPresetList();
+  if (typeof renderPresetHallSelect === 'function') renderPresetHallSelect();
+}
+
+function vCardRemoveHallPresetItem(venueName, idx) {
+  if (typeof weddingHallPresets === 'undefined') return;
+  if (!weddingHallPresets[venueName]) return;
+  const removed = weddingHallPresets[venueName][idx];
+  if (!confirm('"' + (removed ? removed.name : '') + '" 삭제할까요?')) return;
+  weddingHallPresets[venueName].splice(idx, 1);
+  if (weddingHallPresets[venueName].length === 0) delete weddingHallPresets[venueName];
+  localStorage.setItem('weddingHallPresets', JSON.stringify(weddingHallPresets));
+  if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({ action: 'saveTteokSettings', data: { weddingHallPresets: weddingHallPresets } }).catch(function(){});
+  showToast('🗑 삭제됨', '');
+  renderVenuesList();
+  if (typeof renderWeddingPresetList === 'function') renderWeddingPresetList();
+  if (typeof renderPresetHallSelect === 'function') renderPresetHallSelect();
+}
+
+function vCardAddPrice(venueName) {
+  const all = getAllVenues();
+  const v = all.find(function(x){ return x.name === venueName; });
+  if (!v) { showToast('거래처를 찾을 수 없어요.', 'error'); return; }
+  const data = getVenuePriceData(v);
+  const nameEl = document.getElementById('vCardAdd-name-' + venueName);
+  const tteokName = nameEl ? nameEl.value.trim() : '';
+  if (!tteokName) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
+
+  if (data.format === '5kg-10kg') {
+    const p5El = document.getElementById('vCardAdd-p5-' + venueName);
+    const p10El = document.getElementById('vCardAdd-p10-' + venueName);
+    const p5 = parseInt(p5El.value) || 0;
+    const p10 = parseInt(p10El.value) || 0;
+    if (!p5 && !p10) { showToast('5kg 또는 10kg 가격을 입력해주세요.', 'error'); return; }
+    if (data.storeKey) {
+      if (!venuePrices[data.storeKey]) venuePrices[data.storeKey] = {};
+      venuePrices[data.storeKey][tteokName] = { price5: p5, price10: p10 };
+      saveVenuePriceData();
+    }
+  } else {
+    const pEl = document.getElementById('vCardAdd-p-' + venueName);
+    const price = parseInt(pEl.value) || 0;
+    if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
+    if (data.storeKey && data.storeKey.indexOf('other:') === 0) {
+      const key = data.storeKey.slice(6);
+      if (!otherVenuePrices[key]) otherVenuePrices[key] = {};
+      otherVenuePrices[key][tteokName] = (data.unit === '5kg') ? { price5: price } : price;
+      localStorage.setItem('otherVenuePrices', JSON.stringify(otherVenuePrices));
+      if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({action:'saveTteokSettings',data:{otherVenues, otherVenuePrices}}).catch(function(){});
+    } else if (data.storeKey) {
+      if (!venuePrices[data.storeKey]) venuePrices[data.storeKey] = {};
+      venuePrices[data.storeKey][tteokName] = (data.format === '5kg') ? { price5: price } : price;
+      saveVenuePriceData();
+    }
+  }
+
+  showToast('✅ 단가 추가됐어요!', 'success');
+  renderVenuesList();
+  if (data.storeKey && typeof renderVenuePrices === 'function' && data.storeKey.indexOf('other:') === -1) renderVenuePrices(data.storeKey);
+  if (typeof updateVenueTteokSelect === 'function') {
+    if (v.type === 'funeral') updateVenueTteokSelect('f_tteokSelect', 'funeral');
+    if (v.type === 'wedding') updateVenueTteokSelect('w_tteokSelect', 'wedding');
+  }
+}
+
+function vCardRemovePrice(storeKey, tteokName, venueName) {
+  if (!confirm('"' + tteokName + '" 단가를 삭제할까요?')) return;
+  if (storeKey.indexOf('other:') === 0) {
+    const key = storeKey.slice(6);
+    if (otherVenuePrices[key]) {
+      delete otherVenuePrices[key][tteokName];
+      localStorage.setItem('otherVenuePrices', JSON.stringify(otherVenuePrices));
+      if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({action:'saveTteokSettings',data:{otherVenues, otherVenuePrices}}).catch(function(){});
+    }
+  } else if (venuePrices[storeKey]) {
+    delete venuePrices[storeKey][tteokName];
+    saveVenuePriceData();
+  }
+  showToast('🗑 ' + tteokName + ' 삭제됨', '');
+  renderVenuesList();
+  if (typeof renderVenuePrices === 'function' && storeKey.indexOf('other:') === -1) renderVenuePrices(storeKey);
+}
+
+function editVenueInfo(venueName) {
+  const all = getAllVenues();
+  const v = all.find(function(x){ return x.name === venueName; });
+  if (!v || v.isFixed) return;
+
+  openVenueAddModal();
+  document.getElementById('newVenueName').value = v.name;
+  document.getElementById('newVenueName').disabled = true;
+  document.getElementById('newVenueName').style.background = '#f3f4f6';
+  selectNewVenueType(v.type);
+  document.querySelectorAll('.venue-type-btn').forEach(function(b){ b.disabled = true; b.style.opacity = '0.6'; b.style.cursor = 'not-allowed'; });
+
+  if (v.type === 'funeral') {
+    const groupSel = document.getElementById('newVenueFuneralGroup');
+    if (groupSel) { groupSel.value = v.group || 'own'; groupSel.disabled = true; groupSel.style.background = '#f3f4f6'; }
+  } else if (v.type === 'wedding') {
+    document.getElementById('newVenueRegno').value = (v.info && v.info.regno) || '';
+    document.getElementById('newVenueCeo').value = (v.info && v.info.ceo) || '';
+    document.getElementById('newVenueTel').value = (v.info && v.info.tel) || '';
+    document.getElementById('newVenueAddr').value = (v.info && v.info.addr) || '';
+    document.getElementById('newVenueManager').value = (v.info && v.info.manager) || '';
+    document.getElementById('newVenueManagerTel').value = (v.info && v.info.managerTel) || '';
+    document.getElementById('newVenueCopies').value = ((v.info && v.info.copies) || 2) + '';
+  } else if (v.type === 'other') {
+    selectNewOtherUnit((v.info && v.info.type) || 'kg');
+    document.querySelectorAll('.newOtherUnit-btn').forEach(function(b){ b.disabled = true; b.style.opacity = '0.6'; });
+    document.getElementById('newVenueRegno').value = (v.info && v.info.regno) || '';
+    document.getElementById('newVenueCeo').value = (v.info && v.info.ceo) || '';
+    document.getElementById('newVenueTel').value = (v.info && v.info.tel) || '';
+    document.getElementById('newVenueAddr').value = (v.info && v.info.addr) || '';
+    document.getElementById('newVenueManager').value = (v.info && v.info.manager) || '';
+    document.getElementById('newVenueManagerTel').value = (v.info && v.info.managerTel) || '';
+  }
+
+  const modal = document.querySelector('#venueAddModal .modal');
+  const h3 = modal.querySelector('h3');
+  if (h3) h3.textContent = '✏️ ' + v.name + ' 정보 편집';
+  const saveBtn = modal.querySelector('.modal-actions .btn-primary');
+  if (saveBtn) { saveBtn.textContent = '💾 저장'; saveBtn.onclick = function(){ saveVenueInfoEdit(v.name); }; }
+}
+
+function saveVenueInfoEdit(venueName) {
+  const all = getAllVenues();
+  const v = all.find(function(x){ return x.name === venueName; });
+  if (!v) return;
+
+  if (v.type === 'wedding') {
+    const idx = (extraVenues.wedding||[]).findIndex(function(x){ return (typeof x==='object'?x.name:x) === venueName; });
+    if (idx === -1) return;
+    extraVenues.wedding[idx] = {
+      name: venueName,
+      regno: document.getElementById('newVenueRegno').value || '',
+      ceo: document.getElementById('newVenueCeo').value || '',
+      tel: document.getElementById('newVenueTel').value || '',
+      addr: document.getElementById('newVenueAddr').value || '',
+      manager: document.getElementById('newVenueManager').value || '',
+      managerTel: document.getElementById('newVenueManagerTel').value || '',
+      copies: parseInt(document.getElementById('newVenueCopies').value || '2'),
+    };
+    saveExtraVenues();
+  } else if (v.type === 'other') {
+    const idx = (otherVenues||[]).findIndex(function(x){ return x.name === venueName; });
+    if (idx === -1) return;
+    otherVenues[idx] = {
+      name: venueName,
+      type: otherVenues[idx].type,
+      regno: document.getElementById('newVenueRegno').value || '',
+      ceo: document.getElementById('newVenueCeo').value || '',
+      tel: document.getElementById('newVenueTel').value || '',
+      addr: document.getElementById('newVenueAddr').value || '',
+      manager: document.getElementById('newVenueManager').value || '',
+      managerTel: document.getElementById('newVenueManagerTel').value || '',
+    };
+    localStorage.setItem('otherVenues', JSON.stringify(otherVenues));
+    if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(function(){});
+  }
+
+  showToast('✅ "' + venueName + '" 정보 업데이트됨', 'success');
+  closeVenueAddModal();
+  renderVenuesList();
+}
+
+function deleteVenue(venueName) {
+  const all = getAllVenues();
+  const v = all.find(function(x){ return x.name === venueName; });
+  if (!v || v.isFixed) { showToast('고정 거래처는 삭제할 수 없어요.', 'error'); return; }
+  if (!confirm('"' + venueName + '" 거래처를 삭제할까요?\n등록된 단가도 함께 삭제돼요.\n(주문 기록은 그대로 남아요)')) return;
+
+  if (v.type === 'funeral') {
+    extraVenues.funeral = (extraVenues.funeral || []).filter(function(x){ return x.name !== venueName; });
+    if (venuePrices[venueName]) {
+      delete venuePrices[venueName];
+      saveVenuePriceData();
+    }
+  } else if (v.type === 'wedding') {
+    extraVenues.wedding = (extraVenues.wedding || []).filter(function(x){ return (typeof x==='object'?x.name:x) !== venueName; });
+  } else if (v.type === 'other') {
+    if (typeof otherVenues !== 'undefined') {
+      otherVenues.splice(0, otherVenues.length, ...otherVenues.filter(function(x){ return x.name !== venueName; }));
+      if (otherVenuePrices[venueName]) delete otherVenuePrices[venueName];
+      localStorage.setItem('otherVenues', JSON.stringify(otherVenues));
+      localStorage.setItem('otherVenuePrices', JSON.stringify(otherVenuePrices));
+      if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({action:'saveTteokSettings',data:{otherVenues, otherVenuePrices}}).catch(function(){});
+    }
+  }
+  saveExtraVenues();
+  expandedVenueName = null;
+  showToast('🗑 ' + venueName + ' 삭제됨', '');
+  renderVenuesList();
+  if (typeof renderVenueList === 'function') renderVenueList();
+  if (typeof applyExtraVenuesToSelects === 'function') applyExtraVenuesToSelects();
+  if (typeof updateSettleVenueSelect === 'function') updateSettleVenueSelect();
+}
 
 function saveExtraVenues() {
   localStorage.setItem('extraVenues', JSON.stringify(extraVenues));
