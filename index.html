@@ -11154,6 +11154,39 @@ function clearFuneralFilter() {
   renderFuneralList();
 }
 
+// 수정 모달용 장례식장 거래처 옵션 동적 생성
+// (접수 폼의 f_funeralName 구조와 사용자 추가 거래처 반영)
+function buildFuneralVenueOptions(selectedVenue) {
+  const sel = selectedVenue || '';
+  const optTag = (name) => `<option value="${name}"${name === sel ? ' selected' : ''}>${name}</option>`;
+
+  // 기본 거래처
+  const chungdaeBase = ['충대장례식장','충대본관영양','소비조합','재활환자','재활직원'];
+  const daecheongBase = ['대청장례식장'];
+
+  // 사용자 추가 거래처
+  const extras = (typeof extraVenues !== 'undefined' && extraVenues.funeral) ? extraVenues.funeral : [];
+  const chungdaeExtras = extras.filter(v => v && v.group === 'chungdae').map(v => v.name).filter(Boolean);
+  const daecheongExtras = extras.filter(v => v && v.group === 'daecheong').map(v => v.name).filter(Boolean);
+  const ownExtras = extras.filter(v => v && v.group === 'own').map(v => v.name).filter(Boolean);
+
+  let html = `<option value=""${sel === '' ? ' selected' : ''}>-- 선택 --</option>`;
+  html += `<optgroup label="충대장례식장">${chungdaeBase.concat(chungdaeExtras).map(optTag).join('')}</optgroup>`;
+  html += `<optgroup label="대청장례식장">${daecheongBase.concat(daecheongExtras).map(optTag).join('')}</optgroup>`;
+  if (ownExtras.length > 0) {
+    html += `<optgroup label="추가 거래처">${ownExtras.map(optTag).join('')}</optgroup>`;
+  }
+
+  // 안전장치: 저장된 거래처가 위 목록 어디에도 없으면 보존용 옵션 추가
+  // (옛 거래처명이 남아있거나, 거래처가 삭제된 주문의 데이터 보존)
+  const allKnown = chungdaeBase.concat(chungdaeExtras, daecheongBase, daecheongExtras, ownExtras);
+  if (sel && !allKnown.includes(sel)) {
+    html += `<optgroup label="기타"><option value="${sel}" selected>${sel} (저장된 값)</option></optgroup>`;
+  }
+
+  return html;
+}
+
 function openFuneralModal(id) {
   const o = funeralOrders.find(x => String(x.id) === String(id));
   if (!o) return;
@@ -11177,8 +11210,7 @@ function openFuneralModal(id) {
   document.getElementById('modalEditContent').innerHTML = `
     <div class="modal-detail-row"><span class="modal-detail-label">장례식장</span>
       <select id="ef_funeralName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-        <option value="충대장례식장" ${(o.funeralName||o.receiverName)==='충대장례식장'?'selected':''}>충대장례식장</option>
-        <option value="대청장례식장" ${(o.funeralName||o.receiverName)==='대청장례식장'?'selected':''}>대청장례식장</option>
+        ${buildFuneralVenueOptions(o.funeralName || o.receiverName)}
       </select>
     </div>
     <div class="modal-detail-row"><span class="modal-detail-label">빈소 위치</span><input id="ef_binsoLocation" value="${o.binsoLocation||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
@@ -11286,8 +11318,8 @@ function initEditModalTteok(order, venueType) {
   efUpdateTteokSelect(venueName, venueType);
   efUpdateQtyUI(venueName, venueType);
   efRenderTteokList();
-  // 모달 열릴 때 단가 자동 재계산
-  setTimeout(() => efCalcPrice(), 50);
+  // 모달 열 때는 자동 재계산하지 않음 (저장된 금액 보존)
+  // 사용자가 떡 항목/거래처/수량을 실제로 변경할 때만 efCalcPrice가 호출됨
 }
 
 function efUpdateTteokSelect(venueName, venueType) {
@@ -11371,37 +11403,53 @@ function efCalcPrice() {
     : '';
   let total = 0;
   editModalTteokItems.forEach(item => {
+    // 층 접두어가 붙은 경우 단가표 조회용 이름 추출
+    // (예: name="2층 백설기", baseName="백설기" → "백설기"로 조회)
+    const lookupName = item.baseName || String(item.name||'').replace(/^[0-9]+층\s*/, '');
+    const qtyStr = String(item.qty||'').trim();
     const looked = (() => {
       if (editModalVenueType === 'funeral') {
         if (venueName === '대청장례식장') {
-          const p = (venuePrices['daecheong'] || {})[item.name];
+          const p = (venuePrices['daecheong'] || {})[lookupName];
           if (p) {
-            const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 5;
+            const qtyNum = parseFloat(qtyStr.replace(/[^0-9.]/g,'')) || 5;
             let bp = qtyNum >= 10 && p.price10 ? p.price10 : (p.price5||0);
             return bp;
           }
         } else if (venueName === '충대장례식장') {
-          const p = (venuePrices['chungdae'] || {})[item.name];
-          return p ? (p.price5||0) : 0;
+          // 충대: 5kg 고정가격, 10kg=×2, 15kg=×3, 20kg=×4
+          // priceVal이 객체({price5})로 저장된 경우와 숫자로 저장된 경우 둘 다 처리
+          const priceVal = (venuePrices['chungdae'] || {})[lookupName];
+          if (!priceVal) return 0;
+          const p5 = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
+          if (qtyStr === '5kg') return p5;
+          if (qtyStr === '10kg') return p5 * 2;
+          if (qtyStr === '15kg') return p5 * 3;
+          if (qtyStr === '20kg') return p5 * 4;
+          const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
+          if (numMatch) {
+            const units5 = Math.floor(parseFloat(numMatch[1]) / 5);
+            return units5 * p5;
+          }
+          return p5; // 수량 정보가 없으면 기본 5kg 단가
         } else {
-          const kgP = (venuePrices['chungdae_restaurant'] || {})[item.name] || 0;
-          const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
+          const kgP = (venuePrices['chungdae_restaurant'] || {})[lookupName] || 0;
+          const qtyNum = parseFloat(qtyStr.replace(/[^0-9.]/g,'')) || 0;
           return kgP * qtyNum;
         }
       } else if (editModalVenueType === 'wedding') {
-        // baseName 우선, 없으면 층 접두어 제거한 name으로 조회
-        const lookupName = item.baseName || String(item.name||'').replace(/^[0-9]+층\s*/, '');
         const kgP = (venuePrices['wedding'] || {})[lookupName] || 0;
-        const qtyNum = parseFloat(String(item.qty||'').replace(/[^0-9.]/g,'')) || 0;
+        const qtyNum = parseFloat(qtyStr.replace(/[^0-9.]/g,'')) || 0;
         return Math.round(kgP * qtyNum);
       }
       return 0;
     })();
     total += looked || 0;
   });
+  total = Math.round(total);
   const el = document.getElementById('ef_priceProduct');
   const ewEl = document.getElementById('ew_priceProduct');
-  // total이 0이어도 업데이트 (새 항목 추가로 기존 단가 사라지는 문제 방지)
+  // 사용자가 항목/수량/거래처를 실제로 변경했을 때만 호출되므로 그대로 반영
   if (el) { el.value = total; calcFuneralEditTotal(); }
   if (ewEl) { ewEl.value = total; calcWeddingEditTotal(); }
 }
