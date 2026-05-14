@@ -10654,13 +10654,33 @@ function printInvoice(order, orderType) {
 
   // 웨딩홀 전용 명세서 (품목/수량/단가/금액 + 부가세10%포함 + 정산)
   const makeWeddingSlip = (copy) => {
-    // 정산 정보 (전미수금)
-    const ym = (order.deliveryDate||'').slice(0,7);
-    const prevDate = new Date((order.deliveryDate||'').slice(0,4), parseInt((order.deliveryDate||'0000-00').slice(5,7))-2, 1);
-    const prevYm = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
-    const prevOrders = (window._allWeddingOrders||[]).filter(o => (o.weddingName||o.hallName||'') === venueName && String(o.deliveryDate||'').startsWith(prevYm));
+    // 정산 정보 (전미수금) — 같은 웨딩홀의 "이 주문 이전" 모든 미결제 누적
+    const currentDate = String(order.deliveryDate||'');
+    const currentId = String(order.id||'');
+
+    // 1) 같은 웨딩홀의 이 주문 이전(이전 날짜 + 같은 날짜이면서 다른 주문) 모든 납품 합계
+    //    - 자기 자신은 반드시 제외 (id 기준)
+    //    - 같은 날짜의 다른 주문은 미수에 포함하지 않음 (오늘 매출은 '금일 매출액'에서 다룸)
+    const allWedding = (typeof weddingOrders !== 'undefined' && Array.isArray(weddingOrders))
+      ? weddingOrders
+      : (window._allWeddingOrders || []);
+    const prevOrders = allWedding.filter(o => {
+      const hallName = o.weddingName || o.hallName || '';
+      if (hallName !== venueName) return false;
+      if (String(o.id||'') === currentId) return false; // 자기 자신 제외
+      const d = String(o.deliveryDate||'');
+      if (!d) return false;
+      return d < currentDate; // 이전 날짜만 누적
+    });
     const prevTotal = prevOrders.reduce((s,o) => s+(Number(o.priceTotal)||0), 0);
-    const prevPaid = ((paymentRecords||{})[venueName+'_'+prevYm]||[]).reduce((s,p) => s+(Number(p.amount)||0), 0);
+
+    // 2) 같은 웨딩홀의 모든 결제 내역 합계 (모든 월 키 합산)
+    const venuePrefix = venueName + '_';
+    const prevPaid = Object.keys(paymentRecords||{})
+      .filter(k => k.indexOf(venuePrefix) === 0)
+      .reduce((s, k) => s + (paymentRecords[k]||[]).reduce((ss,p) => ss + (Number(p.amount)||0), 0), 0);
+
+    // 3) 누적 미수금 = 이전 모든 납품 - 모든 결제
     const prevCarryover = Math.max(0, prevTotal - prevPaid);
     const todaySales = displayTotal;
     const grandTotal = prevCarryover + todaySales;
