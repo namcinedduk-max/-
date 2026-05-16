@@ -8342,8 +8342,8 @@ function onTteokSelectChange() {
 
 function addTteokItemFromSet() {
   const setType = window._currentSetType;
-  // 덕세트는 별도 함수로 처리
-  if (setType === '덕세트' || setType === '덕6구세트') {
+  // 덕세트(프리셋 구성)만 별도 함수로 처리. 덕6구세트는 코리아처럼 직접 구성이므로 아래 로직 사용
+  if (setType === '덕세트') {
     addDeokSetItem();
     return;
   }
