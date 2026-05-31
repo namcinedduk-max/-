@@ -7170,15 +7170,25 @@ function renderQuickCell(o) {
 }
 
 // 행 강조 스타일
-function quickAlarmRowStyle(o) {
+function quickAlarmRowClass(o) {
   if (!QUICK_ALARM.enabled || !isQuickFuneral(o) || isQuickSent(o)) return '';
   const created = getOrderCreatedMs(o);
   if (created == null) return '';
   const min = Math.floor((Date.now() - created) / 60000);
-  if (min >= QUICK_ALARM.minutes && min <= QUICK_ALARM.stopAfterMin) {
-    return 'background:#fee2e2 !important;border-left:5px solid #dc2626 !important;';
-  }
-  return '';
+  return (min >= QUICK_ALARM.minutes && min <= QUICK_ALARM.stopAfterMin) ? 'quick-overdue-row' : '';
+}
+
+// 목록을 다시 그리지 않고 "N분 경과"·강조만 제자리 갱신
+function refreshQuickCells() {
+  const rows = document.querySelectorAll('#funeralTableBody tr[data-fid]');
+  if (!rows.length || typeof funeralOrders === 'undefined') return;
+  rows.forEach(tr => {
+    const o = funeralOrders.find(x => String(x.id) === tr.dataset.fid);
+    if (!o) return;
+    const cell = tr.querySelector('.quick-cell');
+    if (cell) cell.innerHTML = renderQuickCell(o);
+    tr.classList.toggle('quick-overdue-row', quickAlarmRowClass(o) === 'quick-overdue-row');
+  });
 }
 
 /* ---- 소리 ---- */
@@ -7189,10 +7199,12 @@ function _ensureQuickAudio() {
   } catch (e) {}
   return _quickAudioCtx;
 }
-// 브라우저는 사용자 동작 전엔 소리를 막음 → 첫 터치/클릭에서 오디오 준비
-['click', 'touchstart', 'keydown'].forEach(ev =>
-  document.addEventListener(ev, _ensureQuickAudio, { once: true })
+// 앱을 쓰면서 누르는 아무 클릭/터치에서 오디오 자동 준비 (소리 테스트 불필요)
+['click', 'touchstart', 'keydown', 'pointerdown'].forEach(ev =>
+  document.addEventListener(ev, _ensureQuickAudio, { passive: true })
 );
+// 다른 창 갔다 돌아오면 다시 준비
+document.addEventListener('visibilitychange', () => { if (!document.hidden) _ensureQuickAudio(); });
 
 const QUICK_BEEP_COUNT = 12;   // 울리는 삐 소리 개수 (늘리면 더 길게)
 function playQuickAlarmSound() {
@@ -7271,6 +7283,7 @@ function quickSnooze() {
 
 /* ---- 핵심: 검사 + 알림 ---- */
 function checkQuickAlarms() {
+  refreshQuickCells();   // "N분 경과"·강조 제자리 갱신 (목록 새로고침 없이도 째깍째깍)
   if (!QUICK_ALARM.enabled) { hideQuickBanner(); return; }
   const now = Date.now();
   const minTh = QUICK_ALARM.minutes;
@@ -7333,7 +7346,7 @@ function initQuickAlarm() {
 // 깜빡임 애니메이션
 (function () {
   const st = document.createElement('style');
-  st.textContent = '@keyframes quickBlink{0%,100%{opacity:1}50%{opacity:0.35}} .quick-blink{animation:quickBlink 1s infinite;}';
+  st.textContent = '@keyframes quickBlink{0%,100%{opacity:1}50%{opacity:0.35}} .quick-blink{animation:quickBlink 1s infinite;} #funeralTableBody tr.quick-overdue-row{background:#fee2e2 !important;border-left:5px solid #dc2626 !important;}';
   document.head.appendChild(st);
 })();
 
@@ -11431,8 +11444,7 @@ function renderFuneralList() {
       ? 'background:#fdf3e8;border-left:4px solid #FF9800;'
       : '';
     const nameColor = o.funeralName === '대청장례식장' ? 'color:#1565C0;' : o.funeralName === '충대장례식장' ? 'color:#E65100;' : '';
-    const overdueStyle = quickAlarmRowStyle(o);
-    return `<tr onclick="openFuneralModal(${o.id})" style="cursor:pointer;${funeralColor}${overdueStyle}">
+    return `<tr data-fid="${o.id}" class="${quickAlarmRowClass(o)}" onclick="openFuneralModal(${o.id})" style="cursor:pointer;${funeralColor}">
       <td style="color:var(--brown-light);font-size:12px;">#${i+1}</td>
       <td style="font-size:11px;color:#666;white-space:nowrap;">${(() => {
         const s = String(o.createdAt||'');
@@ -11450,7 +11462,7 @@ function renderFuneralList() {
       <td style="font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
       <td>${payBadge}</td>
       <td style="font-size:12px;">${o.staffName}</td>
-      <td onclick="event.stopPropagation();" style="white-space:nowrap;">${renderQuickCell(o)}</td>
+      <td class="quick-cell" onclick="event.stopPropagation();" style="white-space:nowrap;">${renderQuickCell(o)}</td>
       <td style="white-space:nowrap;">
         <button onclick="event.stopPropagation();printInvoice(funeralOrders.find(x=>String(x.id)===String('${o.id}')), 'funeral')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
         <button class="btn-small btn-danger" onclick="event.stopPropagation();deleteFuneralOrder(${o.id})" style="padding:4px 10px;font-size:11px;">삭제</button>
