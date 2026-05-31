@@ -10509,7 +10509,7 @@ function printInvoice(order, orderType) {
 
   const items = order.tteokItems && order.tteokItems.length > 0 ? order.tteokItems : [];
   const totalAmount = Number(order.priceTotal) || 0;
-  const minRows = 10;
+  const minRows = 8;
   // 거래처별 단가 조회 함수
   function getItemPrice(itemName, qty, type, vname) {
     const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
@@ -10577,10 +10577,10 @@ function printInvoice(order, orderType) {
     }
 
     return `<tr>
-      <td style="border:0.5px solid #999;padding:0;height:22px;font-size:10px;padding-left:4px;">${item.name||''}</td>
-      <td style="border:0.5px solid #999;text-align:center;font-size:10px;">${item.qty||''}</td>
-      <td style="border:0.5px solid #999;text-align:right;font-size:10px;padding-right:3px;">${unitPrice > 0 ? unitPrice.toLocaleString() : ''}</td>
-      <td style="border:0.5px solid #999;text-align:right;font-size:10px;padding-right:3px;font-weight:bold;">${displayAmount > 0 ? displayAmount.toLocaleString() : ''}</td>
+      <td style="border:0.5px solid #999;padding:0;height:36px;font-size:16px;padding-left:4px;">${item.name||''}</td>
+      <td style="border:0.5px solid #999;text-align:center;font-size:16px;">${item.qty||''}</td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:16px;padding-right:3px;">${unitPrice > 0 ? unitPrice.toLocaleString() : ''}</td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:16px;padding-right:3px;font-weight:bold;">${displayAmount > 0 ? displayAmount.toLocaleString() : ''}</td>
     </tr>`;
   }).join('');
 
@@ -10593,61 +10593,61 @@ function printInvoice(order, orderType) {
   }, 0);
   const displayTotal = calcTotal > 0 ? calcTotal : totalAmount;
   const blankRows = Array(Math.max(0, minRows - items.length)).fill(
-    '<tr><td style="border:0.5px solid #999;height:22px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
+    '<tr><td style="border:0.5px solid #999;height:36px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
   ).join('');
 
   const makeSlip = (copy) => `
     <div style="flex:1;min-width:0;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;">
       <div style="text-align:center;margin-bottom:6px;">
-        <div style="font-size:14px;font-weight:bold;letter-spacing:4px;margin-bottom:3px;">거 래 명 세 표</div>
-        <span style="font-size:9px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 10px;color:${copy.color};">${copy.label}</span>
+        <div style="font-size:22px;font-weight:bold;letter-spacing:4px;margin-bottom:4px;">거 래 명 세 표</div>
+        <span style="font-size:14px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:3px 12px;color:${copy.color};">${copy.label}</span>
       </div>
       <table style="width:100%;border-collapse:collapse;margin-bottom:5px;">
         <tr>
           <td style="border:0.5px solid #999;padding:3px 5px;width:50%;vertical-align:top;">
-            <div style="color:#888;font-size:7px;margin-bottom:1px;">공 급 자</div>
-            <div style="display:flex;align-items:center;gap:4px;margin-bottom:1px;">
-              <div style="font-weight:bold;font-size:10px;">${company}</div>
+            <div style="color:#888;font-size:12px;margin-bottom:2px;">공 급 자</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;">
+              <div style="font-weight:bold;font-size:16px;">${company}</div>
               ${sealImg ? `<img src="${sealImg}" style="height:26px;opacity:0.9;flex-shrink:0;">` : ''}
             </div>
-            <div style="font-size:7px;color:#555;">사업자: ${regno}</div>
-            <div style="font-size:7px;color:#555;">대표: ${ceo} | 업태: ${bizType} / ${bizItem}</div>
-            <div style="font-size:7px;color:#555;">전화: ${tel}</div>
-            <div style="font-size:7px;color:#555;">${addr}</div>
+            <div style="font-size:12px;color:#555;">사업자: ${regno}</div>
+            <div style="font-size:12px;color:#555;">대표: ${ceo} | 업태: ${bizType} / ${bizItem}</div>
+            <div style="font-size:12px;color:#555;">전화: ${tel}</div>
+            <div style="font-size:12px;color:#555;">${addr}</div>
           </td>
           <td style="border:0.5px solid #999;border-left:none;padding:3px 5px;width:50%;vertical-align:top;">
-            <div style="color:#888;font-size:7px;margin-bottom:1px;">공급받는자</div>
-            <div style="font-weight:bold;font-size:10px;">${venueName}${subInfo ? ' / ' + subInfo : ''}${order.deceasedName ? ' / 故 '+order.deceasedName : ''}</div>
-            ${order.deceasedName ? `<div style="font-size:7px;color:#555;font-weight:700;">고인: ${order.deceasedName}</div>` : ''}
-            ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
-            ${venueCeo ? `<div style="font-size:7px;color:#555;">대표: ${venueCeo}</div>` : ''}
-            ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
-            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${normalizeDateStr(String(order.deliveryDate||''))} ${normalizeTimeStr(order.deliveryTime)||''}</div>
+            <div style="color:#888;font-size:12px;margin-bottom:2px;">공급받는자</div>
+            <div style="font-weight:bold;font-size:16px;">${venueName}${subInfo ? ' / ' + subInfo : ''}${order.deceasedName ? ' / 故 '+order.deceasedName : ''}</div>
+            ${order.deceasedName ? `<div style="font-size:12px;color:#555;font-weight:700;">고인: ${order.deceasedName}</div>` : ''}
+            ${venueRegno ? `<div style="font-size:12px;color:#555;">사업자: ${venueRegno}</div>` : ''}
+            ${venueCeo ? `<div style="font-size:12px;color:#555;">대표: ${venueCeo}</div>` : ''}
+            ${venueTel ? `<div style="font-size:12px;color:#555;">전화: ${venueTel}</div>` : ''}
+            <div style="font-size:12px;color:#555;margin-top:3px;">납품일: ${normalizeDateStr(String(order.deliveryDate||''))} ${normalizeTimeStr(order.deliveryTime)||''}</div>
           </td>
         </tr>
       </table>
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;flex:1;">
         <thead><tr style="background:#f0f0f0;">
-          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:36%;">품 목</th>
-          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:14%;">수량</th>
-          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:25%;">단 가</th>
-          <th style="border:0.5px solid #999;padding:4px;font-size:10px;text-align:center;width:25%;">금 액</th>
+          <th style="border:0.5px solid #999;padding:6px;font-size:15px;text-align:center;width:36%;">품 목</th>
+          <th style="border:0.5px solid #999;padding:6px;font-size:15px;text-align:center;width:14%;">수량</th>
+          <th style="border:0.5px solid #999;padding:6px;font-size:15px;text-align:center;width:25%;">단 가</th>
+          <th style="border:0.5px solid #999;padding:6px;font-size:15px;text-align:center;width:25%;">금 액</th>
         </tr></thead>
         <tbody>${itemRows}${blankRows}</tbody>
         <tfoot><tr style="background:#f5f5f5;">
-          <td colspan="3" style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">합 계</td>
-          <td style="border:0.5px solid #999;padding:4px 5px;text-align:right;font-weight:bold;font-size:10px;">${displayTotal.toLocaleString()}</td>
+          <td colspan="3" style="border:0.5px solid #999;padding:6px 5px;text-align:right;font-weight:bold;font-size:16px;">합 계</td>
+          <td style="border:0.5px solid #999;padding:6px 5px;text-align:right;font-weight:bold;font-size:16px;">${displayTotal.toLocaleString()}</td>
         </tr></tfoot>
       </table>
-      <div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;height:28px;">
-        <div style="font-size:7px;color:#aaa;">메 모</div>
-        <div style="font-size:9px;">${order.memo||''}</div>
+      <div style="margin-top:6px;border:0.5px solid #ddd;padding:5px 7px;min-height:36px;">
+        <div style="font-size:12px;color:#aaa;">메 모</div>
+        <div style="font-size:14px;">${order.memo||''}</div>
       </div>
-      ${notice ? `<div style="margin-top:4px;border:0.5px solid #f59e0b;background:#fffbeb;padding:3px 5px;border-radius:2px;">
-        <div style="font-size:7px;color:#92400e;">전달사항</div>
-        <div style="font-size:9px;color:#92400e;white-space:pre-line;">${notice}</div>
+      ${notice ? `<div style="margin-top:6px;border:0.5px solid #f59e0b;background:#fffbeb;padding:5px 7px;border-radius:2px;">
+        <div style="font-size:12px;color:#92400e;">전달사항</div>
+        <div style="font-size:14px;color:#92400e;white-space:pre-line;">${notice}</div>
       </div>` : ''}
-      <div style="margin-top:6px;text-align:right;font-size:9px;color:#555;">
+      <div style="margin-top:8px;text-align:right;font-size:14px;color:#555;">
         (인) _______________
       </div>
     </div>`;
@@ -10705,63 +10705,63 @@ function printInvoice(order, orderType) {
     return `
     <div style="padding:10px 8px;box-sizing:border-box;display:flex;flex-direction:column;width:100%;">
       <div style="text-align:center;margin-bottom:7px;">
-        <div style="font-size:14px;font-weight:bold;letter-spacing:3px;margin-bottom:3px;">거 래 명 세 표</div>
-        <span style="font-size:9px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:2px 8px;color:${copy.color};">${copy.label}</span>
+        <div style="font-size:22px;font-weight:bold;letter-spacing:3px;margin-bottom:4px;">거 래 명 세 표</div>
+        <span style="font-size:14px;background:${copy.bg};border:0.5px solid ${copy.border};border-radius:3px;padding:3px 10px;color:${copy.color};">${copy.label}</span>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:8px;margin-bottom:5px;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:5px;">
         <tr>
           <td style="border:0.5px solid #999;padding:3px 4px;width:50%;vertical-align:top;">
-            <div style="color:#888;font-size:7px;">공 급 자</div>
+            <div style="color:#888;font-size:12px;">공 급 자</div>
             <div style="display:flex;align-items:center;gap:4px;">
-              <div style="font-weight:bold;font-size:9px;">${company}</div>
+              <div style="font-weight:bold;font-size:15px;">${company}</div>
               ${sealImg ? `<img src="${sealImg}" style="height:24px;opacity:0.9;">` : ''}
             </div>
-            <div style="font-size:7px;color:#555;">사업자: ${regno}</div>
-            <div style="font-size:7px;color:#555;">전화: ${tel}</div>
-            <div style="font-size:7px;color:#555;">${addr}</div>
+            <div style="font-size:12px;color:#555;">사업자: ${regno}</div>
+            <div style="font-size:12px;color:#555;">전화: ${tel}</div>
+            <div style="font-size:12px;color:#555;">${addr}</div>
           </td>
           <td style="border:0.5px solid #999;border-left:none;padding:3px 4px;width:50%;vertical-align:top;">
-            <div style="color:#888;font-size:7px;">공급받는자</div>
-            <div style="font-weight:bold;font-size:9px;">${venueName}${subInfo ? ' / '+subInfo : ''}</div>
-            ${venueRegno ? `<div style="font-size:7px;color:#555;">사업자: ${venueRegno}</div>` : ''}
-            ${venueTel ? `<div style="font-size:7px;color:#555;">전화: ${venueTel}</div>` : ''}
-            <div style="font-size:7px;color:#555;margin-top:3px;">납품일: ${normalizeDateStr(String(order.deliveryDate||''))} ${normalizeTimeStr(order.deliveryTime)||''}</div>
+            <div style="color:#888;font-size:12px;">공급받는자</div>
+            <div style="font-weight:bold;font-size:15px;">${venueName}${subInfo ? ' / '+subInfo : ''}</div>
+            ${venueRegno ? `<div style="font-size:12px;color:#555;">사업자: ${venueRegno}</div>` : ''}
+            ${venueTel ? `<div style="font-size:12px;color:#555;">전화: ${venueTel}</div>` : ''}
+            <div style="font-size:12px;color:#555;margin-top:3px;">납품일: ${normalizeDateStr(String(order.deliveryDate||''))} ${normalizeTimeStr(order.deliveryTime)||''}</div>
           </td>
         </tr>
       </table>
-      <table style="width:100%;border-collapse:collapse;font-size:8px;table-layout:fixed;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
         <thead><tr style="background:#f0f0f0;">
-          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:34%;">품 목</th>
-          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:14%;">수량</th>
-          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:26%;">단 가</th>
-          <th style="border:0.5px solid #999;padding:3px;text-align:center;width:26%;">금 액</th>
+          <th style="border:0.5px solid #999;padding:6px;text-align:center;width:34%;font-size:15px;">품 목</th>
+          <th style="border:0.5px solid #999;padding:6px;text-align:center;width:14%;font-size:15px;">수량</th>
+          <th style="border:0.5px solid #999;padding:6px;text-align:center;width:26%;font-size:15px;">단 가</th>
+          <th style="border:0.5px solid #999;padding:6px;text-align:center;width:26%;font-size:15px;">금 액</th>
         </tr></thead>
         <tbody>${itemRows}${blankRows}</tbody>
         <tfoot>
           <tr style="background:#f5f5f5;">
-            <td colspan="3" style="border:0.5px solid #999;padding:3px 4px;text-align:right;font-weight:bold;font-size:8px;">합 계</td>
-            <td style="border:0.5px solid #999;padding:3px 4px;text-align:right;font-weight:bold;font-size:8px;">${displayTotal.toLocaleString()}</td>
+            <td colspan="3" style="border:0.5px solid #999;padding:6px 5px;text-align:right;font-weight:bold;font-size:15px;">합 계</td>
+            <td style="border:0.5px solid #999;padding:6px 5px;text-align:right;font-weight:bold;font-size:15px;">${displayTotal.toLocaleString()}</td>
           </tr>
         </tfoot>
       </table>
-      <div style="font-size:7px;color:#888;text-align:right;padding:2px 0 4px;border-bottom:1.5px solid #ddd;margin-bottom:4px;">${isWeddingType ? '부가세 10% 포함가' : '&nbsp;'}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:8px;">
+      <div style="font-size:12px;color:#888;text-align:right;padding:3px 0 5px;border-bottom:1.5px solid #ddd;margin-bottom:5px;">${isWeddingType ? '부가세 10% 포함가' : '&nbsp;'}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
         <tr style="background:#fef9c3;">
-          <td style="border:0.5px solid #999;padding:3px 5px;color:#92400e;">전 미수금</td>
-          <td style="border:0.5px solid #999;padding:3px 5px;text-align:right;color:#92400e;font-weight:bold;">${prevCarryover.toLocaleString()} 원</td>
+          <td style="border:0.5px solid #999;padding:6px 7px;color:#92400e;font-size:15px;">전 미수금</td>
+          <td style="border:0.5px solid #999;padding:6px 7px;text-align:right;color:#92400e;font-weight:bold;font-size:15px;">${prevCarryover.toLocaleString()} 원</td>
         </tr>
         <tr>
-          <td style="border:0.5px solid #999;padding:3px 5px;color:#555;">금일 매출액</td>
-          <td style="border:0.5px solid #999;padding:3px 5px;text-align:right;font-weight:bold;">${todaySales.toLocaleString()} 원</td>
+          <td style="border:0.5px solid #999;padding:6px 7px;color:#555;font-size:15px;">금일 매출액</td>
+          <td style="border:0.5px solid #999;padding:6px 7px;text-align:right;font-weight:bold;font-size:15px;">${todaySales.toLocaleString()} 원</td>
         </tr>
         <tr style="background:#f0fdf4;">
-          <td style="border:0.5px solid #999;padding:3px 5px;font-weight:bold;color:#166534;">총 합 계</td>
-          <td style="border:0.5px solid #999;padding:3px 5px;text-align:right;font-weight:bold;color:#166534;">${grandTotal.toLocaleString()} 원</td>
+          <td style="border:0.5px solid #999;padding:6px 7px;font-weight:bold;color:#166534;font-size:15px;">총 합 계</td>
+          <td style="border:0.5px solid #999;padding:6px 7px;text-align:right;font-weight:bold;color:#166534;font-size:15px;">${grandTotal.toLocaleString()} 원</td>
         </tr>
       </table>
-      ${order.memo ? `<div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;"><div style="font-size:7px;color:#aaa;">메 모</div><div style="font-size:8px;">${order.memo}</div></div>` : `<div style="margin-top:4px;border:0.5px solid #ddd;padding:3px 5px;min-height:20px;"><div style="font-size:7px;color:#aaa;">메 모</div></div>`}
-      ${notice ? `<div style="margin-top:4px;border:0.5px solid #f59e0b;background:#fffbeb;padding:3px 5px;"><div style="font-size:7px;color:#92400e;">전달사항</div><div style="font-size:8px;color:#92400e;">${notice}</div></div>` : ''}
-      <div style="margin-top:6px;text-align:right;font-size:8px;color:#666;">(인) _______________</div>
+      ${order.memo ? `<div style="margin-top:6px;border:0.5px solid #ddd;padding:5px 7px;"><div style="font-size:12px;color:#aaa;">메 모</div><div style="font-size:14px;">${order.memo}</div></div>` : `<div style="margin-top:6px;border:0.5px solid #ddd;padding:5px 7px;min-height:32px;"><div style="font-size:12px;color:#aaa;">메 모</div></div>`}
+      ${notice ? `<div style="margin-top:6px;border:0.5px solid #f59e0b;background:#fffbeb;padding:5px 7px;"><div style="font-size:12px;color:#92400e;">전달사항</div><div style="font-size:14px;color:#92400e;">${notice}</div></div>` : ''}
+      <div style="margin-top:8px;text-align:right;font-size:14px;color:#666;">(인) _______________</div>
     </div>`;
   };
 
