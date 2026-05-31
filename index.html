@@ -1677,6 +1677,20 @@
       <span class="count" id="fFilterResultCount">0건</span>
     </div>
 
+    <!-- 🛵 퀵 발송 알림 설정 -->
+    <div id="quickAlarmSettings" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:10px 16px;margin-bottom:14px;">
+      <span style="font-size:13px;font-weight:700;color:#9a3412;">🛵 퀵 발송 알림</span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#7c2d12;cursor:pointer;">
+        <input type="checkbox" id="quickAlarmEnabled" onchange="setQuickAlarmEnabled(this.checked)" style="width:auto;cursor:pointer;">
+        켜기
+      </label>
+      <span style="font-size:13px;color:#7c2d12;">충대·대청 주문 후
+        <input type="number" id="quickAlarmMinutes" min="10" max="180" step="10" onchange="setQuickAlarmMinutes(this.value)" style="width:60px;padding:4px 6px;border:1.5px solid #fdba74;border-radius:6px;font-size:13px;text-align:center;">
+        분 지나도 발송 안 했으면 소리로 알림
+      </span>
+      <button type="button" onclick="testQuickAlarmSound()" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;">🔊 소리 테스트</button>
+    </div>
+
     <div class="table-wrap">
       <table>
         <thead>
@@ -1693,6 +1707,7 @@
             <th onclick="sortFuneralOrders('priceTotal')" style="cursor:pointer;">금액 <span id="fsort-priceTotal"></span></th>
             <th onclick="sortFuneralOrders('payStatus')" style="cursor:pointer;">결제상태 <span id="fsort-payStatus"></span></th>
             <th>담당</th>
+            <th style="width:130px;">🛵 퀵발송</th>
             <th>액션</th>
           </tr>
         </thead>
@@ -7048,6 +7063,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initExtraVenues();
   startClock();
+  initQuickAlarm();
   if (gasUrl) {
     // 자동 새로고침 제거 (수동 새로고침만 사용)
   }
@@ -7062,6 +7078,264 @@ function startClock() {
   update();
   setInterval(update, 1000);
 }
+
+/* ========================================================================
+   🛵 퀵 발송 알림 시스템
+   충대장례식장 · 대청장례식장 주문은 접수 후 3시간 내 배송.
+   설정한 시간(기본 2시간)이 지나도 "발송완료" 표시가 안 되면 소리로 알림.
+   ======================================================================== */
+const QUICK_ALARM = {
+  get enabled() { return localStorage.getItem('quickAlarmEnabled') !== 'no'; },
+  set enabled(v) { localStorage.setItem('quickAlarmEnabled', v ? 'yes' : 'no'); },
+  get minutes() { return parseInt(localStorage.getItem('quickAlarmMinutes')) || 120; },
+  set minutes(v) { localStorage.setItem('quickAlarmMinutes', String(v)); },
+  stopAfterMin: 240,   // 접수 후 4시간 지나면 자동 무음 (배송시한 한참 지남)
+  repeatMs: 180000,    // 알림 소리 3분 간격 반복
+};
+
+let quickSentIds = new Set(JSON.parse(localStorage.getItem('quickSentIds') || '[]'));
+let _quickAudioCtx = null;
+let _quickBeeped = new Set();   // 이번 세션에 한 번이라도 울린 주문 id
+let _quickLastBeep = 0;
+let _quickSnoozeUntil = 0;
+
+// 알림 대상: 3시간 배송인 두 장례식장만
+function isQuickFuneral(o) {
+  return !!o && (o.funeralName === '충대장례식장' || o.funeralName === '대청장례식장');
+}
+
+// 주문 생성 시각(ms) 안정적으로 구하기 (id가 Date.now() 값)
+function getOrderCreatedMs(o) {
+  const idNum = Number(o && o.id);
+  if (idNum > 1500000000000 && idNum < 4000000000000) return idNum; // 2017~2096 사이 ms
+  const d = new Date(o && o.createdAt);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function isQuickSent(o) { return quickSentIds.has(String(o && o.id)); }
+
+function _persistQuickSent() {
+  // 오래된(이틀 지난) 기록 정리
+  const cutoff = Date.now() - 2 * 24 * 3600 * 1000;
+  quickSentIds = new Set([...quickSentIds].filter(x => {
+    const n = Number(x);
+    return !(n > 1500000000000 && n < cutoff);
+  }));
+  localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+}
+
+// 목록의 "보냈어요 / 취소" 버튼
+function quickToggleSent(id) {
+  id = String(id);
+  if (quickSentIds.has(id)) quickSentIds.delete(id);
+  else { quickSentIds.add(id); _quickBeeped.delete(id); }
+  _persistQuickSent();
+  if (typeof renderFuneralList === 'function') renderFuneralList();
+  checkQuickAlarms();
+}
+
+// 배너에서 "보냈어요" 누름
+function quickMarkSentFromBanner(id) {
+  id = String(id);
+  quickSentIds.add(id);
+  _persistQuickSent();
+  if (typeof renderFuneralList === 'function') renderFuneralList();
+  checkQuickAlarms();
+  showToast('🛵 발송완료로 표시했어요. 알림을 끕니다.', 'success');
+}
+
+// 목록 셀 렌더
+function renderQuickCell(o) {
+  if (!isQuickFuneral(o)) return '<span style="color:#bbb;font-size:12px;">—</span>';
+  const id = String(o.id);
+  if (isQuickSent(o)) {
+    return `<span style="color:#16a34a;font-weight:700;font-size:12px;">✅ 발송완료</span>
+      <button onclick="event.stopPropagation();quickToggleSent('${id}')" style="margin-left:4px;background:none;border:none;color:#999;font-size:11px;text-decoration:underline;cursor:pointer;">취소</button>`;
+  }
+  const created = getOrderCreatedMs(o);
+  const btn = `<button onclick="event.stopPropagation();quickToggleSent('${id}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;">🛵 보냈어요</button>`;
+  if (created == null) return btn;
+  const min = Math.floor((Date.now() - created) / 60000);
+  const overdue = min >= QUICK_ALARM.minutes && min <= QUICK_ALARM.stopAfterMin;
+  if (overdue) {
+    return `<div style="display:flex;flex-direction:column;gap:4px;">
+      <span class="quick-blink" style="color:#dc2626;font-weight:800;font-size:12px;">🔔 발송 확인! (${min}분 경과)</span>
+      ${btn}
+    </div>`;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:4px;">
+    <span style="color:#92400e;font-size:11px;">⏱ ${min}분 경과</span>
+    ${btn}
+  </div>`;
+}
+
+// 행 강조 스타일
+function quickAlarmRowStyle(o) {
+  if (!QUICK_ALARM.enabled || !isQuickFuneral(o) || isQuickSent(o)) return '';
+  const created = getOrderCreatedMs(o);
+  if (created == null) return '';
+  const min = Math.floor((Date.now() - created) / 60000);
+  if (min >= QUICK_ALARM.minutes && min <= QUICK_ALARM.stopAfterMin) {
+    return 'background:#fee2e2 !important;border-left:5px solid #dc2626 !important;';
+  }
+  return '';
+}
+
+/* ---- 소리 ---- */
+function _ensureQuickAudio() {
+  try {
+    if (!_quickAudioCtx) _quickAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_quickAudioCtx.state === 'suspended') _quickAudioCtx.resume().catch(() => {});
+  } catch (e) {}
+  return _quickAudioCtx;
+}
+// 브라우저는 사용자 동작 전엔 소리를 막음 → 첫 터치/클릭에서 오디오 준비
+['click', 'touchstart', 'keydown'].forEach(ev =>
+  document.addEventListener(ev, _ensureQuickAudio, { once: true })
+);
+
+const QUICK_BEEP_COUNT = 12;   // 울리는 삐 소리 개수 (늘리면 더 길게)
+function playQuickAlarmSound() {
+  const ctx = _ensureQuickAudio();
+  if (ctx) {
+    const now = ctx.currentTime;
+    for (let i = 0; i < QUICK_BEEP_COUNT; i++) {   // 삐-삐-삐... 약 6초간
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = i % 2 === 0 ? 880 : 988;
+      const t0 = now + i * 0.5;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.4, t0 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.38);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t0); osc.stop(t0 + 0.4);
+    }
+  }
+  if (navigator.vibrate) {
+    const v = [];
+    for (let i = 0; i < QUICK_BEEP_COUNT; i++) v.push(300, 200);
+    navigator.vibrate(v);
+  }
+}
+
+function testQuickAlarmSound() {
+  _ensureQuickAudio();
+  playQuickAlarmSound();
+  showToast('🔊 알림 소리를 재생했어요. 안 들리면 기기 음량을 확인해주세요.', '');
+}
+
+/* ---- 배너 ---- */
+function _quickBanner() {
+  let b = document.getElementById('quickAlarmBanner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'quickAlarmBanner';
+    b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#dc2626;color:#fff;box-shadow:0 -4px 24px rgba(0,0,0,0.3);padding:14px 18px;display:none;';
+    document.body.appendChild(b);
+  }
+  return b;
+}
+
+function showQuickBanner(overdue) {
+  const b = _quickBanner();
+  const snoozed = Date.now() < _quickSnoozeUntil;
+  const rows = overdue.map(({ o, min }) => {
+    const deceased = o.deceasedName ? ' · 고인 ' + o.deceasedName : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,0.12);border-radius:10px;padding:8px 12px;margin-top:6px;">
+      <span style="font-size:14px;font-weight:700;">${o.funeralName} ${o.binsoLocation || ''}${deceased} — ${min}분 경과</span>
+      <button onclick="quickMarkSentFromBanner('${o.id}')" style="background:#fff;color:#dc2626;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">🛵 보냈어요</button>
+    </div>`;
+  }).join('');
+  b.innerHTML = `
+    <div style="max-width:900px;margin:0 auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <span class="quick-blink" style="font-size:16px;font-weight:800;">🔔 퀵 발송 확인! (${overdue.length}건)</span>
+        <button onclick="quickSnooze()" style="background:rgba(0,0,0,0.2);color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">${snoozed ? '🔕 10분 미룸' : '🔕 10분 미루기'}</button>
+      </div>
+      ${rows}
+    </div>`;
+  b.style.display = 'block';
+}
+
+function hideQuickBanner() {
+  const b = document.getElementById('quickAlarmBanner');
+  if (b) b.style.display = 'none';
+}
+
+function quickSnooze() {
+  _quickSnoozeUntil = Date.now() + 10 * 60 * 1000;
+  showToast('🔕 알림 소리를 10분간 멈춰요. (목록 표시는 유지)', '');
+  checkQuickAlarms();
+}
+
+/* ---- 핵심: 검사 + 알림 ---- */
+function checkQuickAlarms() {
+  if (!QUICK_ALARM.enabled) { hideQuickBanner(); return; }
+  const now = Date.now();
+  const minTh = QUICK_ALARM.minutes;
+  const stopTh = QUICK_ALARM.stopAfterMin;
+  const overdue = [];
+  (typeof funeralOrders !== 'undefined' ? funeralOrders : []).forEach(o => {
+    if (!isQuickFuneral(o) || isQuickSent(o)) return;
+    const created = getOrderCreatedMs(o);
+    if (created == null) return;
+    const min = Math.floor((now - created) / 60000);
+    if (min >= minTh && min <= stopTh) overdue.push({ o, min });
+  });
+
+  if (overdue.length === 0) { hideQuickBanner(); return; }
+  showQuickBanner(overdue);
+
+  // 소리: 새 주문이 있으면 즉시, 아니면 3분 간격 반복 (스누즈 중엔 무음)
+  if (now >= _quickSnoozeUntil) {
+    const hasNew = overdue.some(({ o }) => !_quickBeeped.has(String(o.id)));
+    if (hasNew || now - _quickLastBeep >= QUICK_ALARM.repeatMs) {
+      _quickLastBeep = now;
+      overdue.forEach(({ o }) => _quickBeeped.add(String(o.id)));
+      playQuickAlarmSound();
+    }
+  }
+}
+
+function setQuickAlarmEnabled(on) {
+  QUICK_ALARM.enabled = on;
+  if (!on) hideQuickBanner();
+  showToast(on ? '🛵 퀵 발송 알림을 켰어요.' : '퀵 발송 알림을 껐어요.', '');
+  checkQuickAlarms();
+}
+function setQuickAlarmMinutes(v) {
+  let m = parseInt(v) || 120;
+  m = Math.max(10, Math.min(180, m));
+  QUICK_ALARM.minutes = m;
+  document.getElementById('quickAlarmMinutes').value = m;
+  showToast('⏱ ' + m + '분으로 설정했어요.', '');
+  _quickBeeped.clear();
+  checkQuickAlarms();
+}
+
+function initQuickAlarm() {
+  const cb = document.getElementById('quickAlarmEnabled');
+  const mi = document.getElementById('quickAlarmMinutes');
+  if (cb) cb.checked = QUICK_ALARM.enabled;
+  if (mi) mi.value = QUICK_ALARM.minutes;
+  checkQuickAlarms();
+  setInterval(checkQuickAlarms, 30000); // 30초마다 검사
+  // 다른 기기에서 받은 주문도 잡기 위해 2분마다 조용히 동기화 (알림 켜진 경우만)
+  setInterval(() => {
+    if (QUICK_ALARM.enabled && typeof gasUrl !== 'undefined' && gasUrl
+        && typeof loadFuneralOrdersFromSheet === 'function') {
+      loadFuneralOrdersFromSheet(true, true).then(checkQuickAlarms).catch(() => {});
+    }
+  }, 120000);
+}
+
+// 깜빡임 애니메이션
+(function () {
+  const st = document.createElement('style');
+  st.textContent = '@keyframes quickBlink{0%,100%{opacity:1}50%{opacity:0.35}} .quick-blink{animation:quickBlink 1s infinite;}';
+  document.head.appendChild(st);
+})();
 
 // ============ TABS ============
 // ============ 라벨 인쇄 (폼텍 LS-3116: 99.1x93.1mm, 2열 3행) ============
@@ -11157,7 +11431,8 @@ function renderFuneralList() {
       ? 'background:#fdf3e8;border-left:4px solid #FF9800;'
       : '';
     const nameColor = o.funeralName === '대청장례식장' ? 'color:#1565C0;' : o.funeralName === '충대장례식장' ? 'color:#E65100;' : '';
-    return `<tr onclick="openFuneralModal(${o.id})" style="cursor:pointer;${funeralColor}">
+    const overdueStyle = quickAlarmRowStyle(o);
+    return `<tr onclick="openFuneralModal(${o.id})" style="cursor:pointer;${funeralColor}${overdueStyle}">
       <td style="color:var(--brown-light);font-size:12px;">#${i+1}</td>
       <td style="font-size:11px;color:#666;white-space:nowrap;">${(() => {
         const s = String(o.createdAt||'');
@@ -11175,12 +11450,15 @@ function renderFuneralList() {
       <td style="font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
       <td>${payBadge}</td>
       <td style="font-size:12px;">${o.staffName}</td>
+      <td onclick="event.stopPropagation();" style="white-space:nowrap;">${renderQuickCell(o)}</td>
       <td style="white-space:nowrap;">
         <button onclick="event.stopPropagation();printInvoice(funeralOrders.find(x=>String(x.id)===String('${o.id}')), 'funeral')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
         <button class="btn-small btn-danger" onclick="event.stopPropagation();deleteFuneralOrder(${o.id})" style="padding:4px 10px;font-size:11px;">삭제</button>
       </td>
     </tr>`;
   }).join('');
+
+  if (typeof checkQuickAlarms === 'function') checkQuickAlarms();
 }
 
 function clearFuneralFilter() {
