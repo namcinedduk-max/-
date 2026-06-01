@@ -14406,6 +14406,164 @@ function renderPersonalSettlement(ym) {
     .reduce(function(s,o){ return s + (Number(o.priceTotal)||0); }, 0);
   const unpaidTotal = totalSales - paid;
 
+  // ── 결제수단별 분해 (전체매출 vs 결제완료 실수령) ─────────────
+  const _methods = ['현금','카드','계좌이체','카카오페이','네이버페이','미수금'];
+  const byMethodAll = {};   // 상태 무관 전체
+  const byMethodPaid = {};  // 결제완료만
+  _methods.forEach(function(m){ byMethodAll[m]=0; byMethodPaid[m]=0; });
+  byMethodAll['(미지정)']=0; byMethodPaid['(미지정)']=0;
+  monthOrders.forEach(function(o){
+    const m = _methods.indexOf(String(o.payMethod||'')) >= 0 ? String(o.payMethod) : '(미지정)';
+    const amt = Number(o.priceTotal)||0;
+    byMethodAll[m] += amt;
+    if (o.payStatus === '결제완료') byMethodPaid[m] += amt;
+  });
+  const cardCashAll  = byMethodAll['카드'] + byMethodAll['현금'];
+  const cardCashPaid = byMethodPaid['카드'] + byMethodPaid['현금'];
+  const realInAll  = byMethodAll['현금'] + byMethodAll['카드'] + byMethodAll['계좌이체'];
+  const realInPaid = byMethodPaid['현금'] + byMethodPaid['카드'] + byMethodPaid['계좌이체'];
+
+  const methodBreakdownRows = _methods.concat(['(미지정)'])
+    .filter(function(m){ return byMethodAll[m] > 0; })
+    .map(function(m){
+      return '<tr style="border-bottom:1px solid #f0f0f0;">'
+        + '<td style="padding:7px 10px;font-size:12px;font-weight:600;">' + m + '</td>'
+        + '<td style="padding:7px 10px;text-align:right;font-size:12px;">' + byMethodAll[m].toLocaleString() + '원</td>'
+        + '<td style="padding:7px 10px;text-align:right;font-size:12px;color:#16a34a;">' + byMethodPaid[m].toLocaleString() + '원</td>'
+        + '</tr>';
+    }).join('');
+
+  const methodBreakdown = '<div style="padding:12px 16px;background:#fff;border-top:1px solid #e5e7eb;">'
+    + '<div style="font-size:12px;font-weight:600;color:#666;margin-bottom:8px;">💳 결제수단별 분해</div>'
+    + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:340px;">'
+    + '<thead><tr style="background:#f9fafb;">'
+    + '<th style="padding:7px 10px;text-align:left;font-size:11px;color:#666;border-bottom:1px solid #e5e7eb;">결제수단</th>'
+    + '<th style="padding:7px 10px;text-align:right;font-size:11px;color:#666;border-bottom:1px solid #e5e7eb;">전체매출</th>'
+    + '<th style="padding:7px 10px;text-align:right;font-size:11px;color:#666;border-bottom:1px solid #e5e7eb;">결제완료(실수령)</th>'
+    + '</tr></thead><tbody>' + methodBreakdownRows + '</tbody>'
+    + '<tfoot><tr style="background:#fff7ed;border-top:2px solid #f0c040;">'
+    + '<td style="padding:8px 10px;font-size:13px;font-weight:800;color:#7c2d12;">합계 (전체)</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:13px;font-weight:800;color:#7c2d12;">' + totalSales.toLocaleString() + '원</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:13px;font-weight:800;color:#16a34a;">' + paid.toLocaleString() + '원</td>'
+    + '</tr>'
+    + '<tr style="background:#fffbeb;">'
+    + '<td style="padding:8px 10px;font-size:12px;font-weight:700;color:#92400e;">└ 카드+현금</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#92400e;">' + cardCashAll.toLocaleString() + '원</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#16a34a;">' + cardCashPaid.toLocaleString() + '원</td>'
+    + '</tr>'
+    + '<tr style="background:#eff6ff;border-top:1px solid #bfdbfe;">'
+    + '<td style="padding:8px 10px;font-size:12px;font-weight:700;color:#1e40af;">└ 현금+카드+계좌이체 (실입금)</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#1e40af;">' + realInAll.toLocaleString() + '원</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#16a34a;">' + realInPaid.toLocaleString() + '원</td>'
+    + '</tr></tfoot></table></div>'
+    + '<div style="font-size:11px;color:#888;margin-top:6px;line-height:1.5;">※ \'전체매출\'은 미수·입금대기 포함 금액, \'결제완료(실수령)\'은 실제 받은 금액이에요. 수기 카드+현금과 비교할 땐 보통 \'결제완료\' 열로 맞춰보세요.</div>'
+    + '</div>';
+
+  // ── 배송방법별 분해 (개인목록 화면은 '택배'를 숨김!) ─────────────
+  const courierTotal = monthOrders.reduce(function(s,o){
+    return s + (String(o.deliveryMethod||'') === '택배' ? (Number(o.priceTotal)||0) : 0);
+  }, 0);
+  const _delivCount = {};
+  monthOrders.forEach(function(o){
+    const dm = String(o.deliveryMethod||'') || '(미지정)';
+    if (!_delivCount[dm]) _delivCount[dm] = { amt:0, cnt:0 };
+    _delivCount[dm].amt += (Number(o.priceTotal)||0);
+    _delivCount[dm].cnt += 1;
+  });
+  const listVisibleTotal = totalSales - courierTotal;   // 개인목록(택배 제외) 화면 합계
+  const delivRows = Object.keys(_delivCount).map(function(dm){
+    const isCourier = (dm === '택배');
+    return '<tr style="border-bottom:1px solid #f0f0f0;background:' + (isCourier?'#fef2f2':'#fff') + ';">'
+      + '<td style="padding:7px 10px;font-size:12px;font-weight:600;">' + (isCourier?'📦 ':'') + dm + (isCourier?' <span style="color:#991b1b;font-weight:400;">(목록에 안 보임)</span>':'') + '</td>'
+      + '<td style="padding:7px 10px;text-align:right;font-size:11px;color:#999;">' + _delivCount[dm].cnt + '건</td>'
+      + '<td style="padding:7px 10px;text-align:right;font-size:12px;font-weight:700;">' + _delivCount[dm].amt.toLocaleString() + '원</td>'
+      + '</tr>';
+  }).join('');
+  const delivBreakdown = '<div style="padding:12px 16px;background:#fff;border-top:1px solid #e5e7eb;">'
+    + '<div style="font-size:12px;font-weight:600;color:#666;margin-bottom:8px;">🚚 배송방법별 분해</div>'
+    + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:320px;">'
+    + '<tbody>' + delivRows + '</tbody>'
+    + '<tfoot>'
+    + '<tr style="background:#eff6ff;border-top:2px solid #bfdbfe;">'
+    + '<td colspan="2" style="padding:8px 10px;font-size:12px;font-weight:700;color:#1e40af;">📋 택배 제외 합 (= 개인목록 화면 합계)</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:13px;font-weight:800;color:#1e40af;">' + listVisibleTotal.toLocaleString() + '원</td></tr>'
+    + '<tr style="background:#fff7ed;">'
+    + '<td colspan="2" style="padding:8px 10px;font-size:12px;font-weight:700;color:#7c2d12;">＋ 택배 + 정산 전체</td>'
+    + '<td style="padding:8px 10px;text-align:right;font-size:13px;font-weight:800;color:#7c2d12;">' + totalSales.toLocaleString() + '원</td></tr>'
+    + '</tfoot></table></div>'
+    + '<div style="font-size:11px;color:#888;margin-top:6px;line-height:1.5;">※ 개인목록(배송·픽업 화면)에는 <b>택배 주문이 안 나와요</b> — 택배는 \'📦 택배 발송 목록\' 탭에 따로 있어요. 계산기로 개인목록을 더하신 값은 위의 <b>\'택배 제외 합\'</b>과 맞춰보세요. 그게 맞으면 차이는 전부 택배 때문입니다.</div>'
+    + '</div>';
+
+  // ── 중복 의심: 같은 받는분 + "같은 배송일"에 2건 이상만 ──────────
+  //    (단골이 여러 번 시켜도 배송일이 다르면 안 잡힘. 변경 전 옛주문이
+  //     안 지워졌을 때만 같은 배송일에 옛것·새것이 같이 남아 잡힘)
+  const _dupGroups = {};
+  monthOrders.forEach(function(o){
+    const nm = String(o.receiverName||'').trim();
+    if (!nm) return;
+    const phone = String(o.receiverPhone||'').replace(/[^0-9]/g,'');
+    const dday = normalizeDateStr(String(o.deliveryDate||''));
+    const key = nm + '|' + phone + '|' + dday;   // 이름+전화+배송일 기준
+    if (!_dupGroups[key]) _dupGroups[key] = [];
+    _dupGroups[key].push(o);
+  });
+  const dupKeys = Object.keys(_dupGroups).filter(function(k){ return _dupGroups[k].length > 1; });
+  let dupBlock = '';
+  if (dupKeys.length > 0) {
+    const dupRows = dupKeys.map(function(k){
+      const grp = _dupGroups[k].slice();
+      const dday = normalizeDateStr(String(grp[0].deliveryDate||''));
+      const sum = grp.reduce(function(s,o){ return s + (Number(o.priceTotal)||0); }, 0);
+      const inner = grp.map(function(o){
+        return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#555;padding:2px 0;">'
+          + '<span>' + (o.tteokType ? String(o.tteokType).slice(0,30) : '-') + ' · ' + (o.payMethod||'') + ' · ' + (o.payStatus||'') + '</span>'
+          + '<span style="font-weight:700;white-space:nowrap;">' + (Number(o.priceTotal)||0).toLocaleString() + '원</span>'
+          + '</div>';
+      }).join('');
+      return '<div style="border:1px solid #fecaca;border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#fff;">'
+        + '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#991b1b;margin-bottom:3px;">'
+        + '<span>👤 ' + (grp[0].receiverName||'-') + ' · ' + dday + ' (' + grp.length + '건)</span>'
+        + '<span>합계 ' + sum.toLocaleString() + '원</span></div>'
+        + inner + '</div>';
+    }).join('');
+    dupBlock = '<div style="padding:12px 16px;background:#fef2f2;border-top:1px solid #e5e7eb;">'
+      + '<div style="font-size:12px;font-weight:700;color:#991b1b;margin-bottom:8px;">⚠️ 중복 의심 — 같은 받는분이 같은 배송일에 2건 이상 (주문 변경 후 옛 주문이 안 지워졌을 수 있어요)</div>'
+      + dupRows
+      + '<div style="font-size:11px;color:#888;margin-top:4px;line-height:1.5;">※ 같은 날 일부러 따로 보낸 주문이면 정상이에요. 변경됐는데 옛 금액이 그대로 남아있다면 그 건만 삭제하면 정산이 맞아집니다.</div>'
+      + '</div>';
+  } else {
+    dupBlock = '<div style="padding:10px 16px;background:#f0fdf4;border-top:1px solid #e5e7eb;text-align:center;color:#16a34a;font-size:12px;font-weight:600;">✓ 중복 의심 주문 없음</div>';
+  }
+
+  // ── 전체 내역 (정산에 포함된 모든 주문 + 누적합계) ────────────
+  const sortedAll = monthOrders.slice().sort(function(a,b){
+    return normalizeDateStr(String(a.deliveryDate||'')) < normalizeDateStr(String(b.deliveryDate||'')) ? -1 : 1;
+  });
+  let _run = 0;
+  const allRows = sortedAll.map(function(o, i){
+    _run += (Number(o.priceTotal)||0);
+    return '<tr style="border-bottom:1px solid #f3f4f6;">'
+      + '<td style="padding:5px 8px;font-size:11px;color:#999;">' + (i+1) + '</td>'
+      + '<td style="padding:5px 8px;font-size:11px;color:#666;white-space:nowrap;">' + normalizeDateStr(String(o.deliveryDate||'')) + '</td>'
+      + '<td style="padding:5px 8px;font-size:11px;font-weight:600;">' + (o.receiverName||'-') + '</td>'
+      + '<td style="padding:5px 8px;font-size:11px;color:#888;">' + (o.payMethod||'-') + '</td>'
+      + '<td style="padding:5px 8px;font-size:11px;color:#888;">' + (o.payStatus||'-') + '</td>'
+      + '<td style="padding:5px 8px;text-align:right;font-size:11px;font-weight:700;white-space:nowrap;">' + (Number(o.priceTotal)||0).toLocaleString() + '</td>'
+      + '<td style="padding:5px 8px;text-align:right;font-size:11px;color:#2563eb;white-space:nowrap;">' + _run.toLocaleString() + '</td>'
+      + '</tr>';
+  }).join('');
+  const allListBlock = '<details style="border-top:1px solid #e5e7eb;"><summary style="padding:12px 16px;cursor:pointer;font-size:12px;font-weight:600;color:#666;background:#fff;">📋 전체 내역 펼쳐보기 — 계산기와 한 줄씩 대조 (' + sortedAll.length + '건)</summary>'
+    + '<div style="padding:0 16px 12px;background:#fff;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:520px;">'
+    + '<thead><tr style="background:#f9fafb;">'
+    + '<th style="padding:6px 8px;text-align:left;font-size:10px;color:#999;border-bottom:1px solid #e5e7eb;">#</th>'
+    + '<th style="padding:6px 8px;text-align:left;font-size:10px;color:#999;border-bottom:1px solid #e5e7eb;">배송일</th>'
+    + '<th style="padding:6px 8px;text-align:left;font-size:10px;color:#999;border-bottom:1px solid #e5e7eb;">받는분</th>'
+    + '<th style="padding:6px 8px;text-align:left;font-size:10px;color:#999;border-bottom:1px solid #e5e7eb;">결제</th>'
+    + '<th style="padding:6px 8px;text-align:left;font-size:10px;color:#999;border-bottom:1px solid #e5e7eb;">상태</th>'
+    + '<th style="padding:6px 8px;text-align:right;font-size:10px;color:#999;border-bottom:1px solid #e5e7eb;">금액</th>'
+    + '<th style="padding:6px 8px;text-align:right;font-size:10px;color:#999;border-bottom:1px solid #e5e7eb;">누적</th>'
+    + '</tr></thead><tbody>' + allRows + '</tbody></table></div></details>';
+
   const unpaidOrders = monthOrders.filter(function(o){ return o.payStatus !== '결제완료'; })
     .sort(function(a,b){
       const da = normalizeDateStr(String(a.deliveryDate||''));
@@ -14471,6 +14629,10 @@ function renderPersonalSettlement(ym) {
     + '<div style="font-size:11px;color:#888;margin-bottom:4px;">미수금</div>'
     + '<div style="font-size:17px;font-weight:700;color:' + (unpaidTotal>0?'#d97706':'#16a34a') + ';">' + unpaidTotal.toLocaleString() + '원</div></div>'
     + '</div>'
+    + methodBreakdown
+    + delivBreakdown
+    + dupBlock
+    + allListBlock
     + '<div style="border-top:1px solid #e5e7eb;"></div>'
     + unpaidTable
     + '</div>';
