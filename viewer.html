@@ -172,6 +172,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxVlzh9rzQaA9G8DntgEUEx
 let allOrders = [];
 let allWeddingOrders = [];
 let allOtherOrders = [];
+let allFuneralOrders = [];
 let currentSort = 'time';
 
 function setSort(type) {
@@ -250,11 +251,13 @@ function loadData() {
     gasGet({ action: 'getOrders' }),
     gasGet({ action: 'getOrders', sheet: 'wedding' }),
     gasGet({ action: 'getOrders', sheet: 'other' }),
-  ]).then(([data, wData, oData]) => {
+    gasGet({ action: 'getOrders', sheet: 'funeral' }),
+  ]).then(([data, wData, oData, fData]) => {
     if (!data.success) { showError(); return; }
     allOrders = data.orders || [];
     allWeddingOrders = wData.success ? (wData.orders || []) : [];
     allOtherOrders = oData.success ? (oData.orders || []) : [];
+    allFuneralOrders = fData.success ? (fData.orders || []) : [];
     render(document.getElementById('dateInput').value);
   }).catch(() => showError());
 }
@@ -313,9 +316,13 @@ function render(date) {
   // ── 웨딩홀 / 기타업체 섹션 ──────────────────────
   const todayWedding = allWeddingOrders.filter(o => normDate(String(o.deliveryDate||'')) === date);
   const todayOther   = allOtherOrders.filter(o => normDate(String(o.deliveryDate||'')) === date);
+  // 충대식당 = 장례 시트 주문 중 '장례식장'이 아닌 것 (식당류)
+  const todayChungdae = allFuneralOrders.filter(o =>
+    normDate(String(o.deliveryDate||'')) === date && !String(o.funeralName||'').includes('장례식장')
+  );
 
   const venueEl = document.getElementById('venueSection');
-  if (todayWedding.length === 0 && todayOther.length === 0) {
+  if (todayWedding.length === 0 && todayOther.length === 0 && todayChungdae.length === 0) {
     venueEl.innerHTML = '';
   } else {
     let html = '';
@@ -352,6 +359,27 @@ function render(date) {
         html += '<div class="order-card">'
           + '<div class="order-card-header" style="background:#0891b2;">'
           + '<span class="no">🏢 '+(o.venueName||'-')+'</span>'
+          + '<span class="time">'+time+'</span>'
+          + '</div>'
+          + '<div class="order-card-body">'
+          + '<div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">'+items+'</span></div>'
+          + (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ '+o.memo+'</span></div>' : '')
+          + '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    if (todayChungdae.length > 0) {
+      html += '<div class="section-title" style="margin-top:0;">🍽️ 충대식당 발주 <span class="count-pill">'+todayChungdae.length+'건</span></div>';
+      html += '<div class="order-cards" style="margin-bottom:16px;">';
+      todayChungdae.forEach(function(o) {
+        const items = (o.tteokItems && o.tteokItems.length)
+          ? o.tteokItems.map(t => t.name + (t.qty?' <strong>'+t.qty+'</strong>':'')).join('<br>')
+          : (o.tteokType||'-');
+        const time = normalizeTimeStr(o.deliveryTime) || '시간미정';
+        html += '<div class="order-card">'
+          + '<div class="order-card-header" style="background:#15803d;">'
+          + '<span class="no">🍽️ '+(o.funeralName||'-')+'</span>'
           + '<span class="time">'+time+'</span>'
           + '</div>'
           + '<div class="order-card-body">'
