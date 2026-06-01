@@ -2967,6 +2967,59 @@
   </div>
 </div>
 
+<!-- 기타업체 주문 수정 모달 -->
+<div class="modal-overlay" id="otherEditModal">
+  <div class="modal" style="max-width:480px;">
+    <h3>🏢 기타업체 주문 수정</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="modal-detail-row"><span class="modal-detail-label">업체명</span>
+        <select id="oe_venueName" onchange="oeOnVenueChange()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></select>
+      </div>
+      <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+        <span class="modal-detail-label">떡 종류 (업체 단가표 기준)</span>
+        <div style="width:100%;">
+          <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
+            <select id="oe_tteokSelect" onchange="oeOnTteokSelectChange()" style="flex:2;min-width:110px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;"></select>
+            <input id="oe_tteokCustom" placeholder="직접입력" style="display:none;flex:2;min-width:90px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+            <div id="oe_qty_5kg_btns" style="display:none;gap:4px;">
+              <button type="button" onclick="oeAddTteok('5kg')" style="padding:6px 9px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">5kg</button>
+              <button type="button" onclick="oeAddTteok('10kg')" style="padding:6px 9px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">10kg</button>
+              <button type="button" onclick="oeAddTteok('15kg')" style="padding:6px 9px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">15kg</button>
+              <button type="button" onclick="oeAddTteok('20kg')" style="padding:6px 9px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">20kg</button>
+            </div>
+            <div id="oe_qty_kg_input" style="display:none;gap:4px;align-items:center;">
+              <input type="number" id="oe_tteokKg" placeholder="수량" style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+              <button type="button" onclick="oeAddTteok()" style="padding:6px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">+ 추가</button>
+            </div>
+          </div>
+          <div id="oe_tteokList" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+      </div>
+      <div class="modal-detail-row"><span class="modal-detail-label">배송일</span><input type="date" id="oe_deliveryDate" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+      <div class="modal-detail-row"><span class="modal-detail-label">배송시간</span><input type="text" id="oe_deliveryTime" placeholder="예: 오전중 / 09:00" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+      <div class="modal-detail-row"><span class="modal-detail-label">상품금액</span><input type="number" id="oe_priceProduct" oninput="oeCalcTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
+      <div class="modal-detail-row"><span class="modal-detail-label">배송비</span><input type="number" id="oe_priceDelivery" oninput="oeCalcTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
+      <div class="modal-detail-row"><span class="modal-detail-label">할인</span><input type="number" id="oe_priceDiscount" oninput="oeCalcTotal()" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">원</div>
+      <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span id="oe_priceTotal" style="color:var(--accent-red);font-weight:700;font-size:16px;">0원</span></div>
+      <div class="modal-detail-row"><span class="modal-detail-label">결제상태</span>
+        <select id="oe_payStatus" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+          <option value="미수금">🔴 미수금</option>
+          <option value="결제완료">✅ 결제완료</option>
+          <option value="입금대기">⏳ 입금대기</option>
+          <option value="부분결제">🔸 부분결제</option>
+        </select>
+      </div>
+      <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="oe_memo" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+      <div class="modal-detail-row"><span class="modal-detail-label">담당직원</span><input id="oe_staffName" placeholder="담당직원" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-small btn-danger" onclick="oeDelete()">🗑 삭제</button>
+      <button class="btn-small btn-success" onclick="saveOtherEdit()">💾 저장</button>
+      <button class="btn-small btn-secondary" onclick="closeOtherModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 새 거래처 추가 모달 -->
 <div class="modal-overlay" id="venueAddModal" style="display:none;">
   <div class="modal" style="max-width:480px;">
@@ -7915,10 +7968,24 @@ function loadProductionPlan() {
   const personalOrders = orders.filter(o => normalizeDate(o.deliveryDate) === date && o.payStatus !== '대기');
   // 웨딩홀 주문
   const weddingOrdersToday = weddingOrders.filter(o => normalizeDate(o.deliveryDate) === date);
+  // 기타업체 주문 중 메모 있는 것만 (시간순)
+  const otherMemoOrders = (typeof otherOrders !== 'undefined' ? otherOrders : [])
+    .filter(o => normalizeDate(o.deliveryDate) === date && String(o.memo || '').trim())
+    .sort((a, b) => String(normalizeTimeStr(a.deliveryTime) || '').localeCompare(String(normalizeTimeStr(b.deliveryTime) || '')));
+
+  const otherMemoBox = otherMemoOrders.length > 0 ? `
+      <div style="margin-top:12px;padding:12px 16px;background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;">
+        <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:8px;">📝 기타업체 메모 (${otherMemoOrders.length}건)</div>
+        ${otherMemoOrders.map(o => `
+          <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+            <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:2px;">${o.venueName || '-'}${normalizeTimeStr(o.deliveryTime) ? ' <span style="font-size:12px;color:#888;font-weight:400;">· ' + normalizeTimeStr(o.deliveryTime) + '</span>' : ''}</div>
+            <div style="font-size:13px;color:#555;line-height:1.5;">${o.memo}</div>
+          </div>`).join('')}
+      </div>` : '';
 
   const container = document.getElementById('prodResult');
 
-  if (personalOrders.length === 0 && weddingOrdersToday.length === 0) {
+  if (personalOrders.length === 0 && weddingOrdersToday.length === 0 && otherMemoOrders.length === 0) {
     container.innerHTML = `<div style="text-align:center;color:#999;padding:40px;font-size:14px;">📭 ${formatDateKor(date)} 배송 예정 주문이 없어요</div>`;
     return;
   }
@@ -8137,6 +8204,7 @@ function loadProductionPlan() {
         </div>
       </div>` : ''}
 
+      ${personalOrders.length > 0 ? `
       <div style="margin-top:4px;padding:12px 16px;background:#f0fdf4;border-radius:10px;border:1.5px solid #bbf7d0;">
         <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:8px;">📋 주문 상세</div>
         ${personalOrders.map(o => `
@@ -8144,7 +8212,8 @@ function loadProductionPlan() {
             ${o.receiverName||'-'} · ${o.tteokType||'-'} · ${normalizeTimeStr(o.deliveryTime)||'시간미정'}
             ${o.deliveryAddr1 ? ' · ' + o.deliveryAddr1 : ''}
           </div>`).join('')}
-      </div>
+      </div>` : ''}
+      ${otherMemoBox}
     </div>`;
 }
 
@@ -9453,12 +9522,12 @@ function renderList() {
           <th style="background:#0891b2;padding:8px 12px;border-radius:0 8px 0 0;text-align:right;"><button onclick="switchTab('otherList')" style="font-size:11px;padding:3px 10px;background:#fff;border:none;border-radius:6px;color:#0891b2;cursor:pointer;">목록 보기 →</button></th></tr></thead>
           <tbody>
           ${filteredOtherOrders.map(o => `
-            <tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="switchTab('otherList')">
+            <tr style="border-bottom:${o.memo?'0':'1px solid var(--border)'};cursor:pointer;" onclick="openOtherModal('${o.id}')">
               <td style="padding:8px 12px;font-weight:700;">${o.venueName||'-'}</td>
               <td style="padding:8px 12px;font-size:12px;">${o.tteokType||'-'}</td>
               <td style="padding:8px 12px;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
               <td style="padding:8px 12px;text-align:right;font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
-            </tr>`).join('')}
+            </tr>${o.memo ? `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openOtherModal('${o.id}')"><td colspan="4" style="padding:0 12px 8px;"><div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:5px 9px;font-size:12px;color:#92400e;line-height:1.4;">📝 ${o.memo}</div></td></tr>` : ''}`).join('')}
           </tbody>
         </table>`;
     } else {
@@ -14305,6 +14374,196 @@ function clearOtherFilter() {
   const s = document.getElementById('otSearchInput'); if (s) s.value = '';
   renderOtherList();
 }
+
+// ── 기타업체 주문 수정 모달 (접수 로직 그대로 재사용) ──────────────
+let oeTteokItems = [];
+let oeOrderId = null;
+
+function openOtherModal(id) {
+  const o = (typeof otherOrders !== 'undefined' ? otherOrders : []).find(x => String(x.id) === String(id));
+  if (!o) { showToast('주문을 찾을 수 없어요.', 'error'); return; }
+  oeOrderId = o.id;
+  oeTteokItems = o.tteokItems ? JSON.parse(JSON.stringify(o.tteokItems)) : [];
+  const vSel = document.getElementById('oe_venueName');
+  const names = (typeof otherVenues !== 'undefined' ? otherVenues : []).map(v => v.name);
+  if (o.venueName && names.indexOf(o.venueName) === -1) names.unshift(o.venueName);
+  vSel.innerHTML = names.map(n => `<option value="${n}" ${n === o.venueName ? 'selected' : ''}>${n}</option>`).join('');
+  document.getElementById('oe_deliveryDate').value = normalizeDateStr(String(o.deliveryDate || '')) || '';
+  document.getElementById('oe_deliveryTime').value = o.deliveryTime || '';
+  document.getElementById('oe_priceProduct').value = Number(o.priceProduct) || 0;
+  document.getElementById('oe_priceDelivery').value = Number(o.priceDelivery) || 0;
+  document.getElementById('oe_priceDiscount').value = Number(o.priceDiscount) || 0;
+  document.getElementById('oe_payStatus').value = o.payStatus || '미수금';
+  document.getElementById('oe_memo').value = o.memo || '';
+  document.getElementById('oe_staffName').value = o.staffName || '';
+  oeUpdateTteokSelect();
+  oeUpdateQtyUI();
+  oeRenderTteokList();
+  oeCalcTotal();
+  document.getElementById('otherEditModal').classList.add('open');
+}
+
+function closeOtherModal() {
+  document.getElementById('otherEditModal').classList.remove('open');
+  oeOrderId = null;
+  oeTteokItems = [];
+}
+
+function oeOnVenueChange() {
+  oeUpdateTteokSelect();
+  oeUpdateQtyUI();
+  oeCalcVenuePrice();
+}
+
+function oeUpdateTteokSelect() {
+  const venue = document.getElementById('oe_venueName').value;
+  const sel = document.getElementById('oe_tteokSelect');
+  const prices = (typeof otherVenuePrices !== 'undefined' ? otherVenuePrices : {})[venue] || {};
+  const keys = Object.keys(prices);
+  if (keys.length === 0) {
+    sel.innerHTML = '<option value="">-- 단가 설정에서 먼저 등록 --</option><option value="직접입력">✏️ 직접 입력</option>';
+  } else {
+    sel.innerHTML = '<option value="">-- 떡 선택 --</option>' +
+      keys.map(k => `<option value="${k}">${k}</option>`).join('') +
+      '<option value="직접입력">✏️ 직접 입력</option>';
+  }
+}
+
+function oeUpdateQtyUI() {
+  const venue = document.getElementById('oe_venueName').value;
+  const venueInfo = (typeof otherVenues !== 'undefined' ? otherVenues : []).find(v => v.name === venue);
+  const btn5 = document.getElementById('oe_qty_5kg_btns');
+  const kgIn = document.getElementById('oe_qty_kg_input');
+  const is5 = venueInfo && venueInfo.type === '5kg';
+  if (btn5) btn5.style.display = is5 ? 'flex' : 'none';
+  if (kgIn) kgIn.style.display = is5 ? 'none' : 'flex';
+}
+
+function oeOnTteokSelectChange() {
+  const sel = document.getElementById('oe_tteokSelect');
+  const custom = document.getElementById('oe_tteokCustom');
+  if (!custom) return;
+  if (sel.value === '직접입력') { custom.style.display = 'block'; custom.focus(); }
+  else { custom.style.display = 'none'; custom.value = ''; }
+}
+
+function oeAddTteok(fixedQty) {
+  const sel = document.getElementById('oe_tteokSelect');
+  const custom = document.getElementById('oe_tteokCustom');
+  const name = sel.value === '직접입력' ? (custom ? custom.value.trim() : '') : sel.value;
+  if (!name) { showToast('떡을 선택하거나 입력해주세요.', 'error'); return; }
+  let qty = fixedQty || '';
+  if (!fixedQty) {
+    const kgEl = document.getElementById('oe_tteokKg');
+    if (kgEl && kgEl.value) { qty = kgEl.value + 'kg'; kgEl.value = ''; }
+  }
+  oeTteokItems.push({ name: name, qty: qty });
+  oeRenderTteokList();
+  sel.value = ''; if (custom) { custom.style.display = 'none'; custom.value = ''; }
+  oeCalcVenuePrice();
+}
+
+function oeRemoveTteok(idx) {
+  oeTteokItems.splice(idx, 1);
+  oeRenderTteokList();
+  oeCalcVenuePrice();
+}
+
+function oeRenderTteokList() {
+  const el = document.getElementById('oe_tteokList');
+  if (!el) return;
+  if (oeTteokItems.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = oeTteokItems.map(function(item, i) {
+    return '<div style="display:flex;align-items:center;gap:6px;background:#f9fafb;border:1px solid var(--border);border-radius:6px;padding:5px 8px;">'
+      + '<span style="flex:1;font-size:12px;font-weight:700;">🍡 ' + item.name + '</span>'
+      + '<input type="text" value="' + (item.qty || '') + '" onchange="oeTteokItems[' + i + '].qty=this.value;oeCalcVenuePrice();" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center;">'
+      + '<button onclick="oeRemoveTteok(' + i + ')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;">✕</button>'
+      + '</div>';
+  }).join('');
+}
+
+function oeCalcVenuePrice() {
+  const venue = document.getElementById('oe_venueName').value;
+  const prices = (typeof otherVenuePrices !== 'undefined' ? otherVenuePrices : {})[venue] || {};
+  if (Object.keys(prices).length === 0) { oeCalcTotal(); return; }
+  const venueInfo = (typeof otherVenues !== 'undefined' ? otherVenues : []).find(v => v.name === venue);
+  const is5 = venueInfo && venueInfo.type === '5kg';
+  let total = 0;
+  oeTteokItems.forEach(function(item) {
+    const pv = prices[item.name];
+    if (pv == null || !item.qty) return;
+    const qtyStr = String(item.qty).trim();
+    if (is5 && typeof pv === 'object') {
+      const p5 = pv.price5 || 0;
+      if (qtyStr === '5kg') total += p5;
+      else if (qtyStr === '10kg') total += p5 * 2;
+      else if (qtyStr === '15kg') total += p5 * 3;
+      else if (qtyStr === '20kg') total += p5 * 4;
+      else { const u = Math.floor((parseFloat(qtyStr) || 0) / 5); total += u * p5; }
+    } else {
+      const unit = typeof pv === 'object' ? (pv.price5 || 0) : pv;
+      const m = qtyStr.match(/^(\d+\.?\d*)/);
+      if (m) total += parseFloat(m[1]) * unit;
+    }
+  });
+  document.getElementById('oe_priceProduct').value = Math.round(total);
+  oeCalcTotal();
+}
+
+function oeCalcTotal() {
+  const p = parseInt(document.getElementById('oe_priceProduct').value) || 0;
+  const d = parseInt(document.getElementById('oe_priceDelivery').value) || 0;
+  const dis = parseInt(document.getElementById('oe_priceDiscount').value) || 0;
+  document.getElementById('oe_priceTotal').textContent = (p + d - dis).toLocaleString() + '원';
+}
+
+function oeDelete() {
+  if (!oeOrderId) return;
+  const id = oeOrderId;
+  closeOtherModal();
+  deleteOtherOrder(id);
+}
+
+function saveOtherEdit() {
+  const o = (typeof otherOrders !== 'undefined' ? otherOrders : []).find(x => String(x.id) === String(oeOrderId));
+  if (!o) { showToast('주문을 찾을 수 없어요.', 'error'); return; }
+  if (oeTteokItems.length === 0) { showToast('떡을 하나 이상 추가해주세요.', 'error'); return; }
+  const p = parseInt(document.getElementById('oe_priceProduct').value) || 0;
+  const d = parseInt(document.getElementById('oe_priceDelivery').value) || 0;
+  const dis = parseInt(document.getElementById('oe_priceDiscount').value) || 0;
+  const updated = Object.assign({}, o, {
+    venueName: document.getElementById('oe_venueName').value,
+    tteokItems: JSON.parse(JSON.stringify(oeTteokItems)),
+    tteokType: oeTteokItems.map(function(i){ return i.qty ? (i.name + '(' + i.qty + ')') : i.name; }).join(', '),
+    deliveryDate: document.getElementById('oe_deliveryDate').value,
+    deliveryTime: document.getElementById('oe_deliveryTime').value.trim(),
+    priceProduct: p, priceDelivery: d, priceDiscount: dis, priceTotal: p + d - dis,
+    payStatus: document.getElementById('oe_payStatus').value,
+    memo: document.getElementById('oe_memo').value.trim(),
+    staffName: document.getElementById('oe_staffName').value.trim(),
+  });
+  const idx = otherOrders.findIndex(function(x){ return String(x.id) === String(updated.id); });
+  if (idx > -1) otherOrders[idx] = updated;
+  if (typeof renderOtherList === 'function') renderOtherList();
+  if (typeof renderList === 'function') renderList();
+  closeOtherModal();
+  if (typeof gasUrl !== 'undefined' && gasUrl) {
+    showToast('⏳ 저장 중...', '');
+    gasPost({ action: 'update', sheet: 'other', data: updated })
+      .then(function(r) {
+        if (r && r.success === false) showToast('❌ 저장 실패 - 다시 시도해주세요', 'error');
+        else { showToast('✅ 저장됐어요!', 'success'); if (typeof loadOtherOrdersFromSheet === 'function') loadOtherOrdersFromSheet(true); }
+      })
+      .catch(function(err) { showToast('❌ 서버 연결 실패: ' + (err.message || '오류'), 'error'); });
+  } else {
+    showToast('✅ 저장됐어요!', 'success');
+  }
+}
+
+document.addEventListener('click', function(e) {
+  const m = document.getElementById('otherEditModal');
+  if (m && e.target === m) closeOtherModal();
+});
 
 // ============================================================
 // 정산 탭
