@@ -3565,6 +3565,13 @@ function loadTteokPriceSettings() {
         Object.assign(QUICK_FEE_TABLE, d.quickFeeTable);
         localStorage.setItem('quickFeeTable', JSON.stringify(QUICK_FEE_TABLE));
       } catch(e){} }
+      if (d.quickSentIds && Array.isArray(d.quickSentIds) && typeof quickSentIds !== 'undefined') { try {
+        // A·B 공유: 서버의 발송완료 목록을 로컬과 합침
+        d.quickSentIds.forEach(function(x){ quickSentIds.add(String(x)); });
+        localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+        if (typeof refreshQuickCells === 'function') refreshQuickCells();
+        if (typeof checkQuickAlarms === 'function') checkQuickAlarms();
+      } catch(e){} }
       if (d.ehyeSetPrices) { try { Object.assign(SET_DB['은혜세트'].prices, d.ehyeSetPrices); } catch(e){} }
       if (d.tteokCategories) { try { window.TTEOK_CATEGORIES = d.tteokCategories; } catch(e){} }
       if (d.pinkBoxFee !== undefined) SET_DB['분홍세트'].boxFee = d.pinkBoxFee;
@@ -7175,6 +7182,10 @@ function _persistQuickSent() {
     return !(n > 1500000000000 && n < cutoff);
   }));
   localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+  // A·B 공유: 발송완료 목록을 서버(설정)에 함께 저장
+  if (typeof gasUrl !== 'undefined' && gasUrl && typeof gasPost === 'function') {
+    gasPost({ action: 'saveTteokSettings', data: { quickSentIds: [...quickSentIds] } }).catch(function(){});
+  }
 }
 
 // 목록의 "보냈어요 / 취소" 버튼
@@ -7394,6 +7405,29 @@ function initQuickAlarm() {
       loadFuneralOrdersFromSheet(true, true).then(checkQuickAlarms).catch(() => {});
     }
   }, 120000);
+  // A·B 공유: 1분마다 서버의 발송완료 목록을 받아와 합침 (다른 컴퓨터가 보낸 것 반영)
+  setInterval(() => {
+    if (typeof gasUrl !== 'undefined' && gasUrl) {
+      pullQuickSentFromServer().then(checkQuickAlarms).catch(() => {});
+    }
+  }, 60000);
+}
+
+function pullQuickSentFromServer() {
+  if (typeof gasUrl === 'undefined' || !gasUrl || typeof gasGet !== 'function') return Promise.resolve();
+  return gasGet({ action: 'getTteokSettings' }).then(function(data) {
+    if (data && data.success && data.data && Array.isArray(data.data.quickSentIds)) {
+      let changed = false;
+      data.data.quickSentIds.forEach(function(x) {
+        const s = String(x);
+        if (!quickSentIds.has(s)) { quickSentIds.add(s); changed = true; }
+      });
+      if (changed) {
+        localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+        if (typeof refreshQuickCells === 'function') refreshQuickCells();
+      }
+    }
+  }).catch(function(){});
 }
 
 // 깜빡임 애니메이션
