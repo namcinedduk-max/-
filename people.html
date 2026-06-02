@@ -480,6 +480,38 @@ function apiSaveAbsence(eid,mo,day,v){ apiPost({type:"saveAbsence",empId:eid,mon
 function apiSaveLeave(eid,d){ apiPost({type:"saveLeave",empId:eid,data:d}).then(function(){ setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); }); }
 function apiSaveSlipMemo(eid,mo,memo){ apiPost({type:"saveSlipMemo",empId:eid,month:mo,memo:memo}).then(function(){ setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); }); }
 function apiSaveExtras(eid,ym){ apiPost({type:"saveExtras",empId:eid,month:ym,extras:(S.extras[eid]&&S.extras[eid][ym])?S.extras[eid][ym]:[]}).then(function(){ setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); }); }
+function saveSlip(eid, mo){
+  var exs=getEmpExtras(eid,mo);
+  // 기존 항목 수정값 반영
+  for(var i=0;i<exs.length;i++){
+    var lb=document.getElementById("exlb_"+i), am=document.getElementById("exam_"+i);
+    if(lb&&am){ exs[i]={label:lb.value.trim()||exs[i].label, amount:parseInt(am.value)||0}; }
+  }
+  if(!S.extras[eid]) S.extras[eid]={};
+  S.extras[eid][mo]=exs;
+  // 메모 저장
+  var memoEl=document.getElementById("slip-memo");
+  var memo=memoEl?memoEl.value:"";
+  if(!S.slipMemo[eid]) S.slipMemo[eid]={};
+  S.slipMemo[eid][mo]=memo;
+  saveCache();
+  apiSaveExtras(eid,mo);
+  apiSaveSlipMemo(eid,mo,memo);
+  toast("✓ 저장됨");
+}
+function slipMemoSave(eid,mo){
+  var el=document.getElementById('slip-memo'); if(!el) return;
+  var val=el.value;
+  if(!S.slipMemo[eid]) S.slipMemo[eid]={};
+  S.slipMemo[eid][mo]=val;
+  saveCache();
+  var lbl=document.getElementById('memo-save-lbl');
+  if(lbl){ lbl.textContent="저장 중..."; lbl.style.color="#f59e0b"; }
+  apiSaveSlipMemo(eid,mo,val);
+  setTimeout(function(){
+    if(lbl){ lbl.textContent="✓ 저장됨"; lbl.style.color="#16a34a"; }
+  },600);
+}
 var _memoTimer=null;
 function slipMemoChange(eid,mo,val){
   if(!S.slipMemo[eid]) S.slipMemo[eid]={};
@@ -862,6 +894,17 @@ function handleAction(action, id, val, el, ev){
     if(!S.extras[eid2][ym]) S.extras[eid2][ym]=[];
     S.extras[eid2][ym].push({label:lb.value.trim(),amount:parseInt(am.value)||0});
     saveCache(); apiSaveExtras(eid2,ym); S.mod={t:"slip",id:eid2}; render(); toast("✓ 항목 추가됨");
+  }
+  else if(action==="updateExtra"){
+    var xi=parseInt(id), sep2b=el.getAttribute("data-val").indexOf("~");
+    var eid3b=el.getAttribute("data-val").slice(0,sep2b), ym2b=el.getAttribute("data-val").slice(sep2b+1);
+    var lbEl=document.getElementById("exlb_"+xi), amEl=document.getElementById("exam_"+xi);
+    if(!lbEl||!amEl){toast("입력값을 찾을 수 없습니다");return;}
+    if(!lbEl.value.trim()){toast("항목명을 입력하세요");return;}
+    if(!S.extras[eid3b]) S.extras[eid3b]={};
+    if(!S.extras[eid3b][ym2b]) S.extras[eid3b][ym2b]=[];
+    S.extras[eid3b][ym2b][xi]={label:lbEl.value.trim(),amount:parseInt(amEl.value)||0};
+    saveCache(); apiSaveExtras(eid3b,ym2b); toast("✓ 수정됨");
   }
   else if(action==="removeExtra"){
     var xi=parseInt(id), sep2=el.getAttribute("data-val").indexOf("~");
@@ -2573,7 +2616,7 @@ function renderMod(){
     var _existMemo=((S.slipMemo[e.id]||{})[S.cm])||'';
     h+="<textarea id='slip-memo' oninput='slipMemoChange(\""+e.id+"\",\""+S.cm+"\",this.value)' style='width:100%;height:72px;border:1px solid #ddd;border-radius:6px;padding:7px 9px;font-size:12px;resize:vertical;font-family:inherit;box-sizing:border-box' placeholder='특이사항, 공지사항, 수습안내 등 자유롭게 입력 (최대 200자)' maxlength='200'>"+_existMemo.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+"</textarea>";
     h+="</div>";
-    h+="<div class='modal-actions' style='margin-top:1rem'><button class='btn' data-action='closeMod'>닫기</button><button class='btn pri' data-action='printSlip' data-id='"+e.id+"'>🖨 인쇄</button></div>";
+    h+="<div class='modal-actions' style='margin-top:1rem'><button class='btn' data-action='closeMod'>닫기</button><button class='btn pri' onclick='saveSlip(\""+e.id+"\",\""+S.cm+"\")'>💾 저장</button><button class='btn pri' data-action='printSlip' data-id='"+e.id+"'>🖨 인쇄</button></div>";
     h+="</div></div>"; return h;
   }
   return "";
