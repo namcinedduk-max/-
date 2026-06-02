@@ -448,30 +448,20 @@ setTimeout(function(){ if(!S.loading) checkNotifications(); },1500);
 function saveCache(){
   try{ localStorage.setItem("tteok_cache",JSON.stringify({emps:S.emps,ot:S.ot,ct:S.ct,done:S.done,gdone:S.gdone,absence:S.absence,leave:S.leave,payHistory:S.payHistory,holidays:S.holidays,quality:S.quality,extras:S.extras,slipMemo:S.slipMemo})); }catch(e){}
 }
-// 불러오기(읽기): GAS의 JSON 응답은 브라우저가 cross-origin fetch로 못 읽음(특히 file://).
-// → JSONP(<script> 태그)로 가져와 CORS 제한을 우회. 어떤 기기/주소에서도 시트 읽기 가능.
+// ── 불러오기: fetch + CORS 방식 ──
+// GAS를 "모든 사용자" 공개 배포 시 CORS(Access-Control-Allow-Origin: *)를 지원함.
+// 기존 JSONP(<script>태그) 방식은 GitHub Pages의 CSP 정책으로 차단되어 fetch로 전환.
 function apiGet(p){
-  return new Promise(function(resolve,reject){
-    var s=null;
-    var cbName="__gas_cb_"+Date.now()+"_"+Math.floor(Math.random()*1000000);
-    var timer=setTimeout(function(){ cleanup(); reject(new Error("timeout")); },25000);
-    function cleanup(){
-      clearTimeout(timer);
-      try{ delete window[cbName]; }catch(e){ window[cbName]=undefined; }
-      if(s&&s.parentNode) s.parentNode.removeChild(s);
-    }
-    window[cbName]=function(data){ cleanup(); resolve(data); };
-    var params=new URLSearchParams(p); params.set("callback",cbName);
-    s=document.createElement("script");
-    s.src=SHEET+"?"+params.toString();
-    s.onerror=function(){ cleanup(); reject(new Error("network")); };
-    document.head.appendChild(s);
-  });
+  var params=new URLSearchParams(p);
+  return fetch(SHEET+"?"+params.toString(),{method:"GET"})
+    .then(function(r){
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return r.json();
+    });
 }
-// 구글 앱스스크립트(GAS)는 브라우저 fetch 응답에 CORS 허용 헤더를 주지 않아
-// 일반 모드로 보내면 "요청은 성공해도" 응답을 못 읽어 실패로 오인됨.
-// → no-cors + text/plain(단순요청)으로 보내면 시트에는 정상 저장되고 거짓 오류가 사라짐.
-// (단, 응답 본문을 읽을 수 없으므로 서버측 성공 여부는 시트에서 직접 확인)
+// ── 저장: no-cors fetch ──
+// GAS POST는 CORS preflight 없이 text/plain 단순요청으로 전송.
+// 응답을 못 읽어도 시트 저장은 정상 처리됨.
 function apiPost(d){
   return fetch(SHEET,{
     method:"POST",
@@ -653,33 +643,21 @@ function setSyncSt(st, detail){
 // ── GAS 연결 진단 ──
 function diagConnection(){
   toast("연결 진단 중...", 5000);
-  var info=[];
-  info.push("GAS URL: "+SHEET.slice(0,60)+"...");
-  info.push("프로토콜: "+location.protocol);
-  info.push("호스트: "+location.hostname);
-  // JSONP 방식으로 test
-  var cbName="__diag_"+Date.now();
-  var done=false;
-  var timer=setTimeout(function(){
-    if(!done){ done=true; delete window[cbName];
-      alert("❌ 연결 실패\n\n원인 후보:\n1. GAS 배포 권한이 '나만'으로 설정됨\n   → GAS > 배포관리 > 액세스: '모든 사용자'로 변경 후 재배포\n\n2. GAS URL이 변경됨 (재배포 후 새 URL)\n   → HTML 파일 상단 SHEET 변수 URL 업데이트\n\n3. CSP 정책 차단 (일부 브라우저)\n   → Chrome으로 재시도\n\n현재 URL:\n"+SHEET);
-    }
-  },8000);
-  window[cbName]=function(d){
-    if(!done){ done=true; clearTimeout(timer); delete window[cbName];
-      if(d&&d.ok!==undefined) alert("✅ GAS 연결 성공!\n\n직원 수: "+(d.employees?d.employees.length:"?")+"명\n\n→ 연결은 정상입니다.\n혹시 데이터가 안 보이면 새로고침 버튼을 눌러보세요.");
-      else alert("⚠ GAS 응답 이상\nok 필드 없음\n응답: "+JSON.stringify(d).slice(0,200));
-    }
-  };
-  var s=document.createElement("script");
-  var params=new URLSearchParams({type:"all",callback:cbName});
-  s.src=SHEET+"?"+params.toString();
-  s.onerror=function(){
-    if(!done){ done=true; clearTimeout(timer); delete window[cbName]; s.parentNode&&s.parentNode.removeChild(s);
-      alert("❌ 스크립트 로드 자체 실패\n\nCSP(Content-Security-Policy) 차단 가능성 높음.\nGitHub Pages 에서 외부 script 로드가 막힌 것 같습니다.\n\n해결: index.html에 CSP 메타태그 추가 필요\n<meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'self' 'unsafe-inline' script.google.com;\">"); 
-    }
-  };
-  document.head.appendChild(s);
+  fetch(SHEET+"?type=all", {method:"GET"})
+    .then(function(r){
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return r.json();
+    })
+    .then(function(d){
+      if(d&&d.ok!==undefined){
+        alert("✅ GAS 연결 성공!\n\n직원 수: "+(d.employees?d.employees.length:"?")+"명\n\n→ 연결 정상입니다. 새로고침 버튼을 눌러보세요.");
+      } else {
+        alert("⚠ GAS 응답 이상\n응답: "+JSON.stringify(d).slice(0,200));
+      }
+    })
+    .catch(function(err){
+      alert("❌ 연결 실패: "+err.message+"\n\n확인사항:\n1. GAS 배포 권한 → '모든 사용자'로 설정됐는지\n2. GAS 재배포 후 새 URL이 발급됐는지\n   (HTML의 SHEET 변수와 일치 확인)\n\n현재 URL:\n"+SHEET);
+    });
 }
 
 // ── 공휴일 ──
