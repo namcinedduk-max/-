@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://script.google.com https://script.googleusercontent.com https://unpkg.com https://apis.data.go.kr;">
 <title>남씨네전통식품 인사관리</title>
 <script src="https://unpkg.com/docx@9.0.3/build/index.umd.js"></script>
 <style>
@@ -181,6 +182,7 @@ textarea{resize:vertical;min-height:80px}
     <div class="top-right">
       <div class="sync-bar"><div class="sync-dot" id="sdot"></div><span class="sync-label" id="slbl">연결 중...</span></div>
       <button class="btn" data-action="loadAll" style="font-size:12px;padding:5px 12px">↺ 새로고침</button>
+      <button class="btn" onclick="diagConnection()" style="font-size:12px;padding:5px 12px">🔌 연결 진단</button>
       <button class="btn" data-action="openIns" style="font-size:12px;padding:5px 12px">⚙ 보험료율</button>
     </div>
   </div>
@@ -640,10 +642,44 @@ function loadAll(){
   fetchHolidays(TODAY.getFullYear());
   fetchHolidays(TODAY.getFullYear()+1);
 }
-function setSyncSt(st){
+function setSyncSt(st, detail){
   var dot=document.getElementById("sdot"), lbl=document.getElementById("slbl"); if(!dot) return;
   dot.className="sync-dot"+(st==="err"?" err":st==="loading"?" loading":"");
-  lbl.textContent=st==="ok"?"구글 시트 연동됨":st==="loading"?"동기화 중...":"연결 오류";
+  if(st==="ok") lbl.textContent="구글 시트 연동됨";
+  else if(st==="loading") lbl.textContent="동기화 중...";
+  else lbl.textContent="연결 오류"+(detail?" ("+detail+")":"");
+}
+
+// ── GAS 연결 진단 ──
+function diagConnection(){
+  toast("연결 진단 중...", 5000);
+  var info=[];
+  info.push("GAS URL: "+SHEET.slice(0,60)+"...");
+  info.push("프로토콜: "+location.protocol);
+  info.push("호스트: "+location.hostname);
+  // JSONP 방식으로 test
+  var cbName="__diag_"+Date.now();
+  var done=false;
+  var timer=setTimeout(function(){
+    if(!done){ done=true; delete window[cbName];
+      alert("❌ 연결 실패\n\n원인 후보:\n1. GAS 배포 권한이 '나만'으로 설정됨\n   → GAS > 배포관리 > 액세스: '모든 사용자'로 변경 후 재배포\n\n2. GAS URL이 변경됨 (재배포 후 새 URL)\n   → HTML 파일 상단 SHEET 변수 URL 업데이트\n\n3. CSP 정책 차단 (일부 브라우저)\n   → Chrome으로 재시도\n\n현재 URL:\n"+SHEET);
+    }
+  },8000);
+  window[cbName]=function(d){
+    if(!done){ done=true; clearTimeout(timer); delete window[cbName];
+      if(d&&d.ok!==undefined) alert("✅ GAS 연결 성공!\n\n직원 수: "+(d.employees?d.employees.length:"?")+"명\n\n→ 연결은 정상입니다.\n혹시 데이터가 안 보이면 새로고침 버튼을 눌러보세요.");
+      else alert("⚠ GAS 응답 이상\nok 필드 없음\n응답: "+JSON.stringify(d).slice(0,200));
+    }
+  };
+  var s=document.createElement("script");
+  var params=new URLSearchParams({type:"all",callback:cbName});
+  s.src=SHEET+"?"+params.toString();
+  s.onerror=function(){
+    if(!done){ done=true; clearTimeout(timer); delete window[cbName]; s.parentNode&&s.parentNode.removeChild(s);
+      alert("❌ 스크립트 로드 자체 실패\n\nCSP(Content-Security-Policy) 차단 가능성 높음.\nGitHub Pages 에서 외부 script 로드가 막힌 것 같습니다.\n\n해결: index.html에 CSP 메타태그 추가 필요\n<meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'self' 'unsafe-inline' script.google.com;\">"); 
+    }
+  };
+  document.head.appendChild(s);
 }
 
 // ── 공휴일 ──
@@ -2170,10 +2206,12 @@ function getIns4FromForm(){
 }
 // ── 근로소득세 간이세액 계산 (2026년 기준) ──
 // 방식: 월 과세급여 → 연간환산 → 근로소득공제 → 기본공제 → 누진세율 → 세액공제
-function calcIncomeTax(taxableGross, dependents){
+function calcIncomeTax(taxableGross, dependents, monthlyIns){
   if(taxableGross<=0) return {incomeTax:0,localTax:0};
   var dep=Math.max(1,parseInt(dependents)||1);
   var annual=taxableGross*12;
+  var annualIns=(monthlyIns||0)*12; // 4대보험료 연간 소득공제 ★
+
   // 근로소득공제
   var wd;
   if(annual<=5000000)       wd=annual*0.70;
@@ -2181,9 +2219,11 @@ function calcIncomeTax(taxableGross, dependents){
   else if(annual<=45000000) wd=7500000+(annual-15000000)*0.15;
   else if(annual<=100000000)wd=12000000+(annual-45000000)*0.05;
   else                       wd=Math.min(14250000+(annual-100000000)*0.02,20000000);
-  // 과세표준 = 근로소득금액 - 기본공제(150만×부양가족수) - 표준세액공제반영분
+
   var incomeAmt=Math.max(0,annual-wd);
-  var taxBase=Math.max(0,incomeAmt-1500000*dep);
+  // 과세표준 = 근로소득금액 - 기본공제 - 4대보험료(소득공제) ★
+  var taxBase=Math.max(0,incomeAmt-1500000*dep-annualIns);
+
   // 산출세액 (누진세율)
   var annualTax;
   if(taxBase<=12000000)       annualTax=taxBase*0.06;
@@ -2193,14 +2233,19 @@ function calcIncomeTax(taxableGross, dependents){
   else if(taxBase<=300000000) annualTax=37600000+(taxBase-150000000)*0.38;
   else if(taxBase<=500000000) annualTax=94600000+(taxBase-300000000)*0.40;
   else                         annualTax=174600000+(taxBase-500000000)*0.42;
-  // 근로소득세액공제
+
+  // 근로소득세액공제 + 한도(총급여 기준 동적 계산) ★
   var credit;
   if(annualTax<=1300000) credit=annualTax*0.55;
   else credit=715000+(annualTax-1300000)*0.30;
-  credit=Math.min(credit,660000);
+  var creditLimit;
+  if(annual<=33000000)      creditLimit=740000;
+  else if(annual<=70000000) creditLimit=740000-(annual-33000000)*0.008;
+  else                       creditLimit=Math.max(500000,660000-(annual-70000000)*0.5);
+  credit=Math.min(credit,creditLimit);
+
   // 표준세액공제 13만원
   var finalAnnual=Math.max(0,annualTax-credit-130000);
-  // 월 소득세 (10원 단위 절사)
   var incomeTax=Math.floor(finalAnnual/12/10)*10;
   var localTax=Math.floor(incomeTax*0.1/10)*10;
   return {incomeTax:incomeTax,localTax:localTax};
@@ -2212,7 +2257,9 @@ function calcEmpIns(b4, ins4, taxableGross, dependents){
   var health= i.health?Math.round(b4*(S.ins.health/100)):0;
   var empIns= i.empIns?Math.round(b4*(S.ins.empIns/100)):0;
   var care=   (i.care&&i.health)?Math.round(health*(S.ins.care/100)):0;
-  var it=calcIncomeTax(taxableGross||0, dependents||1);
+  // 4대보험 합계를 소득공제로 calcIncomeTax에 전달 ★
+  var monthlyIns=pension+health+empIns+care;
+  var it=calcIncomeTax(taxableGross||0, dependents||1, monthlyIns);
   var incomeTax=it.incomeTax, localTax=it.localTax;
   var total=pension+health+empIns+care+incomeTax+localTax;
   return {pension:pension,health:health,empIns:empIns,care:care,incomeTax:incomeTax,localTax:localTax,total:total};
