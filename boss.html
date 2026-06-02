@@ -564,7 +564,27 @@ function saveChannelSales(ym, data) {
   syncToGAS('channelSales', S.channelSales);
 }
 
+// 채널 매출 모달용 전역 변수 (fn.toString 클로저 문제 해결)
+let _csModalYM = '';
+
+function _commitChannelSales() {
+  const data = {
+    pos:      Number(document.getElementById('cs_pos').value)||0,
+    coupang:  Number(document.getElementById('cs_coupang').value)||0,
+    naver:    Number(document.getElementById('cs_naver').value)||0,
+    baemin:   Number(document.getElementById('cs_baemin').value)||0,
+    ddangyeo: Number(document.getElementById('cs_ddangyeo').value)||0,
+  };
+  saveChannelSales(_csModalYM, data);
+  closeModal();
+  renderDash();
+  if (S.dataLoaded) renderTrend();
+  const [y, m] = _csModalYM.split('-');
+  toast(`${y}년 ${parseInt(m)}월 채널 매출 저장됐어요`);
+}
+
 function openChannelSalesModal(ym) {
+  _csModalYM = ym;
   const [y, m] = ym.split('-');
   const ymLabel = `${y}년 ${parseInt(m)}월`;
   const cs = S.channelSales[ym] || {};
@@ -581,20 +601,7 @@ function openChannelSalesModal(ym) {
       <span style="font-size:18px;font-weight:700;font-family:'Noto Serif KR',serif" id="cs_total">${won(total)}</span>
     </div>
   `, [
-    { label: '저장', cls: 'pri', fn: () => {
-      const data = {
-        pos:      Number(document.getElementById('cs_pos').value)||0,
-        coupang:  Number(document.getElementById('cs_coupang').value)||0,
-        naver:    Number(document.getElementById('cs_naver').value)||0,
-        baemin:   Number(document.getElementById('cs_baemin').value)||0,
-        ddangyeo: Number(document.getElementById('cs_ddangyeo').value)||0,
-      };
-      saveChannelSales(ym, data);
-      closeModal();
-      renderDash();
-      if (S.dataLoaded) renderTrend();
-      toast(`${ymLabel} 채널 매출 저장됐어요`);
-    }},
+    { label: '저장', cls: 'pri', fn: _commitChannelSales },
     { label: '취소', cls: '', fn: closeModal }
   ]);
 }
