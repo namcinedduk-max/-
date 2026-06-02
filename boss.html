@@ -1733,11 +1733,20 @@ function updateAIChat() {
   el.scrollTop = el.scrollHeight;
 }
 
+// 모달 콜백 레지스트리 (fn.toString() 클로저 문제 해결)
+window._mCb = {};
+
 function openModal(title, body, actions) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = body;
   const actEl = document.getElementById('modalActions');
-  actEl.innerHTML = (actions || []).map(a => `<button class="btn ${a.cls||''}" onclick="(${a.fn.toString()})()">${a.label}</button>`).join('');
+  const ts = Date.now();
+  window._mCb = {};
+  actEl.innerHTML = (actions || []).map((a, i) => {
+    const key = 'k' + i;
+    window._mCb[key] = a.fn;
+    return `<button class="btn ${a.cls||''}" onclick="window._mCb['${key}'] && window._mCb['${key}']()">${a.label}</button>`;
+  }).join('');
   document.getElementById('overlay').style.display = 'flex';
 }
 
