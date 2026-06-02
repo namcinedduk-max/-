@@ -296,6 +296,16 @@ function loadConfig() {
   document.getElementById('set_ownerName').value = S.ownerName;
 }
 
+function syncSettings() {
+  syncToGAS('settings', {
+    gasUrl: S.gasUrl,
+    hrGasUrl: S.hrGasUrl,
+    dataGasUrl: S.dataGasUrl,
+    ownerName: S.ownerName,
+    apiKey: S.apiKey
+  });
+}
+
 function saveSettings() {
   S.gasUrl = document.getElementById('set_gasUrl').value.trim();
   S.hrGasUrl = document.getElementById('set_hrGasUrl').value.trim();
@@ -303,6 +313,7 @@ function saveSettings() {
   setLs('gasUrl', S.gasUrl);
   setLs('hrGasUrl', S.hrGasUrl);
   setLs('dataGasUrl', S.dataGasUrl);
+  syncSettings();
   toast('저장됐어요');
   loadAllData();
   if (S.dataGasUrl) loadSyncData();
@@ -311,11 +322,13 @@ function saveSettings() {
 function saveApiKey() {
   S.apiKey = document.getElementById('set_apiKey').value.trim();
   setLs('apiKey', S.apiKey);
+  syncSettings();
   toast('API 키 저장됐어요');
 }
 function saveCompanyInfo() {
   S.ownerName = document.getElementById('set_ownerName').value.trim() || '사장님';
   setLs('ownerName', S.ownerName);
+  syncSettings();
   toast('저장됐어요');
 }
 
@@ -350,6 +363,14 @@ async function loadSyncData() {
       if (Array.isArray(d.meetings)) { S.meetings = d.meetings; setLs('meetings', JSON.stringify(S.meetings)); }
       if (Array.isArray(d.memos))    { S.memos = d.memos;       setLs('memos', JSON.stringify(S.memos)); }
       if (d.aiChatHistory && typeof d.aiChatHistory === 'object') { S.aiChatHistory = d.aiChatHistory; setLs('aiChatHistory', JSON.stringify(S.aiChatHistory)); }
+      if (d.channelSales && typeof d.channelSales === 'object') { S.channelSales = d.channelSales; setLs('channelSales', JSON.stringify(S.channelSales)); }
+      if (d.settings && typeof d.settings === 'object') {
+        const st = d.settings;
+        if (st.gasUrl)    { S.gasUrl    = st.gasUrl;    setLs('gasUrl', st.gasUrl);       document.getElementById('set_gasUrl').value    = st.gasUrl; }
+        if (st.hrGasUrl)  { S.hrGasUrl  = st.hrGasUrl;  setLs('hrGasUrl', st.hrGasUrl);   document.getElementById('set_hrGasUrl').value  = st.hrGasUrl; }
+        if (st.ownerName) { S.ownerName = st.ownerName; setLs('ownerName', st.ownerName); document.getElementById('set_ownerName').value = st.ownerName; }
+        if (st.apiKey)    { S.apiKey    = st.apiKey;    setLs('apiKey', st.apiKey);       document.getElementById('set_apiKey').value    = st.apiKey; }
+      }
       renderMeeting(); renderMemo(); renderNote();
       toast('동기화 완료');
     }
