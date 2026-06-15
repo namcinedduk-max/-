@@ -1689,6 +1689,7 @@
         분 지나도 발송 안 했으면 소리로 알림
       </span>
       <button type="button" onclick="testQuickAlarmSound()" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;">🔊 소리 테스트</button>
+      <button type="button" onclick="quickShareSelfTest()" style="background:#0891b2;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;">🔄 공유 점검</button>
     </div>
 
     <div class="table-wrap">
@@ -2354,45 +2355,9 @@
     <div class="form-card">
 
       <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-        <button class="settings-tab-btn active" id="stab-venues" onclick="switchSettingsTab('venues')">🏢 매출거래처</button>
-        <button class="settings-tab-btn" id="stab-purchase-partner" onclick="switchSettingsTab('purchase-partner')">🛒 매입거래처</button>
+        <button class="settings-tab-btn active" id="stab-venues" onclick="switchSettingsTab('venues')">🏢 거래처</button>
         <button class="settings-tab-btn" id="stab-tteokprice" onclick="switchSettingsTab('tteokprice')">🍡 떡 단가</button>
         <button class="settings-tab-btn" id="stab-quickfee" onclick="switchSettingsTab('quickfee')">📦 퀵비 요금표</button>
-      </div>
-
-      <div id="settings-purchase-partner" style="display:none;">
-        <div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:10px;" id="partnerFormTitle">+ 새 거래처 추가</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
-              <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처명 *</label>
-              <input type="text" id="part_name" placeholder="예: 대전농협" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">주요 분류</label>
-              <select id="part_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-                <option value="material">원재료</option>
-                <option value="oem">외주/OEM</option>
-                <option value="packaging">포장재</option>
-                <option value="utility">공과금</option>
-                <option value="delivery">퀵/배송비</option>
-                <option value="etc">기타</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">연락처</label>
-              <input type="tel" id="part_phone" placeholder="010-0000-0000" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px;">
-              <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">메모</label>
-              <input type="text" id="part_memo" placeholder="월말 결제, 단골 등" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-            </div>
-            <input type="hidden" id="part_editId" value="">
-            <button class="btn-small btn-primary" id="partnerSaveBtn" onclick="savePartner()" style="padding:9px 20px;">+ 거래처 추가</button>
-            <button class="btn-small btn-secondary" id="partnerCancelBtn" onclick="cancelPartnerEdit()" style="display:none;padding:9px 14px;">취소</button>
-          </div>
-        </div>
-        <div id="partnerList"></div>
       </div>
 
       <div id="settings-venues" style="display:block;">
@@ -2866,7 +2831,7 @@
       <h2 style="margin:0;">🛒 매입 관리</h2>
       <div style="display:flex;gap:8px;">
         <button id="purViewBtn-record" class="btn-small btn-primary" onclick="switchPurchaseView('record')">매입 기록</button>
-        <button class="btn-small btn-secondary" onclick="switchTab('settings');switchSettingsTab('purchase-partner');">🏢 거래처 관리 →</button>
+        <button id="purViewBtn-partner" class="btn-small btn-secondary" onclick="switchPurchaseView('partner')">거래처 관리</button>
       </div>
     </div>
 
@@ -2927,7 +2892,6 @@
         <select id="pur_filterType" onchange="renderPurchaseTable()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <option value="">전체 분류</option>
           <option value="material">원재료</option>
-          <option value="oem">외주/OEM</option>
           <option value="packaging">포장재</option>
           <option value="utility">공과금</option>
           <option value="delivery">퀵/배송비</option>
@@ -2950,7 +2914,41 @@
       </div>
     </div>
 
-
+    <!-- 거래처 관리 화면 -->
+    <div id="purchase-partner-view" style="display:none;">
+      <!-- 거래처 추가 폼 -->
+      <div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:10px;" id="partnerFormTitle">+ 새 거래처 추가</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">거래처명 *</label>
+            <input type="text" id="part_name" placeholder="예: 대전농협" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">주요 분류</label>
+            <select id="part_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+              <option value="material">원재료</option>
+              <option value="packaging">포장재</option>
+              <option value="utility">공과금</option>
+              <option value="delivery">퀵/배송비</option>
+              <option value="etc">기타</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">연락처</label>
+            <input type="tel" id="part_phone" placeholder="010-0000-0000" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">메모</label>
+            <input type="text" id="part_memo" placeholder="월말 결제, 단골 등" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          </div>
+          <input type="hidden" id="part_editId" value="">
+          <button class="btn-small btn-primary" id="partnerSaveBtn" onclick="savePartner()" style="padding:9px 20px;">+ 거래처 추가</button>
+          <button class="btn-small btn-secondary" id="partnerCancelBtn" onclick="cancelPartnerEdit()" style="display:none;padding:9px 14px;">취소</button>
+        </div>
+      </div>
+      <div id="partnerList"></div>
+    </div>
   </div>
 </div>
 </div><!-- /main -->
@@ -3125,7 +3123,6 @@
         <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">분류</label>
         <select id="purEdit_type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <option value="material">원재료</option>
-          <option value="oem">외주/OEM</option>
           <option value="packaging">포장재</option>
           <option value="utility">공과금</option>
           <option value="delivery">퀵/배송비</option>
@@ -6797,7 +6794,7 @@ let currentSettingsTab = 'venues';
 
 function switchSettingsTab(type) {
   currentSettingsTab = type;
-  const tabs = ['venues', 'purchase-partner', 'funeral', 'wedding-price', 'other-price', 'quickfee', 'tteokprice'];
+  const tabs = ['venues', 'funeral', 'wedding-price', 'other-price', 'quickfee', 'tteokprice'];
   tabs.forEach(t => {
     const content = document.getElementById('settings-' + t);
     const btn = document.getElementById('stab-' + t);
@@ -6806,10 +6803,6 @@ function switchSettingsTab(type) {
   });
   if (type === 'venues') {
     if (typeof renderVenuesList === 'function') renderVenuesList();
-  }
-  if (type === 'purchase-partner') {
-    if (typeof renderPartnerList === 'function') renderPartnerList();
-    if (typeof updatePartnerSelect === 'function') updatePartnerSelect();
   }
   if (type === 'quickfee') renderQuickFeeList();
   if (type === 'tteokprice') {
@@ -7190,9 +7183,22 @@ function _persistQuickSent() {
     return !(n > 1500000000000 && n < cutoff);
   }));
   localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
-  // A·B 공유: 발송완료 목록을 서버(설정)에 함께 저장
+  // A·B 공유: 저장 전에 서버 목록과 합쳐서 저장 (다른 컴퓨터가 표시한 건 안 지워지게)
   if (typeof gasUrl !== 'undefined' && gasUrl && typeof gasPost === 'function') {
-    gasPost({ action: 'saveTteokSettings', data: { quickSentIds: [...quickSentIds] } }).catch(function(){});
+    const localArr = [...quickSentIds];
+    if (typeof gasGet === 'function') {
+      gasGet({ action: 'getTteokSettings' }).then(function(data) {
+        const server = (data && data.data && Array.isArray(data.data.quickSentIds)) ? data.data.quickSentIds.map(String) : [];
+        const merged = Array.from(new Set(localArr.concat(server)));
+        merged.forEach(function(s){ quickSentIds.add(s); });
+        localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+        gasPost({ action: 'saveTteokSettings', data: { quickSentIds: merged } }).catch(function(){});
+      }).catch(function() {
+        gasPost({ action: 'saveTteokSettings', data: { quickSentIds: localArr } }).catch(function(){});
+      });
+    } else {
+      gasPost({ action: 'saveTteokSettings', data: { quickSentIds: localArr } }).catch(function(){});
+    }
   }
 }
 
@@ -7419,6 +7425,30 @@ function initQuickAlarm() {
       pullQuickSentFromServer().then(checkQuickAlarms).catch(() => {});
     }
   }, 60000);
+}
+
+// 발송완료 공유가 서버에서 실제로 되는지 점검 (마커 저장→읽기→복원)
+function quickShareSelfTest() {
+  if (typeof gasUrl === 'undefined' || !gasUrl) { alert('❌ 서버 주소(gasUrl)가 설정되어 있지 않아요. 동기화 불가.'); return; }
+  const marker = 'TEST_' + Date.now();
+  showToast('🔄 공유 점검 중...', '');
+  gasGet({ action: 'getTteokSettings' }).then(function(before) {
+    const cur = (before && before.data && Array.isArray(before.data.quickSentIds)) ? before.data.quickSentIds.slice() : [];
+    return gasPost({ action: 'saveTteokSettings', data: { quickSentIds: cur.concat([marker]) } })
+      .then(function(){ return gasGet({ action: 'getTteokSettings' }); })
+      .then(function(after) {
+        const got = (after && after.data && Array.isArray(after.data.quickSentIds)) ? after.data.quickSentIds : null;
+        // 마커 정리 (원래대로 복원)
+        gasPost({ action: 'saveTteokSettings', data: { quickSentIds: cur } }).catch(function(){});
+        if (got && got.indexOf(marker) > -1) {
+          alert('✅ 공유 정상!\n서버가 발송완료 목록을 저장하고 돌려줍니다.\n\nA·B 양쪽에 이 파일이 올라가 있으면, A에서 발송완료 누른 게 B에 1분 안에 반영돼요.\n\n(B에서 안 꺼졌다면: B에도 이 새 파일이 올라가 있는지, 알림이 켜져 있는지 확인해주세요.)');
+        } else if (got === null) {
+          alert('❌ 서버가 발송완료 목록(quickSentIds)을 돌려주지 않아요.\n서버(앱스스크립트) 설정 저장이 이 항목을 받지 않는 것 같습니다.\n이 경우 다른 저장 방식이 필요해요 — 알려주세요.');
+        } else {
+          alert('⚠️ 저장은 됐는데 방금 넣은 표시가 사라졌어요.\n서버가 일부 항목만 저장하는 것 같습니다. 알려주세요.');
+        }
+      });
+  }).catch(function(e){ alert('❌ 점검 실패 (서버 연결 문제): ' + (e && e.message || e)); });
 }
 
 function pullQuickSentFromServer() {
@@ -10900,6 +10930,17 @@ function printInvoice(order, orderType) {
     ];
   }
 
+  // ── 프린터 용지(3분할)에 맞춰 명세표는 거래처 종류와 무관하게 무조건 3장 ──
+  if (copies.length > 3) {
+    copies = copies.slice(0, 3);
+  } else {
+    while (copies.length < 3) {
+      // 마지막(공급자=떡집 보관용) 장 앞에 거래처 보관용을 한 장 추가
+      copies.splice(Math.max(0, copies.length - 1), 0,
+        { label: `${venueName} 보관용`, bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' });
+    }
+  }
+
   const venueRegno = venueInfo.regno || '';
   const venueCeo = venueInfo.ceo || '';
   const venueTel = venueInfo.tel || '';
@@ -11065,6 +11106,12 @@ function printInvoice(order, orderType) {
         ? weddingOrders
         : (window._allWeddingOrders || []);
       nameKeys = ['weddingName', 'hallName'];
+    } else if (orderType === 'other') {
+      // 기타거래처: otherOrders 에서 같은 거래처 주문 누적 (매월 결제 → 전미수금 표시)
+      sourceOrders = (typeof otherOrders !== 'undefined' && Array.isArray(otherOrders))
+        ? otherOrders
+        : [];
+      nameKeys = ['venueName'];
     } else {
       // 충대식당 (장례식장은 이 경로로 안 들어옴 - 호출부에서 차단)
       sourceOrders = (typeof funeralOrders !== 'undefined' && Array.isArray(funeralOrders))
@@ -11173,7 +11220,7 @@ function printInvoice(order, orderType) {
   const isRestaurantFuneral = (orderType === 'funeral')
     && (typeof getFuneralCategory === 'function')
     && (getFuneralCategory(venueName) === 'restaurant');
-  const useStatementSlip = isWedding || isRestaurantFuneral;
+  const useStatementSlip = isWedding || isRestaurantFuneral || (orderType === 'other');
 
   const dividers = copies.map((copy, i) => {
     const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
@@ -12706,7 +12753,7 @@ function renderPurItemRows() {
   const container = document.getElementById('purItemRowsContainer');
   if (!container) return;
   const UNITS = ['kg','g','개','박스','포','봉','L','기타'];
-  const TYPES = [{v:'material',l:'원재료'},{v:'oem',l:'외주/OEM'},{v:'packaging',l:'포장재'},{v:'utility',l:'공과금'},{v:'delivery',l:'배송비'},{v:'etc',l:'기타'}];
+  const TYPES = [{v:'material',l:'원재료'},{v:'packaging',l:'포장재'},{v:'utility',l:'공과금'},{v:'delivery',l:'배송비'},{v:'etc',l:'기타'}];
 
   if (purItemRows.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">아래 "+ 품목 추가" 버튼을 눌러주세요.</div>';
