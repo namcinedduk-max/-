@@ -6968,6 +6968,31 @@ function calcPriceFromTteok(type) {
   }
 }
 
+// ============================================================
+// 장례식장 단가 계산 공통 헬퍼 (앱표시·명세서·수정모달 동일 적용)
+// 대청: 10kg 블록은 price10(할인가) 적용, 남는 5kg는 price5
+//   예) 5kg=price5, 10kg=price10, 15kg=price10+price5, 20kg=price10×2
+// 충대: 5kg 정액 × 개수 (10kg=×2, 15kg=×3, 20kg=×4)
+// 둘 다 명세서(수수료 차감 전) 기준 금액을 반환한다.
+// ============================================================
+function daecheongItemAmount(p, qtyStr) {
+  if (!p || typeof p !== 'object') return 0;
+  const price5 = p.price5 || 0;
+  const price10 = p.price10 || (price5 * 2);
+  const kg = parseFloat(String(qtyStr || '').replace(/[^0-9.]/g, '')) || 0;
+  if (kg <= 0) return 0;
+  const tens = Math.floor(kg / 10);
+  const fives = Math.floor((kg - tens * 10) / 5);
+  return tens * price10 + fives * price5;
+}
+function chungdaeItemAmount(priceVal, qtyStr) {
+  if (!priceVal) return 0;
+  const p5 = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
+  const kg = parseFloat(String(qtyStr || '').replace(/[^0-9.]/g, '')) || 0;
+  if (kg <= 0) return 0;
+  return Math.floor(kg / 5) * p5;
+}
+
 // 장례식장/웨딩홀 단가 자동계산
 function calcVenuePrice(type) {
   const items = type === 'funeral' ? funeralTteokItems : weddingTteokItems;
@@ -7008,42 +7033,11 @@ function calcVenuePrice(type) {
     const qtyStr = String(item.qty).trim();
 
     if (isDaecheong && typeof priceVal === 'object') {
-      // 대청: 5kg/10kg 각각 다른 고정 가격
-      if (qtyStr === '10kg') {
-        total += priceVal.price10 || 0;
-      } else if (qtyStr === '5kg') {
-        total += priceVal.price5 || 0;
-      } else if (qtyStr === '15kg') {
-        total += (priceVal.price10 || 0) + (priceVal.price5 || 0);
-      } else if (qtyStr === '20kg') {
-        total += (priceVal.price10 || 0) * 2;
-      } else {
-        const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
-        if (numMatch) {
-          const kg = parseFloat(numMatch[1]);
-          const units5 = Math.floor(kg / 5);
-          total += units5 * (priceVal.price5 || 0);
-        }
-      }
+      // 대청: 10kg 블록 할인가 + 남는 5kg (공통 헬퍼)
+      total += daecheongItemAmount(priceVal, qtyStr);
     } else if (isChungdae) {
-      // 충대: 5kg 고정가격, 10kg=×2, 15kg=×3, 20kg=×4
-      // 기존 숫자 형식도 price5로 처리
-      const p5 = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
-      if (qtyStr === '5kg') {
-        total += p5;
-      } else if (qtyStr === '10kg') {
-        total += p5 * 2;
-      } else if (qtyStr === '15kg') {
-        total += p5 * 3;
-      } else if (qtyStr === '20kg') {
-        total += p5 * 4;
-      } else {
-        const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
-        if (numMatch) {
-          const units5 = Math.floor(parseFloat(numMatch[1]) / 5);
-          total += units5 * p5;
-        }
-      }
+      // 충대: 5kg 정액 × 개수 (공통 헬퍼)
+      total += chungdaeItemAmount(priceVal, qtyStr);
     } else if (isRestaurant) {
       // 충대식당: kg당 단가 × kg수량 (0.1kg 단위 가능)
       const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
@@ -10960,18 +10954,15 @@ function printInvoice(order, orderType) {
       if (vname === '대청장례식장') {
         const p = (venuePrices['daecheong'] || {})[itemName];
         if (p) {
-          const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 5;
-          let basePrice = 0;
-          if (qtyNum >= 10 && p.price10) basePrice = p.price10;
-          else basePrice = p.price5 || 0;
-          // 명세서에는 수수료율 적용 전 금액 표시
-          return { unitPrice: 0, amount: basePrice };
+          // 명세서에는 수수료율 적용 전 금액, 10kg 블록 할인가 + 남는 5kg
+          const amount = daecheongItemAmount(p, qty);
+          return { unitPrice: 0, amount: amount };
         }
       } else if (vname === '충대장례식장') {
         const p = (venuePrices['chungdae'] || {})[itemName];
         if (p) {
-          // 5kg 단위 고정금액
-          return { unitPrice: 0, amount: p.price5 || 0 };
+          // 5kg 정액 × 개수
+          return { unitPrice: 0, amount: chungdaeItemAmount(p, qty) };
         }
       } else {
         // 충대 식당류 (kg 단가 × 수량)
@@ -11719,6 +11710,8 @@ function openFuneralModal(id) {
           <div id="ef_qty_5kg_btns" style="display:none;gap:4px;display:none;">
             <button onclick="efAddTteok('5kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">5kg</button>
             <button onclick="efAddTteok('10kg')" style="padding:6px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">10kg</button>
+            <button onclick="efAddTteok('15kg')" style="padding:6px 10px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">15kg</button>
+            <button onclick="efAddTteok('20kg')" style="padding:6px 10px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">20kg</button>
           </div>
           <div id="ef_qty_kg_input" style="display:none;gap:4px;align-items:center;">
             <input type="number" id="ef_tteokKg" placeholder="kg" style="width:70px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
@@ -11905,27 +11898,12 @@ function efCalcPrice() {
       if (editModalVenueType === 'funeral') {
         if (venueName === '대청장례식장') {
           const p = (venuePrices['daecheong'] || {})[lookupName];
-          if (p) {
-            const qtyNum = parseFloat(qtyStr.replace(/[^0-9.]/g,'')) || 5;
-            let bp = qtyNum >= 10 && p.price10 ? p.price10 : (p.price5||0);
-            return bp;
-          }
+          if (p) return daecheongItemAmount(p, qtyStr);
         } else if (venueName === '충대장례식장') {
-          // 충대: 5kg 고정가격, 10kg=×2, 15kg=×3, 20kg=×4
-          // priceVal이 객체({price5})로 저장된 경우와 숫자로 저장된 경우 둘 다 처리
+          // 충대: 5kg 정액 × 개수
           const priceVal = (venuePrices['chungdae'] || {})[lookupName];
-          if (!priceVal) return 0;
-          const p5 = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
-          if (qtyStr === '5kg') return p5;
-          if (qtyStr === '10kg') return p5 * 2;
-          if (qtyStr === '15kg') return p5 * 3;
-          if (qtyStr === '20kg') return p5 * 4;
-          const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
-          if (numMatch) {
-            const units5 = Math.floor(parseFloat(numMatch[1]) / 5);
-            return units5 * p5;
-          }
-          return p5; // 수량 정보가 없으면 기본 5kg 단가
+          if (priceVal) return chungdaeItemAmount(priceVal, qtyStr);
+          return 0;
         } else {
           const kgP = (venuePrices['chungdae_restaurant'] || {})[lookupName] || 0;
           const qtyNum = parseFloat(qtyStr.replace(/[^0-9.]/g,'')) || 0;
@@ -11943,8 +11921,14 @@ function efCalcPrice() {
   total = Math.round(total);
   const el = document.getElementById('ef_priceProduct');
   const ewEl = document.getElementById('ew_priceProduct');
+  // 대청은 수수료율 차감 후(앱 표시용) 금액으로 상품금액 칸을 채운다.
+  // 명세서는 별도로 단가표에서 차감 전 금액을 다시 계산하므로 영향 없음.
+  const isDaecheongEdit = editModalVenueType === 'funeral' && venueName === '대청장례식장';
+  const displayP = (isDaecheongEdit && daecheongRate > 0)
+    ? Math.round(total * (1 - daecheongRate / 100))
+    : total;
   // 사용자가 항목/수량/거래처를 실제로 변경했을 때만 호출되므로 그대로 반영
-  if (el) { el.value = total; calcFuneralEditTotal(); }
+  if (el) { el.value = displayP; el.dataset.origProduct = total; calcFuneralEditTotal(); }
   if (ewEl) { ewEl.value = total; calcWeddingEditTotal(); }
 }
 
@@ -11954,9 +11938,14 @@ function saveFuneralEdit() {
   const p = parseInt(document.getElementById('ef_priceProduct').value)||0;
   const d = parseInt(document.getElementById('ef_priceDelivery').value)||0;
   const dis = parseInt(document.getElementById('ef_priceDiscount').value)||0;
+  const efName = document.getElementById('ef_funeralName').value;
+  const origAttr = (document.getElementById('ef_priceProduct').dataset || {}).origProduct;
+  const origProduct = (efName === '대청장례식장')
+    ? (origAttr ? parseInt(origAttr) : (o.priceProductOrig || p))
+    : null;
   const updated = {
     ...o,
-    funeralName: document.getElementById('ef_funeralName').value,
+    funeralName: efName,
     binsoLocation: document.getElementById('ef_binsoLocation').value,
     deceasedName: (() => { const el = document.getElementById('ef_deceasedName'); return el ? el.value.trim() : (o.deceasedName || ''); })(),
     tteokType: editModalTteokItems.length > 0
@@ -11966,6 +11955,7 @@ function saveFuneralEdit() {
     deliveryDate: document.getElementById('ef_deliveryDate').value,
     deliveryTime: document.getElementById('ef_deliveryTime').value,
     priceProduct: p, priceDelivery: d, priceDiscount: dis, priceTotal: p+d-dis,
+    priceProductOrig: origProduct,
     payStatus: document.getElementById('ef_payStatus').value,
     memo: document.getElementById('ef_memo') ? document.getElementById('ef_memo').value.trim() : '',
     staffName: document.getElementById('ef_staffName').value,
