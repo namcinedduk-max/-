@@ -1671,6 +1671,34 @@
       <button class="btn-small" onclick="loadFuneralOrdersFromSheet()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printFuneralOrders()">🖨️ 출력/PDF</button>
       <button class="btn-small" onclick="toggleDaecheongExcelPanel()" style="background:#1565C0;color:#fff;border:none;">📥 대청 정산 엑셀</button>
+      <button class="btn-small" onclick="toggleChungdaeExcelPanel()" style="background:#E65100;color:#fff;border:none;">📥 충대 정산 엑셀</button>
+    </div>
+
+    <!-- 충대 정산 엑셀 패널 -->
+    <div id="chungdaeExcelPanel" style="display:none;background:#fff3e0;border:2px solid #E65100;border-radius:14px;padding:16px 20px;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:800;color:#E65100;margin-bottom:12px;">📊 충대장례식장 일별 사용 내역 엑셀</div>
+      <div style="font-size:13px;color:#BF360C;margin-bottom:12px;line-height:1.6;">
+        📅 날짜별로 어떤 떡을 몇 kg 사용했는지 합산해서 출력돼요.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#E65100;display:block;margin-bottom:4px;">시작일</label>
+          <input type="date" id="chungdaeExcelFrom" style="padding:7px 10px;border:1.5px solid #FFAB76;border-radius:8px;font-size:13px;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#E65100;display:block;margin-bottom:4px;">종료일</label>
+          <input type="date" id="chungdaeExcelTo" style="padding:7px 10px;border:1.5px solid #FFAB76;border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:#E65100;">기간 빠르게</label>
+          <div style="display:flex;gap:6px;">
+            <button type="button" onclick="setChungdaeExcelMonth(0)" style="padding:6px 10px;background:#E65100;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">이번달</button>
+            <button type="button" onclick="setChungdaeExcelMonth(-1)" style="padding:6px 10px;background:#BF360C;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">지난달</button>
+          </div>
+        </div>
+        <button type="button" onclick="downloadChungdaeExcel()" style="padding:9px 20px;background:#E65100;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;align-self:flex-end;">⬇️ 엑셀 다운로드</button>
+      </div>
+      <div id="chungdaeExcelPreview" style="margin-top:12px;font-size:12px;color:#E65100;"></div>
     </div>
 
     <!-- 대청 정산 엑셀 패널 -->
@@ -11985,6 +12013,258 @@ document.addEventListener('DOMContentLoaded', function() {
     if (el) el.addEventListener('change', updateDaecheongExcelPreview);
   });
 });
+
+// ==================== 충대 정산 엑셀 ====================
+function toggleChungdaeExcelPanel() {
+  const panel = document.getElementById('chungdaeExcelPanel');
+  if (!panel) return;
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) setChungdaeExcelMonth(0);
+}
+
+function setChungdaeExcelMonth(offset) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + offset;
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  const pad = n => String(n).padStart(2, '0');
+  const fromStr = `${first.getFullYear()}-${pad(first.getMonth()+1)}-${pad(first.getDate())}`;
+  const toStr = `${last.getFullYear()}-${pad(last.getMonth()+1)}-${pad(last.getDate())}`;
+  document.getElementById('chungdaeExcelFrom').value = fromStr;
+  document.getElementById('chungdaeExcelTo').value = toStr;
+  updateChungdaeExcelPreview();
+}
+
+function isChungdaeVenue(funeralName) {
+  if (!funeralName) return false;
+  if (funeralName === '충대장례식장') return true;
+  const extra = (extraVenues && extraVenues.funeral) ? extraVenues.funeral : [];
+  return extra.some(v => v.name === funeralName && v.group === 'chungdae');
+}
+
+function updateChungdaeExcelPreview() {
+  const preview = document.getElementById('chungdaeExcelPreview');
+  if (!preview) return;
+  const fromVal = document.getElementById('chungdaeExcelFrom').value || '';
+  const toVal = document.getElementById('chungdaeExcelTo').value || '';
+  const orders = funeralOrders.filter(o => {
+    if (!isChungdaeVenue(o.funeralName)) return false;
+    const d = normalizeDateStr(String(o.createdAt || ''));
+    if (fromVal && d < fromVal) return false;
+    if (toVal && d > toVal) return false;
+    return true;
+  });
+  preview.textContent = orders.length > 0
+    ? `✅ ${orders.length}건 주문 포함 예정`
+    : '⚠️ 해당 기간에 충대 주문이 없어요.';
+}
+
+async function downloadChungdaeExcel() {
+  const fromVal = document.getElementById('chungdaeExcelFrom').value || '';
+  const toVal = document.getElementById('chungdaeExcelTo').value || '';
+
+  // 기간 내 충대 주문 필터
+  const orders = funeralOrders.filter(o => {
+    if (!isChungdaeVenue(o.funeralName)) return false;
+    const d = normalizeDateStr(String(o.createdAt || ''));
+    if (fromVal && d < fromVal) return false;
+    if (toVal && d > toVal) return false;
+    return true;
+  });
+
+  if (orders.length === 0) {
+    showToast('해당 기간에 충대 주문이 없어요.', 'error');
+    return;
+  }
+
+  showToast('📊 엑셀 파일 생성 중...', 'info');
+
+  try { await ensureExcelJS(); }
+  catch(e) { showToast('❌ 라이브러리 로드 실패. 인터넷 연결 확인해주세요.', 'error'); return; }
+
+  // 날짜별 → 떡종류별 집계
+  // dateMap[날짜][떡이름] = { totalKg, totalAmt, binsos[] }
+  const dateMap = {};
+
+  orders.forEach(o => {
+    const date = normalizeDateStr(String(o.createdAt || ''));
+    if (!date) return;
+    if (!dateMap[date]) dateMap[date] = {};
+
+    const items = o.tteokItems && o.tteokItems.length > 0
+      ? o.tteokItems
+      : [{ name: o.tteokType || '-', qty: '' }];
+
+    // 이 주문의 총 상품금액과 아이템 구성으로 단가 역산
+    const totalAmt = Number(o.priceTotal || 0);
+    const binso = o.binsoLocation || '';
+
+    items.forEach(item => {
+      const name = item.name || '-';
+      const kgMatch = String(item.qty || '').match(/(\d+(?:\.\d+)?)/);
+      const kg = kgMatch ? parseFloat(kgMatch[1]) : 0;
+
+      // 단가: venuePrices.chungdae에서 조회
+      const priceObj = (venuePrices && venuePrices.chungdae && venuePrices.chungdae[name]) || null;
+      let unitPrice5 = 0;
+      if (priceObj && typeof priceObj === 'object') {
+        unitPrice5 = priceObj.price5 || 0;
+      } else if (typeof priceObj === 'number') {
+        unitPrice5 = priceObj;
+      }
+
+      // 금액 계산: items가 1개면 priceTotal 그대로, 여러개면 단가 × kg로 계산
+      let amt = 0;
+      if (items.length === 1) {
+        amt = totalAmt;
+      } else {
+        // 여러 떡: 각 떡의 비율로 나눔 (단가 × kg 기준)
+        if (unitPrice5 > 0 && kg > 0) {
+          // 5kg 단위로 계산
+          const units = Math.floor(kg / 5);
+          amt = units * unitPrice5;
+        }
+      }
+
+      if (!dateMap[date][name]) {
+        dateMap[date][name] = { totalKg: 0, totalAmt: 0, unitPrice: unitPrice5, binsos: new Set() };
+      }
+      dateMap[date][name].totalKg += kg;
+      dateMap[date][name].totalAmt += amt;
+      if (binso) dateMap[date][name].binsos.add(binso);
+    });
+  });
+
+  const periodLabel = (fromVal && toVal) ? `${fromVal} ~ ${toVal}` : '전체기간';
+  const sortedDates = Object.keys(dateMap).sort();
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = '남씨네전통식품';
+  const ws = wb.addWorksheet('충대정산');
+
+  ws.columns = [
+    { key:'a', width:13 },  // A 날짜
+    { key:'b', width:16 },  // B 떡종류
+    { key:'c', width:10 },  // C 수량(kg)
+    { key:'d', width:14 },  // D 단가(원)
+    { key:'e', width:14 },  // E 금액(원)
+    { key:'f', width:22 },  // F 빈소
+  ];
+
+  const NCOLS = 6;
+  const FONT = '맑은 고딕';
+  function sf(argb) { return { type:'pattern', pattern:'solid', fgColor:{ argb } }; }
+  const BD = {
+    top:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+    bottom:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+    left:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+    right:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+  };
+
+  function mergedRow(text, fillArgb, fontArgb, sz, height) {
+    const r = ws.addRow([text]);
+    ws.mergeCells(r.number, 1, r.number, NCOLS);
+    r.height = height || 22;
+    const c = r.getCell(1);
+    c.fill = sf(fillArgb); c.border = BD;
+    c.font = { name:FONT, bold:true, color:{ argb:fontArgb }, size:sz };
+    c.alignment = { vertical:'middle', horizontal:'center' };
+    return r;
+  }
+
+  function colHeaders() {
+    const r = ws.addRow(['날짜','떡종류','수량(kg)','단가(원)','금액(원)','빈소']);
+    r.height = 18;
+    r.eachCell(c => {
+      c.fill = sf('FFFFD8B4'); c.border = BD;
+      c.font = { name:FONT, bold:true, size:10, color:{ argb:'FF7C2D12' } };
+      c.alignment = { vertical:'middle', horizontal:'center' };
+    });
+    [3,4,5].forEach(i => { r.getCell(i).alignment = { vertical:'middle', horizontal:'right' }; });
+  }
+
+  // 타이틀
+  mergedRow('충대장례식장 일별 사용 내역', 'FF7C2D12', 'FFFFFFFF', 16, 30);
+  mergedRow(`기간: ${periodLabel}     총 주문: ${orders.length}건`, 'FFB45309', 'FFFFFFFF', 11, 22);
+  ws.addRow([]);
+  colHeaders();
+
+  let grandKg = 0, grandAmt = 0;
+
+  sortedDates.forEach(date => {
+    const tteokMap = dateMap[date];
+    const tteokNames = Object.keys(tteokMap).sort();
+    let dayKg = 0, dayAmt = 0;
+
+    tteokNames.forEach((name, idx) => {
+      const d = tteokMap[name];
+      const r = ws.addRow([
+        idx === 0 ? date : '',
+        name,
+        d.totalKg,
+        d.unitPrice || '',
+        d.totalAmt || '',
+        [...d.binsos].join('·')
+      ]);
+      r.height = 16;
+      r.eachCell({ includeEmpty:true }, (c, col) => {
+        c.fill = sf('FFFFFFFF'); c.border = BD;
+        c.font = { name:FONT, size:10 };
+        c.alignment = { vertical:'middle', horizontal: [3,4,5].includes(col) ? 'right' : 'left' };
+      });
+      if (idx === 0) {
+        r.getCell(1).fill = sf('FFFDE8D0');
+        r.getCell(1).font = { name:FONT, size:10, bold:true, color:{ argb:'FF7C2D12' } };
+      }
+      [3,4,5].forEach(i => {
+        if (typeof r.getCell(i).value === 'number') r.getCell(i).numFmt = '#,##0';
+      });
+      dayKg += d.totalKg;
+      dayAmt += d.totalAmt;
+    });
+
+    // 일별 소계
+    const sr = ws.addRow([`▶ ${date} 소계 (${tteokNames.length}종)`, '', dayKg, '', dayAmt, `총 ${dayKg}kg`]);
+    sr.height = 18;
+    sr.eachCell({ includeEmpty:true }, (c, col) => {
+      c.fill = sf('FFFFF2CC'); c.border = BD;
+      c.font = { name:FONT, bold:true, size:10, color:{ argb:'FF7F6000' } };
+      c.alignment = { vertical:'middle', horizontal: [3,4,5].includes(col) ? 'right' : 'left' };
+    });
+    [3,5].forEach(i => { sr.getCell(i).numFmt = '#,##0'; });
+    ws.addRow([]);
+
+    grandKg += dayKg;
+    grandAmt += dayAmt;
+  });
+
+  // 전체 합계
+  const tr = ws.addRow(['【전체 합계】', '', grandKg, '', grandAmt, `총 ${grandKg}kg`]);
+  ws.mergeCells(tr.number, 1, tr.number, 2);
+  tr.height = 24;
+  tr.eachCell({ includeEmpty:true }, (c, col) => {
+    c.fill = sf('FFFCE4D6'); c.border = BD;
+    c.font = { name:FONT, bold:true, size:12, color:{ argb:'FF833C00' } };
+    c.alignment = { vertical:'middle', horizontal: [3,4,5].includes(col) ? 'right' : 'left' };
+  });
+  [3,5].forEach(i => { tr.getCell(i).numFmt = '#,##0'; });
+
+  try {
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `충대정산_${fromVal||'전체'}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`✅ 충대 엑셀 완료! (${sortedDates.length}일 / ${orders.length}건 / ${grandAmt.toLocaleString()}원)`, 'success');
+  } catch(e) {
+    showToast('❌ 엑셀 생성 실패: ' + e.message, 'error');
+  }
+}
 
 function clearFuneralFilter() {
   document.getElementById('fFilterDate').value = '';
