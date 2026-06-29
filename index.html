@@ -11702,6 +11702,15 @@ function isDaecheongVenue(funeralName) {
   return !!found;
 }
 
+// 주방 주문 여부 판단 (고인명 없음 or 빈소에 주방 포함)
+function isJubangOrder(o) {
+  const binso = String(o.binsoLocation || '').trim();
+  const deceased = String(o.deceasedName || '').trim();
+  if (binso.includes('주방')) return true;
+  if (!deceased || deceased === '-' || deceased === '주방') return true;
+  return false;
+}
+
 function getDaecheongExcelData() {
   const fromVal = (document.getElementById('daecheongExcelFrom') || {}).value || '';
   const toVal = (document.getElementById('daecheongExcelTo') || {}).value || '';
@@ -11710,33 +11719,37 @@ function getDaecheongExcelData() {
   // 1) 대청 계열 주문 전체
   const allDaecheong = funeralOrders.filter(o => isDaecheongVenue(o.funeralName));
 
-  // 2) 기간 내 해당하는 주문 찾기
   function getOrderDate(o) {
     const raw = dateBase === 'delivery' ? o.deliveryDate : o.createdAt;
     return normalizeDateStr(String(raw || ''));
   }
 
-  let inRange = allDaecheong;
-  if (fromVal || toVal) {
-    inRange = allDaecheong.filter(o => {
-      const d = getOrderDate(o);
-      if (!d) return false;
-      if (fromVal && d < fromVal) return false;
-      if (toVal && d > toVal) return false;
-      return true;
-    });
+  function inRange(o) {
+    const d = getOrderDate(o);
+    if (!d) return false;
+    if (fromVal && d < fromVal) return false;
+    if (toVal && d > toVal) return false;
+    return true;
   }
 
-  // 3) 기간 내 등장한 고인 목록 추출
-  const deceasedInRange = new Set(inRange.map(o => o.deceasedName || '(고인명 없음)'));
+  // 2) 주방 주문 분리 — 날짜 범위 내 것만 (이월 없음)
+  const jubangOrders = allDaecheong.filter(o => isJubangOrder(o) && inRange(o));
 
-  // 4) 해당 고인의 모든 주문 포함 (이월 처리)
-  const matched = allDaecheong.filter(o => deceasedInRange.has(o.deceasedName || '(고인명 없음)'));
+  // 3) 고인 주문만 추출
+  const deceasedAll = allDaecheong.filter(o => !isJubangOrder(o));
 
-  // 5) 고인명 → 가장 빠른 접수일 순 정렬을 위해 그룹핑
+  // 기간 내 등장한 고인 목록
+  const deceasedInRange = new Set(
+    deceasedAll.filter(o => inRange(o)).map(o => o.deceasedName)
+  );
+
+  // 해당 고인의 모든 주문 포함 (이월 처리)
+  const matched = deceasedAll.filter(o => deceasedInRange.has(o.deceasedName));
+
+  // 고인별 그룹핑
   const groups = {};
   matched.forEach(o => {
-    const key = o.deceasedName || '(고인명 없음)';
+    const key = o.deceasedName;
     if (!groups[key]) groups[key] = [];
     groups[key].push(o);
   });
@@ -11757,106 +11770,212 @@ function getDaecheongExcelData() {
     return da < db ? -1 : da > db ? 1 : 0;
   });
 
-  return { matched, groups, sortedKeys, fromVal, toVal, dateBase };
+  return { matched, groups, sortedKeys, jubangOrders, fromVal, toVal, dateBase };
 }
 
-function downloadDaecheongExcel() {
-  const { groups, sortedKeys, fromVal, toVal } = getDaecheongExcelData();
+async function ensureExcelJS() {
+  if (window.ExcelJS) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('ExcelJS 로드 실패'));
+    document.head.appendChild(s);
+  });
+}
 
-  if (sortedKeys.length === 0) {
+async function downloadDaecheongExcel() {
+  const { groups, sortedKeys, jubangOrders, fromVal, toVal } = getDaecheongExcelData();
+
+  if (sortedKeys.length === 0 && jubangOrders.length === 0) {
     showToast('해당 기간에 대청 주문이 없어요.', 'error');
     return;
   }
 
+  showToast('📊 엑셀 파일 생성 중...', 'info');
+
+  try { await ensureExcelJS(); }
+  catch(e) { showToast('❌ 라이브러리 로드 실패. 인터넷 연결 확인해주세요.', 'error'); return; }
+
   const daecheongRate = parseFloat(localStorage.getItem('daecheongRate') || '25') || 25;
   const periodLabel = (fromVal && toVal) ? `${fromVal} ~ ${toVal}` : '전체기간';
 
-  const rows = [];
+  const wb = new ExcelJS.Workbook();
+  wb.creator = '남씨네전통식품';
+  const ws = wb.addWorksheet('대청정산');
 
-  // 헤더
-  rows.push(['대청병원 고인별 정산 내역']);
-  rows.push([`기간: ${periodLabel}`, '', '', '', '', `수수료율: ${daecheongRate}%`]);
-  rows.push([]); // 빈줄
-  rows.push(['고인명', '빈소', '접수일', '배송일', '배송시간', '떡종류', '수량', '상주가격(원)', '메모']);
+  ws.columns = [
+    { key:'a', width:18 }, { key:'b', width:12 }, { key:'c', width:12 },
+    { key:'d', width:12 }, { key:'e', width:10 }, { key:'f', width:16 },
+    { key:'g', width:8  }, { key:'h', width:22 }, { key:'i', width:20 },
+  ];
 
-  let grandTotalOrig = 0;
-  let grandTotalNet = 0;
-  let grandTotalFee = 0;
+  const NCOLS = 9;
+  const FONT = '맑은 고딕';
 
-  sortedKeys.forEach(deceased => {
-    const orderList = groups[deceased];
+  function sf(argb) { return { type:'pattern', pattern:'solid', fgColor:{ argb } }; }
+  const BD = {
+    top:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+    bottom:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+    left:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+    right:{ style:'thin', color:{ argb:'FFD0D0D0' } },
+  };
 
-    let deceasedTotalOrig = 0;
+  function mergedRow(text, fillArgb, fontArgb, sz, height) {
+    const r = ws.addRow([text]);
+    ws.mergeCells(r.number, 1, r.number, NCOLS);
+    r.height = height || 22;
+    const c = r.getCell(1);
+    c.fill = sf(fillArgb); c.border = BD;
+    c.font = { name:FONT, bold:true, color:{ argb:fontArgb }, size:sz };
+    c.alignment = { vertical:'middle', horizontal:'center' };
+    return r;
+  }
 
-    orderList.forEach(o => {
-      // 떡 항목 펼치기
-      const items = o.tteokItems && o.tteokItems.length > 0
-        ? o.tteokItems
-        : [{ name: o.tteokType || '-', qty: '' }];
+  function colHeaders() {
+    const r = ws.addRow(['고인명/구분','빈소','접수일','배송일','배송시간','떡종류','수량','상주가격(원)','메모']);
+    r.height = 18;
+    r.eachCell(c => {
+      c.fill = sf('FFBDD7EE'); c.border = BD;
+      c.font = { name:FONT, bold:true, size:10, color:{ argb:'FF1F3864' } };
+      c.alignment = { vertical:'middle', horizontal:'center' };
+    });
+    r.getCell(8).alignment = { vertical:'middle', horizontal:'right' };
+  }
 
-      const origPrice = o.priceProductOrig != null
-        ? Number(o.priceProductOrig)
-        : Math.round(Number(o.priceTotal || 0) / (1 - daecheongRate / 100));
+  function dataRow(cells, bgArgb) {
+    const r = ws.addRow(cells);
+    r.height = 16;
+    r.eachCell({ includeEmpty:true }, (c, col) => {
+      if (bgArgb) c.fill = sf(bgArgb); c.border = BD;
+      c.font = { name:FONT, size:10 };
+      c.alignment = { vertical:'middle', horizontal: col===8 ? 'right' : 'left', wrapText: col===9 };
+    });
+    if (typeof cells[7] === 'number') { r.getCell(8).numFmt = '#,##0'; }
+    return r;
+  }
 
-      const createdDate = normalizeDateStr(String(o.createdAt || ''));
-      const deliveryDate = normalizeDateStr(String(o.deliveryDate || ''));
-      const deliveryTime = normalizeTimeStr ? normalizeTimeStr(o.deliveryTime) || '' : (o.deliveryTime || '');
+  function subtotalRow(label, orig, rate) {
+    const fee = Math.round(orig * rate / 100);
+    const net = orig - fee;
+    const r = ws.addRow([label,'','','','','','',
+      `상주 ${orig.toLocaleString()} / 수수료 ${fee.toLocaleString()} / 실수령 ${net.toLocaleString()}원`,'']);
+    r.height = 18;
+    r.eachCell({ includeEmpty:true }, c => {
+      c.fill = sf('FFFFF2CC'); c.border = BD;
+      c.font = { name:FONT, bold:true, size:10, color:{ argb:'FF7F6000' } };
+      c.alignment = { vertical:'middle', horizontal:'left' };
+    });
+    return { fee, net };
+  }
 
-      items.forEach((item, idx) => {
-        rows.push([
-          idx === 0 ? deceased : '',
-          idx === 0 ? (o.binsoLocation || '-') : '',
-          idx === 0 ? createdDate : '',
-          idx === 0 ? deliveryDate : '',
-          idx === 0 ? deliveryTime : '',
-          item.name || '-',
-          item.qty || '-',
-          idx === 0 ? origPrice : '',
-          idx === 0 ? (o.memo || '') : ''
-        ]);
+  function calcOrig(o) {
+    return o.priceProductOrig != null
+      ? Number(o.priceProductOrig)
+      : Math.round(Number(o.priceTotal||0) / (1 - daecheongRate/100));
+  }
+
+  // 타이틀
+  mergedRow('대청병원 정산 내역', 'FF1F3864', 'FFFFFFFF', 16, 30);
+  mergedRow(`기간: ${periodLabel}     수수료율: ${daecheongRate}%`, 'FF2F5496', 'FFFFFFFF', 11, 22);
+  ws.addRow([]);
+
+  let gOrig=0, gFee=0, gNet=0;
+
+  // 고인별
+  if (sortedKeys.length > 0) {
+    colHeaders();
+    sortedKeys.forEach(deceased => {
+      const list = groups[deceased];
+      let dOrig = 0;
+
+      // 고인명 구분 행
+      const nr = ws.addRow([`🕯 ${deceased}`]);
+      ws.mergeCells(nr.number, 1, nr.number, NCOLS);
+      nr.height = 18;
+      nr.getCell(1).fill = sf('FFE2EFDA'); nr.getCell(1).border = BD;
+      nr.getCell(1).font = { name:FONT, bold:true, size:10, color:{ argb:'FF375623' } };
+      nr.getCell(1).alignment = { vertical:'middle', horizontal:'left' };
+
+      list.forEach(o => {
+        const items = o.tteokItems&&o.tteokItems.length>0 ? o.tteokItems : [{name:o.tteokType||'-',qty:''}];
+        const orig = calcOrig(o);
+        const cd = normalizeDateStr(String(o.createdAt||''));
+        const dd = normalizeDateStr(String(o.deliveryDate||''));
+        const dt = normalizeTimeStr ? normalizeTimeStr(o.deliveryTime)||'' : (o.deliveryTime||'');
+        items.forEach((item,idx)=>{
+          dataRow([
+            idx===0?deceased:'', idx===0?(o.binsoLocation||'-'):'',
+            idx===0?cd:'', idx===0?dd:'', idx===0?dt:'',
+            item.name||'-', item.qty||'-',
+            idx===0?orig:'', idx===0?(o.memo||''):''
+          ], 'FFFFFFFF');
+        });
+        dOrig += orig;
       });
 
-      deceasedTotalOrig += origPrice;
+      const {fee,net} = subtotalRow(`▶ ${deceased} 소계 (${list.length}건)`, dOrig, daecheongRate);
+      gOrig+=dOrig; gFee+=fee; gNet+=net;
+      ws.addRow([]);
     });
+  }
 
-    const fee = Math.round(deceasedTotalOrig * daecheongRate / 100);
-    const net = deceasedTotalOrig - fee;
-
-    grandTotalOrig += deceasedTotalOrig;
-    grandTotalFee += fee;
-    grandTotalNet += net;
-
-    // 고인 소계 행
-    rows.push([
-      `▶ ${deceased} 소계 (${orderList.length}건)`,
-      '', '', '', '', '', '',
-      `상주가격 ${deceasedTotalOrig.toLocaleString()}원 / 수수료 ${fee.toLocaleString()}원 / 실수령 ${net.toLocaleString()}원`,
-      ''
-    ]);
-    rows.push([]); // 고인 구분 빈줄
-  });
+  // 주방
+  if (jubangOrders.length > 0) {
+    mergedRow('주방 · 장례식장 자체 주문', 'FF4472C4', 'FFFFFFFF', 11, 22);
+    colHeaders();
+    let jOrig = 0;
+    jubangOrders.sort((a,b)=>{
+      const da=normalizeDateStr(String(a.createdAt||''));
+      const db=normalizeDateStr(String(b.createdAt||''));
+      return da<db?-1:da>db?1:0;
+    }).forEach(o=>{
+      const items = o.tteokItems&&o.tteokItems.length>0 ? o.tteokItems : [{name:o.tteokType||'-',qty:''}];
+      const orig = calcOrig(o);
+      const cd = normalizeDateStr(String(o.createdAt||''));
+      const dd = normalizeDateStr(String(o.deliveryDate||''));
+      items.forEach((item,idx)=>{
+        dataRow([
+          idx===0?(o.binsoLocation||'주방'):'', idx===0?(o.binsoLocation||'-'):'',
+          idx===0?cd:'', idx===0?dd:'', '',
+          item.name||'-', item.qty||'-',
+          idx===0?orig:'', idx===0?(o.memo||''):''
+        ], 'FFFFFFFF');
+      });
+      jOrig += orig;
+    });
+    const jFee=Math.round(jOrig*daecheongRate/100);
+    const jNet=jOrig-jFee;
+    subtotalRow(`▶ 주방 소계 (${jubangOrders.length}건)`, jOrig, daecheongRate);
+    gOrig+=jOrig; gFee+=jFee; gNet+=jNet;
+    ws.addRow([]);
+  }
 
   // 전체 합계
-  rows.push(['【전체 합계】', '', '', '', '', '', '',
-    `상주가격 ${grandTotalOrig.toLocaleString()}원 / 수수료 ${grandTotalFee.toLocaleString()}원 / 실수령 ${grandTotalNet.toLocaleString()}원`,
-    ''
-  ]);
+  const tr = ws.addRow(['【전체 합계】','','','','','','',
+    `상주 ${gOrig.toLocaleString()} / 수수료 ${gFee.toLocaleString()} / 실수령 ${gNet.toLocaleString()}원`,'']);
+  ws.mergeCells(tr.number,1,tr.number,7);
+  tr.height = 24;
+  tr.eachCell({includeEmpty:true}, c=>{
+    c.fill=sf('FFFCE4D6'); c.border=BD;
+    c.font={name:FONT,bold:true,size:12,color:{argb:'FF833C00'}};
+    c.alignment={vertical:'middle',horizontal:'left'};
+  });
 
-  // CSV 생성
-  const csvContent = '\uFEFF' + rows
-    .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const fileName = `대청정산_${fromVal || '전체'}_${sortedKeys.length}명.csv`;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
-
-  showToast(`✅ 대청 정산 엑셀 다운로드 완료! (${sortedKeys.length}명 / ${grandTotalNet.toLocaleString()}원 실수령)`, 'success');
+  // 다운로드
+  try {
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `대청정산_${fromVal||'전체'}_${sortedKeys.length}명.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`✅ 엑셀 다운로드 완료! (고인 ${sortedKeys.length}명 / 주방 ${jubangOrders.length}건)`, 'success');
+  } catch(e) {
+    showToast('❌ 엑셀 생성 실패: ' + e.message, 'error');
+  }
 }
 
 // 날짜 인풋 변경 시 미리보기 갱신
