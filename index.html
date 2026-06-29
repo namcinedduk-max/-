@@ -12192,11 +12192,12 @@ async function downloadChungdaeExcel() {
   colHeaders();
 
   let grandKg = 0, grandAmt = 0;
+  // 떡별 전체 집계
+  const tteokTotal = {}; // { name: { kg, amt, unitPrice } }
 
   sortedDates.forEach(date => {
     const tteokMap = dateMap[date];
     const tteokNames = Object.keys(tteokMap).sort();
-    let dayKg = 0, dayAmt = 0;
 
     tteokNames.forEach((name, idx) => {
       const d = tteokMap[name];
@@ -12221,35 +12222,65 @@ async function downloadChungdaeExcel() {
       [3,4,5].forEach(i => {
         if (typeof r.getCell(i).value === 'number') r.getCell(i).numFmt = '#,##0';
       });
-      dayKg += d.totalKg;
-      dayAmt += d.totalAmt;
-    });
 
-    // 일별 소계
-    const sr = ws.addRow([`▶ ${date} 소계 (${tteokNames.length}종)`, '', dayKg, '', dayAmt, `총 ${dayKg}kg`]);
-    sr.height = 18;
-    sr.eachCell({ includeEmpty:true }, (c, col) => {
-      c.fill = sf('FFFFF2CC'); c.border = BD;
-      c.font = { name:FONT, bold:true, size:10, color:{ argb:'FF7F6000' } };
-      c.alignment = { vertical:'middle', horizontal: [3,4,5].includes(col) ? 'right' : 'left' };
-    });
-    [3,5].forEach(i => { sr.getCell(i).numFmt = '#,##0'; });
-    ws.addRow([]);
+      grandKg += d.totalKg;
+      grandAmt += d.totalAmt;
 
-    grandKg += dayKg;
-    grandAmt += dayAmt;
+      // 떡별 누적
+      if (!tteokTotal[name]) tteokTotal[name] = { kg: 0, amt: 0, unitPrice: d.unitPrice };
+      tteokTotal[name].kg += d.totalKg;
+      tteokTotal[name].amt += d.totalAmt;
+    });
+  });
+
+  ws.addRow([]);
+
+  // 떡별 합계 섹션
+  const secRow = ws.addRow(['【떡별 합계】', '총 kg', '총 금액(원)']);
+  secRow.height = 20;
+  secRow.eachCell({ includeEmpty:true }, c => {
+    c.fill = sf('FFFFE0CC'); c.border = BD;
+    c.font = { name:FONT, bold:true, size:11, color:{ argb:'FF7C2D12' } };
+    c.alignment = { vertical:'middle', horizontal:'center' };
+  });
+  for (let i = 4; i <= NCOLS; i++) {
+    const c = secRow.getCell(i);
+    c.fill = sf('FFFFE0CC'); c.border = BD;
+  }
+
+  Object.keys(tteokTotal).sort().forEach(name => {
+    const t = tteokTotal[name];
+    const r = ws.addRow([name, `${t.kg}kg`, t.amt || '']);
+    r.height = 18;
+    r.eachCell({ includeEmpty:true }, c => {
+      c.fill = sf('FFFFF9F0'); c.border = BD;
+      c.font = { name:FONT, size:11 };
+      c.alignment = { vertical:'middle', horizontal:'left' };
+    });
+    r.getCell(1).font = { name:FONT, size:11, bold:true, color:{ argb:'FF7C2D12' } };
+    r.getCell(2).alignment = { vertical:'middle', horizontal:'right' };
+    r.getCell(2).font = { name:FONT, size:11, bold:true };
+    r.getCell(3).alignment = { vertical:'middle', horizontal:'right' };
+    r.getCell(3).font = { name:FONT, size:11, bold:true };
+    if (typeof t.amt === 'number') r.getCell(3).numFmt = '#,##0';
+    for (let i = 4; i <= NCOLS; i++) {
+      const c = r.getCell(i); c.fill = sf('FFFFF9F0'); c.border = BD;
+    }
   });
 
   // 전체 합계
-  const tr = ws.addRow(['【전체 합계】', '', grandKg, '', grandAmt, `총 ${grandKg}kg`]);
-  ws.mergeCells(tr.number, 1, tr.number, 2);
-  tr.height = 24;
-  tr.eachCell({ includeEmpty:true }, (c, col) => {
+  const tr = ws.addRow(['합계', `총 ${grandKg}kg`, grandAmt]);
+  tr.height = 22;
+  tr.eachCell({ includeEmpty:true }, c => {
     c.fill = sf('FFFCE4D6'); c.border = BD;
     c.font = { name:FONT, bold:true, size:12, color:{ argb:'FF833C00' } };
-    c.alignment = { vertical:'middle', horizontal: [3,4,5].includes(col) ? 'right' : 'left' };
+    c.alignment = { vertical:'middle', horizontal:'right' };
   });
-  [3,5].forEach(i => { tr.getCell(i).numFmt = '#,##0'; });
+  tr.getCell(1).alignment = { vertical:'middle', horizontal:'left' };
+  tr.getCell(3).numFmt = '#,##0';
+  for (let i = 4; i <= NCOLS; i++) {
+    const c = tr.getCell(i); c.fill = sf('FFFCE4D6'); c.border = BD;
+  }
 
   try {
     const buf = await wb.xlsx.writeBuffer();
