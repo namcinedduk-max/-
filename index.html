@@ -1396,7 +1396,7 @@
         <!-- 장례식장 정보 -->
         <div class="form-group">
           <label>장례식장 이름 <span class="required">*</span></label>
-          <select id="f_funeralName" onchange="updateVenueTteokSelect('f_tteokSelect','funeral'); updateFuneralQtyUI(); calcFuneralTotal(); toggleDeceasedNameField();">
+          <select id="f_funeralName" onchange="updateVenueTteokSelect('f_tteokSelect','funeral'); updateFuneralQtyUI(); calcVenuePrice('funeral'); calcFuneralTotal(); toggleDeceasedNameField();">
             <option value="">-- 선택 --</option>
             <optgroup label="충대장례식장">
               <option value="충대장례식장">충대장례식장</option>
