@@ -1670,6 +1670,42 @@
       <button class="btn-small btn-secondary" onclick="clearFuneralFilter()">전체보기</button>
       <button class="btn-small" onclick="loadFuneralOrdersFromSheet()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printFuneralOrders()">🖨️ 출력/PDF</button>
+      <button class="btn-small" onclick="toggleDaecheongExcelPanel()" style="background:#1565C0;color:#fff;border:none;">📥 대청 정산 엑셀</button>
+    </div>
+
+    <!-- 대청 정산 엑셀 패널 -->
+    <div id="daecheongExcelPanel" style="display:none;background:#e8f4fd;border:2px solid #2196F3;border-radius:14px;padding:16px 20px;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:800;color:#1565C0;margin-bottom:12px;">📊 대청병원 고인별 정산 엑셀 다운로드</div>
+      <div style="font-size:13px;color:#1976D2;margin-bottom:12px;line-height:1.6;">
+        🕯️ 고인별로 주문을 묶어서 출력합니다.<br>
+        기간 내 주문이 있는 고인은 <strong>이월 주문까지 전부 포함</strong>해서 출력돼요.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#1565C0;display:block;margin-bottom:4px;">시작일</label>
+          <input type="date" id="daecheongExcelFrom" style="padding:7px 10px;border:1.5px solid #90CAF9;border-radius:8px;font-size:13px;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#1565C0;display:block;margin-bottom:4px;">종료일</label>
+          <input type="date" id="daecheongExcelTo" style="padding:7px 10px;border:1.5px solid #90CAF9;border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:#1565C0;">기간 빠르게</label>
+          <div style="display:flex;gap:6px;">
+            <button type="button" onclick="setDaecheongExcelMonth(0)" style="padding:6px 10px;background:#1976D2;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">이번달</button>
+            <button type="button" onclick="setDaecheongExcelMonth(-1)" style="padding:6px 10px;background:#0D47A1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">지난달</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:#1565C0;">기준 날짜</label>
+          <select id="daecheongExcelDateBase" style="padding:7px 10px;border:1.5px solid #90CAF9;border-radius:8px;font-size:13px;">
+            <option value="created">📋 접수일 기준</option>
+            <option value="delivery">📦 배송일 기준</option>
+          </select>
+        </div>
+        <button type="button" onclick="downloadDaecheongExcel()" style="padding:9px 20px;background:#1565C0;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;align-self:flex-end;">⬇️ 엑셀 다운로드</button>
+      </div>
+      <div id="daecheongExcelPreview" style="margin-top:12px;font-size:12px;color:#1565C0;"></div>
     </div>
 
     <div class="filter-result-bar" id="fFilterResultBar">
@@ -11623,6 +11659,213 @@ function renderFuneralList() {
 
   if (typeof checkQuickAlarms === 'function') checkQuickAlarms();
 }
+
+// ==================== 대청 정산 엑셀 ====================
+function toggleDaecheongExcelPanel() {
+  const panel = document.getElementById('daecheongExcelPanel');
+  if (!panel) return;
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) setDaecheongExcelMonth(0); // 열면 이번달 기본 세팅
+}
+
+function setDaecheongExcelMonth(offset) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + offset; // 0=이번달, -1=지난달
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  const pad = n => String(n).padStart(2, '0');
+  const fromStr = `${first.getFullYear()}-${pad(first.getMonth()+1)}-${pad(first.getDate())}`;
+  const toStr = `${last.getFullYear()}-${pad(last.getMonth()+1)}-${pad(last.getDate())}`;
+  document.getElementById('daecheongExcelFrom').value = fromStr;
+  document.getElementById('daecheongExcelTo').value = toStr;
+  updateDaecheongExcelPreview();
+}
+
+function updateDaecheongExcelPreview() {
+  const preview = document.getElementById('daecheongExcelPreview');
+  if (!preview) return;
+  const { matched } = getDaecheongExcelData();
+  const deceasedCount = new Set(matched.map(o => o.deceasedName || '(고인명 없음)')).size;
+  preview.textContent = matched.length > 0
+    ? `✅ ${matched.length}건 주문 / ${deceasedCount}명 고인 포함 예정`
+    : '⚠️ 해당 기간에 대청 주문이 없어요.';
+}
+
+function isDaecheongVenue(funeralName) {
+  if (!funeralName) return false;
+  if (funeralName === '대청장례식장') return true;
+  // 추가 거래처 중 daecheong 그룹인 경우
+  const extra = (extraVenues && extraVenues.funeral) ? extraVenues.funeral : [];
+  const found = extra.find(v => v.name === funeralName && v.group === 'daecheong');
+  return !!found;
+}
+
+function getDaecheongExcelData() {
+  const fromVal = (document.getElementById('daecheongExcelFrom') || {}).value || '';
+  const toVal = (document.getElementById('daecheongExcelTo') || {}).value || '';
+  const dateBase = (document.getElementById('daecheongExcelDateBase') || {}).value || 'created';
+
+  // 1) 대청 계열 주문 전체
+  const allDaecheong = funeralOrders.filter(o => isDaecheongVenue(o.funeralName));
+
+  // 2) 기간 내 해당하는 주문 찾기
+  function getOrderDate(o) {
+    const raw = dateBase === 'delivery' ? o.deliveryDate : o.createdAt;
+    return normalizeDateStr(String(raw || ''));
+  }
+
+  let inRange = allDaecheong;
+  if (fromVal || toVal) {
+    inRange = allDaecheong.filter(o => {
+      const d = getOrderDate(o);
+      if (!d) return false;
+      if (fromVal && d < fromVal) return false;
+      if (toVal && d > toVal) return false;
+      return true;
+    });
+  }
+
+  // 3) 기간 내 등장한 고인 목록 추출
+  const deceasedInRange = new Set(inRange.map(o => o.deceasedName || '(고인명 없음)'));
+
+  // 4) 해당 고인의 모든 주문 포함 (이월 처리)
+  const matched = allDaecheong.filter(o => deceasedInRange.has(o.deceasedName || '(고인명 없음)'));
+
+  // 5) 고인명 → 가장 빠른 접수일 순 정렬을 위해 그룹핑
+  const groups = {};
+  matched.forEach(o => {
+    const key = o.deceasedName || '(고인명 없음)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(o);
+  });
+
+  // 각 그룹 내 날짜순 정렬
+  Object.keys(groups).forEach(k => {
+    groups[k].sort((a, b) => {
+      const da = normalizeDateStr(String(a.createdAt || ''));
+      const db = normalizeDateStr(String(b.createdAt || ''));
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+  });
+
+  // 그룹 자체를 첫 주문 날짜 순 정렬
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    const da = normalizeDateStr(String((groups[a][0] || {}).createdAt || ''));
+    const db = normalizeDateStr(String((groups[b][0] || {}).createdAt || ''));
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+
+  return { matched, groups, sortedKeys, fromVal, toVal, dateBase };
+}
+
+function downloadDaecheongExcel() {
+  const { groups, sortedKeys, fromVal, toVal } = getDaecheongExcelData();
+
+  if (sortedKeys.length === 0) {
+    showToast('해당 기간에 대청 주문이 없어요.', 'error');
+    return;
+  }
+
+  const daecheongRate = parseFloat(localStorage.getItem('daecheongRate') || '25') || 25;
+  const periodLabel = (fromVal && toVal) ? `${fromVal} ~ ${toVal}` : '전체기간';
+
+  const rows = [];
+
+  // 헤더
+  rows.push(['대청병원 고인별 정산 내역']);
+  rows.push([`기간: ${periodLabel}`, '', '', '', '', `수수료율: ${daecheongRate}%`]);
+  rows.push([]); // 빈줄
+  rows.push(['고인명', '빈소', '접수일', '배송일', '배송시간', '떡종류', '수량', '상주가격(원)', '메모']);
+
+  let grandTotalOrig = 0;
+  let grandTotalNet = 0;
+  let grandTotalFee = 0;
+
+  sortedKeys.forEach(deceased => {
+    const orderList = groups[deceased];
+
+    let deceasedTotalOrig = 0;
+
+    orderList.forEach(o => {
+      // 떡 항목 펼치기
+      const items = o.tteokItems && o.tteokItems.length > 0
+        ? o.tteokItems
+        : [{ name: o.tteokType || '-', qty: '' }];
+
+      const origPrice = o.priceProductOrig != null
+        ? Number(o.priceProductOrig)
+        : Math.round(Number(o.priceTotal || 0) / (1 - daecheongRate / 100));
+
+      const createdDate = normalizeDateStr(String(o.createdAt || ''));
+      const deliveryDate = normalizeDateStr(String(o.deliveryDate || ''));
+      const deliveryTime = normalizeTimeStr ? normalizeTimeStr(o.deliveryTime) || '' : (o.deliveryTime || '');
+
+      items.forEach((item, idx) => {
+        rows.push([
+          idx === 0 ? deceased : '',
+          idx === 0 ? (o.binsoLocation || '-') : '',
+          idx === 0 ? createdDate : '',
+          idx === 0 ? deliveryDate : '',
+          idx === 0 ? deliveryTime : '',
+          item.name || '-',
+          item.qty || '-',
+          idx === 0 ? origPrice : '',
+          idx === 0 ? (o.memo || '') : ''
+        ]);
+      });
+
+      deceasedTotalOrig += origPrice;
+    });
+
+    const fee = Math.round(deceasedTotalOrig * daecheongRate / 100);
+    const net = deceasedTotalOrig - fee;
+
+    grandTotalOrig += deceasedTotalOrig;
+    grandTotalFee += fee;
+    grandTotalNet += net;
+
+    // 고인 소계 행
+    rows.push([
+      `▶ ${deceased} 소계 (${orderList.length}건)`,
+      '', '', '', '', '', '',
+      `상주가격 ${deceasedTotalOrig.toLocaleString()}원 / 수수료 ${fee.toLocaleString()}원 / 실수령 ${net.toLocaleString()}원`,
+      ''
+    ]);
+    rows.push([]); // 고인 구분 빈줄
+  });
+
+  // 전체 합계
+  rows.push(['【전체 합계】', '', '', '', '', '', '',
+    `상주가격 ${grandTotalOrig.toLocaleString()}원 / 수수료 ${grandTotalFee.toLocaleString()}원 / 실수령 ${grandTotalNet.toLocaleString()}원`,
+    ''
+  ]);
+
+  // CSV 생성
+  const csvContent = '\uFEFF' + rows
+    .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fileName = `대청정산_${fromVal || '전체'}_${sortedKeys.length}명.csv`;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showToast(`✅ 대청 정산 엑셀 다운로드 완료! (${sortedKeys.length}명 / ${grandTotalNet.toLocaleString()}원 실수령)`, 'success');
+}
+
+// 날짜 인풋 변경 시 미리보기 갱신
+document.addEventListener('DOMContentLoaded', function() {
+  ['daecheongExcelFrom','daecheongExcelTo','daecheongExcelDateBase'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', updateDaecheongExcelPreview);
+  });
+});
 
 function clearFuneralFilter() {
   document.getElementById('fFilterDate').value = '';
