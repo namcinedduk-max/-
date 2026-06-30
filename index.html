@@ -3303,6 +3303,19 @@ async function calcExtraDeliveryFee(deliveryDate, deliveryTime) {
   return extra;
 }
 
+// 수정 모달 열 때 호출: 기존 배송비에서 "이미 적용된 추가요금"을 역산해서
+// dataset.baseFee를 깨끗하게 분리해둠 (이후 날짜 변경 시 정확히 가감되게 함)
+async function initEditBaseFee(dateFieldId, timeFieldId, feeFieldId) {
+  const dateEl = document.getElementById(dateFieldId);
+  const timeEl = document.getElementById(timeFieldId);
+  const feeEl = document.getElementById(feeFieldId);
+  if (!feeEl || !dateEl || !dateEl.value) return;
+  const currentVal = parseInt(feeEl.value) || 0;
+  const deliveryTime = timeEl ? timeEl.value : '';
+  const originalExtra = await calcExtraDeliveryFee(dateEl.value, deliveryTime);
+  feeEl.dataset.baseFee = currentVal - originalExtra;
+}
+
 async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
   const dateEl = document.getElementById(dateFieldId);
   const timeEl = document.getElementById(timeFieldId);
@@ -6434,37 +6447,55 @@ function openAddrSearch(addrFieldId, detailFieldId) {
   layer.addEventListener('click', (e) => { if (e.target === layer) layer.remove(); });
   document.body.appendChild(layer);
 
-  new daum.Postcode({
-    oncomplete: function(data) {
-      const addr = data.jibunAddress || data.roadAddress;
-      document.getElementById(_addrTargetField).value = addr;
-      // 동 정보 저장 (bname: 법정동명)
-      const dong = data.bname || data.bname1 || '';
-      if (dong) {
-        const dongKey = _addrTargetField + '_dong';
-        window._addrDongMap = window._addrDongMap || {};
-        window._addrDongMap[dongKey] = dong;
-      }
-      document.getElementById('addrSearchLayer').remove();
-      const detailEl = document.getElementById(_addrDetailField);
-      if (detailEl) { detailEl.value = ''; detailEl.focus(); }
-      // 퀵비 자동입력
-      if (dong) {
-        const gu = data.sigunguCode ? '' : (data.address || '').match(/(동구|중구|서구|유성구|대덕구)/)?.[1] || '';
-        if (_addrTargetField === 'g_addr1') {
-          applyQuickFee(dong, 'g_deliveryFee', updateGTotal, gu);
-        } else if (_addrTargetField === 'deliveryAddr1') {
-          applyQuickFee(dong, 'priceDelivery', calcTotal, gu);
-        } else if (_addrTargetField === 'multiAddr') {
-          applyQuickFee(dong, 'multiDeliveryFee', null, gu);
-        } else if (_addrTargetField === 'e_addr1') {
-          applyQuickFee(dong, 'e_priceDelivery', calcEditTotal, gu);
+  // 레이어가 DOM에 붙은 직후 바로 embed()를 호출하면 #addrWrap의
+  // 레이아웃(가로/세로 크기)이 아직 계산되지 않아 주소 선택이 먹통이 되는
+  // 경우가 있어, 다음 프레임으로 한 박자 늦춰서 embed 호출
+  requestAnimationFrame(() => {
+    const wrapEl = document.getElementById('addrWrap');
+    if (!wrapEl) return;
+    new daum.Postcode({
+      oncomplete: function(data) {
+        try {
+          const addr = data.jibunAddress || data.roadAddress;
+          const targetEl = document.getElementById(_addrTargetField);
+          if (!targetEl) {
+            showToast('주소 입력칸을 찾을 수 없어요. 창을 닫고 다시 시도해주세요.', 'error');
+            return;
+          }
+          targetEl.value = addr;
+          // 동 정보 저장 (bname: 법정동명)
+          const dong = data.bname || data.bname1 || '';
+          if (dong) {
+            const dongKey = _addrTargetField + '_dong';
+            window._addrDongMap = window._addrDongMap || {};
+            window._addrDongMap[dongKey] = dong;
+          }
+          const existingLayer = document.getElementById('addrSearchLayer');
+          if (existingLayer) existingLayer.remove();
+          const detailEl = document.getElementById(_addrDetailField);
+          if (detailEl) { detailEl.value = ''; detailEl.focus(); }
+          // 퀵비 자동입력
+          if (dong) {
+            const gu = (data.address || '').match(/(동구|중구|서구|유성구|대덕구)/)?.[1] || '';
+            if (_addrTargetField === 'g_addr1') {
+              applyQuickFee(dong, 'g_deliveryFee', updateGTotal, gu);
+            } else if (_addrTargetField === 'deliveryAddr1') {
+              applyQuickFee(dong, 'priceDelivery', calcTotal, gu);
+            } else if (_addrTargetField === 'multiAddr') {
+              applyQuickFee(dong, 'multiDeliveryFee', null, gu);
+            } else if (_addrTargetField === 'e_addr1') {
+              applyQuickFee(dong, 'e_priceDelivery', calcEditTotal, gu);
+            }
+          }
+        } catch (err) {
+          console.error('주소 선택 처리 중 오류:', err);
+          showToast('주소 입력 중 문제가 발생했어요. 다시 시도해주세요.', 'error');
         }
-      }
-    },
-    width: '100%',
-    height: '100%',
-  }).embed(document.getElementById('addrWrap'));
+      },
+      width: '100%',
+      height: '100%',
+    }).embed(wrapEl);
+  });
 }
 
 // ============ Service Worker 등록 ============
@@ -7043,18 +7074,22 @@ function daecheongItemAmount(p, qtyStr) {
   if (!p || typeof p !== 'object') return 0;
   const price5 = p.price5 || 0;
   const price10 = p.price10 || (price5 * 2);
-  const kg = parseFloat(String(qtyStr || '').replace(/[^0-9.]/g, '')) || 0;
-  if (kg <= 0) return 0;
+  const isNeg = /^\s*-/.test(String(qtyStr || ''));
+  const kg = parseFloat(String(qtyStr || '').replace(/[^0-9.\-]/g, '')) || 0;
+  if (kg === 0) return 0;
   const tens = Math.floor(kg / 10);
   const fives = Math.floor((kg - tens * 10) / 5);
-  return tens * price10 + fives * price5;
+  const amt = tens * price10 + fives * price5;
+  return isNeg ? -amt : amt;
 }
 function chungdaeItemAmount(priceVal, qtyStr) {
   if (!priceVal) return 0;
   const p5 = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
-  const kg = parseFloat(String(qtyStr || '').replace(/[^0-9.]/g, '')) || 0;
-  if (kg <= 0) return 0;
-  return Math.floor(kg / 5) * p5;
+  const isNeg = /^\s*-/.test(String(qtyStr || ''));
+  const kg = parseFloat(String(qtyStr || '').replace(/[^0-9.\-]/g, '')) || 0;
+  if (kg === 0) return 0;
+  const amt = Math.floor(kg / 5) * p5;
+  return isNeg ? -amt : amt;
 }
 
 // 장례식장/웨딩홀 단가 자동계산
@@ -8968,6 +9003,9 @@ function addTteokItem() {
 function removeTteokItem(idx) {
   tteokItems.splice(idx, 1);
   renderTteokList();
+  const total = tteokItems.reduce(function(s, t){ return s + (t.price||0); }, 0);
+  const pp = document.getElementById('priceProduct');
+  if (pp) { pp.value = total; calcTotal(); }
 }
 
 function renderTteokList() {
@@ -10013,7 +10051,7 @@ function renderModalEdit(o) {
         </div>
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span>
-        <input id="e_deliveryDate" type="date" value="${normalizeDateStr(String(o.deliveryDate||''))}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
+        <input id="e_deliveryDate" type="date" value="${normalizeDateStr(String(o.deliveryDate||''))}" onchange="applyExtraFee('e_deliveryDate','e_deliveryTime','e_priceDelivery', calcEditTotal)" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span>
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
@@ -10146,6 +10184,10 @@ function addEditTteok() {
 function removeEditTteok(idx) {
   editTteokItems.splice(idx, 1);
   renderEditTteokList();
+  const total = editTteokItems.reduce(function(s, t){ return s + (t.price||0); }, 0);
+  const pp = document.getElementById('e_priceProduct');
+  if (pp) { pp.value = total; }
+  calcEditTotal();
 }
 
 function calcEditTotal() {
@@ -10168,6 +10210,7 @@ function toggleEditMode() {
   const o = orders.find(x => x.id === currentModalId);
   if (!o) return;
   renderModalEdit(o);
+  initEditBaseFee('e_deliveryDate','e_deliveryTime','e_priceDelivery');
   document.getElementById('modalEditBtn').style.display = 'none';
   document.getElementById('modalSaveBtn').style.display = '';
 }
@@ -11011,7 +11054,7 @@ function printInvoice(order, orderType) {
   const minRows = 8;
   // 거래처별 단가 조회 함수
   function getItemPrice(itemName, qty, type, vname) {
-    const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+    const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.\-]/g,'')) || 0;
     let unitPrice = 0;
 
     if (type === 'funeral') {
@@ -11031,19 +11074,19 @@ function printInvoice(order, orderType) {
       } else {
         // 충대 식당류 (kg 단가 × 수량)
         const kgPrice = (venuePrices['chungdae_restaurant'] || {})[itemName] || 0;
-        const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+        const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.\-]/g,'')) || 0;
         return { unitPrice: kgPrice, amount: kgPrice > 0 && qtyNum > 0 ? Math.round(kgPrice * qtyNum) : 0 };
       }
       return { unitPrice: 0, amount: 0 };
     } else if (type === 'wedding') {
       // 웨딩홀은 kg당 단가
       const kgPrice = (venuePrices['wedding'] || {})[itemName] || 0;
-      const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+      const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.\-]/g,'')) || 0;
       return { unitPrice: kgPrice, amount: kgPrice > 0 && qtyNum > 0 ? Math.round(kgPrice * qtyNum) : 0 };
     } else if (type === 'other') {
       const ov = (otherVenuePrices || {})[vname] || {};
       const op = ov[itemName];
-      const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.]/g,'')) || 0;
+      const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.\-]/g,'')) || 0;
       if (op && typeof op === 'object') {
         // 5kg 단위 고정금액
         return { unitPrice: 0, amount: op.price5 || 0 };
@@ -12579,12 +12622,12 @@ function efCalcPrice() {
           return 0;
         } else {
           const kgP = (venuePrices['chungdae_restaurant'] || {})[lookupName] || 0;
-          const qtyNum = parseFloat(qtyStr.replace(/[^0-9.]/g,'')) || 0;
+          const qtyNum = parseFloat(qtyStr.replace(/[^0-9.\-]/g,'')) || 0;
           return kgP * qtyNum;
         }
       } else if (editModalVenueType === 'wedding') {
         const kgP = (venuePrices['wedding'] || {})[lookupName] || 0;
-        const qtyNum = parseFloat(qtyStr.replace(/[^0-9.]/g,'')) || 0;
+        const qtyNum = parseFloat(qtyStr.replace(/[^0-9.\-]/g,'')) || 0;
         return Math.round(kgP * qtyNum);
       }
       return 0;
