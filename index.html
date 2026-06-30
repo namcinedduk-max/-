@@ -9968,79 +9968,88 @@ function buildAndCopySms(id, target) {
   let msg = '';
 
   if (target === 'sender') {
-    // 보내는 분 → 주문내역 + 계좌번호
     msg = `[남씨네전통식품]
-${o.senderName||''} 고객님, 주문 감사합니다 😊
+${o.senderName||''} 고객님, 주문 감사합니다.
 
-▶ 주문 내역
+주문 내역
 ${tteokStr}
 
-▶ 받는 분
+받는 분
 ${o.receiverName||'-'}
 
-▶ 배송일시
+배송일시
 ${dateStr}${timeStr}
 
-▶ 배송지
+배송지
 ${addrStr}
 
-▶ 총 금액
+총 금액
 ${total}원`;
 
     if (bankAccount) {
       msg += `
 
-▶ 입금 계좌
+입금 계좌
 ${bankName} ${bankAccount}
 예금주: ${bankHolder}`;
     }
 
+    msg += `
+
+*예약규정 및 안내사항 https://www.namcine.co.kr/28
+
+감사합니다.`;
+
   } else {
-    // 받는 분 → 선물 안내 (계좌 없음)
     if (isDifferent) {
       msg = `[남씨네전통식품]
-${o.receiverName||''} 고객님 안녕하세요,
-${o.senderName||''} 고객님께서 보내신 선물이 배송될 예정입니다 🎁
+${o.receiverName||''} 고객님 안녕하세요.
+${o.senderName||''} 고객님께서 보내신 선물이 배송될 예정입니다.
 
-▶ 주문 내역
+주문 내역
 ${tteokStr}
 
-▶ 배송일시
+배송일시
 ${dateStr}${timeStr}
 
-▶ 배송지
+배송지
 ${addrStr}
 
-감사합니다 🙏`;
+*예약규정 및 안내사항 https://www.namcine.co.kr/28
+
+감사합니다.`;
     } else {
-      // 보내는 분 = 받는 분 → 일반 안내
       msg = `[남씨네전통식품]
-${o.receiverName||''} 고객님, 주문 감사합니다 😊
+${o.receiverName||''} 고객님, 주문 감사합니다.
 
-▶ 주문 내역
+주문 내역
 ${tteokStr}
 
-▶ 배송일시
+배송일시
 ${dateStr}${timeStr}
 
-▶ 배송지
+배송지
 ${addrStr}
 
-▶ 총 금액
+총 금액
 ${total}원`;
 
       if (bankAccount) {
         msg += `
 
-▶ 입금 계좌
+입금 계좌
 ${bankName} ${bankAccount}
 예금주: ${bankHolder}`;
       }
-      msg += `\n\n감사합니다 🙏`;
+      msg += `
+
+*예약규정 및 안내사항 https://www.namcine.co.kr/28
+
+감사합니다.`;
     }
   }
 
-  if (target === 'sender') msg += `\n\n감사합니다 🙏`;
+  if (target === 'sender') { /* already appended */ }
 
   navigator.clipboard.writeText(msg).then(() => {
     showToast('✅ 복사됐어요! KT 통화매니저에 붙여넣기 하세요.', 'success');
