@@ -4993,7 +4993,7 @@ function selectEditTteokFromDropdown(name) {
   // 참고사항/단가 표시
   if (TTEOK_DB[name]) {
     const db = TTEOK_DB[name];
-    if (noteEl) { noteEl.textContent = db.note ? '⚠️ ' + db.note : ''; noteEl.style.display = db.note ? 'block' : 'none'; }
+    if (noteEl) { noteEl.textContent = db.note ? '⚠️ ' + db.note : ''; noteEl.style.display = db.note ? 'block' : 'none'; if (db.note) showTteokNotePopup(name, db.note); }
     if (preview) { const p = db.unitPrice||0; preview.textContent = p ? p.toLocaleString() + '원/개' : ''; }
   } else {
     if (noteEl) noteEl.style.display = 'none';
@@ -8856,6 +8856,41 @@ function formatPhone(input) {
 // 떡 목록 상태
 let tteokItems = [];
 
+// 떡 참고사항 팝업 (화면 중앙) - 직원들이 놓치지 않도록 큰 팝업으로 표시
+let _tteokNotePopupLastShown = {}; // { 떡이름: timestamp } - 같은 떡 연속 선택 시 너무 자주 뜨는 것 방지
+function showTteokNotePopup(tteokName, note) {
+  if (!note) return;
+  const now = Date.now();
+  if (_tteokNotePopupLastShown[tteokName] && now - _tteokNotePopupLastShown[tteokName] < 4000) return;
+  _tteokNotePopupLastShown[tteokName] = now;
+
+  const existing = document.getElementById('tteokNotePopupLayer');
+  if (existing) existing.remove();
+
+  const layer = document.createElement('div');
+  layer.id = 'tteokNotePopupLayer';
+  layer.style.cssText = `
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.55);z-index:99999;
+    display:flex;align-items:center;justify-content:center;
+    animation:fadeIn 0.15s ease;
+  `;
+  layer.innerHTML = `
+    <div style="background:#fff;border-radius:16px;overflow:hidden;width:min(420px,90vw);box-shadow:0 20px 60px rgba(0,0,0,0.35);">
+      <div style="background:#fff3cd;padding:22px 24px 18px;text-align:center;border-bottom:3px solid #ffc107;">
+        <div style="font-size:34px;margin-bottom:8px;">⚠️</div>
+        <div style="font-size:15px;font-weight:800;color:#856404;">${tteokName} 참고사항</div>
+      </div>
+      <div style="padding:22px 24px;font-size:16px;font-weight:700;color:#3D2314;line-height:1.6;text-align:center;white-space:pre-wrap;">${note}</div>
+      <div style="padding:0 20px 20px;">
+        <button onclick="document.getElementById('tteokNotePopupLayer').remove()" style="width:100%;padding:12px;background:#3D2314;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;">확인했어요</button>
+      </div>
+    </div>
+  `;
+  layer.addEventListener('click', (e) => { if (e.target === layer) layer.remove(); });
+  document.body.appendChild(layer);
+}
+
 function onTteokSelectChange() {
   const unitSel = document.getElementById('tteokUnitSel');
   const pricePreview = document.getElementById('tteokPricePreview');
@@ -8881,7 +8916,7 @@ function onTteokSelectChange() {
     const unitLabel = unit === 'box' ? (db.boxUnit||'박스') : '개';
     if (pricePreview) pricePreview.textContent = p ? p.toLocaleString() + '원/' + unitLabel : '';
     if (noteEl) {
-      if (db.note) { noteEl.textContent = '⚠️ ' + db.note; noteEl.style.display = 'block'; }
+      if (db.note) { noteEl.textContent = '⚠️ ' + db.note; noteEl.style.display = 'block'; showTteokNotePopup(val, db.note); }
       else noteEl.style.display = 'none';
     }
   } else {
