@@ -2859,6 +2859,7 @@
           <input id="quickfee-new-fee" type="number" placeholder="요금" style="width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <button onclick="addQuickFeeItem()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
+        <input id="quickfee-search" type="text" placeholder="🔍 동 이름 검색... (예: 둔산동)" oninput="renderQuickFeeList()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:10px;box-sizing:border-box;">
         <div id="quickfee-list" style="display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;"></div>
         <div style="margin-top:16px;display:flex;gap:10px;">
           <button class="btn-submit" style="flex:1;" onclick="saveQuickFeeSettings()">💾 저장</button>
@@ -3859,15 +3860,16 @@ function renderTteokAllList() {
       'ondragstart="onTteokOrderDragStart(event)" ondragover="onTteokOrderDragOver(event)" ondrop="onTteokOrderDrop(event)" ' +
       'style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:' + noteColor + ';border:1px solid ' + noteBorder + ';border-radius:7px;padding:7px 10px;margin-bottom:3px;cursor:default;">' +
       '<span style="color:#aaa;cursor:grab;font-size:16px;">⠿</span>' +
-      '<span style="font-size:13px;font-weight:600;min-width:100px;">' + name + (db.isNew ? ' <span style="background:#fef3c7;color:#b45309;font-size:10px;padding:1px 5px;border-radius:6px;font-weight:700;cursor:pointer;" onclick="confirmNewTteok(\'' + safeN + '\')" title="클릭하면 확인 완료">🆕확인</span>' : '') + '</span>' +
+      '<input type="text" value="' + name.replace(/"/g,'&quot;') + '" style="width:130px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-weight:600;" onchange="renameTteokDB(\'' + safeN + '\',this.value)">' +
+      (db.isNew ? ' <span style="background:#fef3c7;color:#b45309;font-size:10px;padding:1px 5px;border-radius:6px;font-weight:700;cursor:pointer;" onclick="confirmNewTteok(\'' + safeN + '\')" title="클릭하면 확인 완료">🆕확인</span>' : '') +
       '<span style="font-size:11px;color:#888;">개당</span>' +
       '<input type="number" value="' + (db.unitPrice||0) + '" style="width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'unitPrice\',Number(this.value))">' +
       '<span style="font-size:11px;color:#888;">원 박스</span>' +
       '<input type="number" value="' + (db.boxPrice||0) + '" style="width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'boxPrice\',Number(this.value))">' +
       '<span style="font-size:11px;color:#888;">원/</span>' +
       '<input type="text" value="' + (db.boxUnit||'') + '" style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'boxUnit\',this.value)">' +
-      '<input type="text" value="' + (db.note||'') + '" placeholder="참고사항" style="width:130px;padding:4px 6px;border:1px solid ' + (db.note ? '#ffc107' : 'var(--border)') + ';border-radius:6px;font-size:11px;background:' + (db.note ? '#fff3cd' : '#fff') + ';" onchange="updateTteokDB(\'' + safeN + '\',\'note\',this.value);renderTteokAllList()">' +
-      '<button onclick="deleteTteokFromGlobalList(\'' + safeN + '\')" style="margin-left:auto;background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
+      '<input type="text" value="' + (db.note||'') + '" placeholder="참고사항" style="flex:1;min-width:160px;padding:4px 6px;border:1px solid ' + (db.note ? '#ffc107' : 'var(--border)') + ';border-radius:6px;font-size:11px;background:' + (db.note ? '#fff3cd' : '#fff') + ';" onchange="updateTteokDB(\'' + safeN + '\',\'note\',this.value);renderTteokAllList()">' +
+      '<button onclick="deleteTteokFromGlobalList(\'' + safeN + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
       '</div>';
   }).join('');
 
@@ -5957,6 +5959,27 @@ function updateTteokDB(name, field, value) {
   }
 }
 
+// 떡 이름(키) 변경: 같은 내용을 새 이름으로 옮기고 기존 키는 삭제
+function renameTteokDB(oldName, newName) {
+  newName = (newName || '').trim();
+  if (!newName || newName === oldName) { renderTteokAllList(); return; }
+  if (TTEOK_DB[newName] !== undefined) {
+    showToast('이미 같은 이름의 떡이 있어요.', 'error');
+    renderTteokAllList();
+    return;
+  }
+  if (TTEOK_DB[oldName] === undefined) return;
+  TTEOK_DB[newName] = TTEOK_DB[oldName];
+  delete TTEOK_DB[oldName];
+  // 순서 정보(있다면)도 함께 갱신
+  if (Array.isArray(window.TTEOK_ORDER)) {
+    const idx = window.TTEOK_ORDER.indexOf(oldName);
+    if (idx !== -1) window.TTEOK_ORDER[idx] = newName;
+  }
+  showToast('✅ "' + oldName + '" → "' + newName + '"으로 이름이 변경됐어요.', 'success');
+  renderTteokAllList();
+}
+
 
 function renderEditIbajiButtons(catItems) {
   const container = document.getElementById('edit-ibaji-buttons');
@@ -6326,13 +6349,19 @@ function saveQuickFeeSettings() {
 function renderQuickFeeList() {
   const list = document.getElementById('quickfee-list');
   if (!list) return;
+  const kw = (document.getElementById('quickfee-search') || {}).value.trim() || '';
   const guOrder = ['동구','중구','서구','유성구','대덕구'];
   const grouped = {};
   Object.entries(QUICK_FEE_TABLE).forEach(([key, fee]) => {
     const [gu, dong] = key.split('_');
+    if (kw && !dong.includes(kw)) return;
     if (!grouped[gu]) grouped[gu] = [];
     grouped[gu].push({ key, dong, fee });
   });
+  if (kw && Object.keys(grouped).length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">검색 결과가 없어요.</div>';
+    return;
+  }
   const guColors = {'동구':'#e8f4fd','중구':'#fff3e0','서구':'#f3e8ff','유성구':'#e8f5e9','대덕구':'#fce4ec'};
   const guBorder = {'동구':'#2196F3','중구':'#FF9800','서구':'#9C27B0','유성구':'#4CAF50','대덕구':'#E91E63'};
   list.innerHTML = guOrder.filter(gu => grouped[gu]).map(gu => {
