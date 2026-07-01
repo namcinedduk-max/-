@@ -6,6 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://script.google.com https://script.googleusercontent.com https://unpkg.com https://apis.data.go.kr;">
 <title>남씨네전통식품 인사관리</title>
 <script src="https://unpkg.com/docx@9.0.3/build/index.umd.js"></script>
+<script src="https://unpkg.com/exceljs/dist/exceljs.min.js"></script>
 <style>
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1850,7 +1851,7 @@ function renderPay(){
   h+="<div class='card' style='margin-top:.5rem;background:#f9f8f5'>";
   h+="<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem'>";
   h+="<div style='font-size:13px;font-weight:700;color:#1a1a1a'>📊 "+S.cm.split("-")[0]+"년 "+parseInt(S.cm.split("-")[1])+"월 인건비 총계</div>";
-  h+="<button class='btn' style='font-size:12px;padding:5px 12px' onclick='downloadPayrollCsv(\""+S.cm+"\")'>📥 엑셀 다운로드</button></div>";
+  h+="<button class='btn' style='font-size:12px;padding:5px 12px' onclick='downloadPayrollCsv(\""+S.cm+"\")'>📊 인건비 명세서 (Excel)</button></div>";
   h+="<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px'>";
   h+="<div style='background:#fff;border-radius:8px;padding:10px 12px'><div style='color:#888;margin-bottom:3px'>직원 지급합계</div><div style='font-size:15px;font-weight:700'>"+comma(totGross)+"원</div></div>";
   h+="<div style='background:#fff;border-radius:8px;padding:10px 12px'><div style='color:#888;margin-bottom:3px'>직원 실수령액</div><div style='font-size:15px;font-weight:700;color:#16a34a'>"+comma(totNet)+"원</div></div>";
@@ -2303,60 +2304,231 @@ function calcEmpIns(b4, ins4, taxableGross, dependents){
   return {pension:pension,health:health,empIns:empIns,care:care,incomeTax:incomeTax,localTax:localTax,total:total};
 }
 
+// ── 엑셀 다운로드: 직원 선택 모달 ──
 function downloadPayrollCsv(mo){
-  var yr=mo.split("-")[0], m=parseInt(mo.split("-")[1]);
-  var hdrs=["직원명","직책","계약유형","계약금액(원)","시급(원)",
-    "연장수당","야간연장수당","휴일수당","조기퇴근차감","결근차감","주휴박탈",
-    "식대","추가지급","지급합계",
-    "국민연금(직원)","건강보험(직원)","고용보험(직원)","장기요양(직원)","근로소득세","지방소득세","공제합계(직원)","실수령액",
-    "국민연금(사업주)","건강보험(사업주)","고용보험(사업주)","장기요양(사업주)","사업주4대보험합계",
-    "총인건비(사업주지출)"];
-  var rows=[hdrs];
-  var tot=new Array(hdrs.length).fill(0);
+  // 버튼 클릭 → 포함할 직원 선택 모달 표시
+  var old=document.getElementById('px-modal');
+  if(old) old.remove();
+  var ov=document.createElement('div');
+  ov.id='px-modal'; ov.className='overlay'; ov.style.zIndex='200';
+  var h='<div class="modal" style="width:430px">';
+  h+='<div class="modal-title">📊 인건비 명세서 다운로드</div>';
+  h+='<div style="font-size:12px;color:#888;margin-bottom:14px">세무사무소 제출용입니다. <b>제외할 직원은 체크 해제</b>하세요. 선택은 다음에도 기억됩니다.</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">';
   for(var i=0;i<S.emps.length;i++){
-    var e=S.emps[i], p=calcPay(e,mo);
+    var e=S.emps[i];
+    var isOwner=/(대표|사장|오너)/i.test(e.role||'');
+    // excelExclude 저장값 우선, 없으면 대표는 기본 해제
+    var chk=(e.excelExclude===true)?false:(e.excelExclude===false?true:!isOwner);
+    var badge=isOwner?'<span style="margin-left:auto;font-size:10px;background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:10px;flex-shrink:0">대표</span>':'';
+    h+='<label style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:#f9f8f5;border-radius:9px;cursor:pointer;border:1px solid #e8e6e0;user-select:none">';
+    h+='<input type="checkbox" id="pxchk_'+e.id+'" '+(chk?'checked':'')+' style="width:16px;height:16px;cursor:pointer;flex-shrink:0">';
+    h+='<span style="font-weight:600;font-size:13px">'+e.name+'</span>';
+    h+='<span style="font-size:11px;color:#aaa;margin-left:2px">'+(e.role||'')+'</span>';
+    h+=badge;
+    h+='</label>';
+  }
+  h+='</div>';
+  h+='<div class="modal-actions">';
+  h+='<button class="btn" onclick="document.getElementById(\'px-modal\').remove()">취소</button>';
+  h+='<button class="btn pri" onclick="doPayrollExcel(\''+mo+'\')">📥 Excel 다운로드</button>';
+  h+='</div></div>';
+  ov.innerHTML=h;
+  ov.addEventListener('click',function(ev){if(ev.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+
+async function doPayrollExcel(mo){
+  // 선택 저장 및 포함 직원 확정
+  for(var i=0;i<S.emps.length;i++){
+    var _cb=document.getElementById('pxchk_'+S.emps[i].id);
+    if(_cb) S.emps[i].excelExclude=!_cb.checked;
+  }
+  var incl=S.emps.filter(function(e){return !e.excelExclude;});
+  document.getElementById('px-modal').remove();
+  if(!incl.length){toast('포함된 직원이 없습니다');return;}
+
+  if(!window.ExcelJS){toast('ExcelJS 로딩 중입니다. 잠시 후 다시 시도해주세요.');return;}
+
+  var yr=mo.split('-')[0], m=parseInt(mo.split('-')[1]);
+
+  // ── ExcelJS 워크북 생성 ──
+  var wb=new ExcelJS.Workbook();
+  wb.creator='남씨네전통식품';
+  var ws=wb.addWorksheet('인건비명세서',{views:[{showGridLines:false}]});
+
+  // 컬럼 너비 설정 (A~V = 22열)
+  ws.columns=[
+    {width:11},{width:8},{width:9},           // A 직원명 B 직책 C 계약유형
+    {width:13},{width:11},{width:13},          // D 지급합계 E 식대 F 과세급여
+    {width:13},{width:10},                     // G 연장야간휴일 H 추가지급
+    {width:10},{width:10},{width:10},{width:10},{width:11},{width:10},{width:12}, // I~O 공제
+    {width:12},                                // P 실수령액
+    {width:10},{width:10},{width:10},{width:10},{width:12}, // Q~U 사업주
+    {width:13}                                 // V 총인건비
+  ];
+
+  var DS=6; // Data Start row
+  var NE=incl.length;
+  var TR=DS+NE;   // Total row
+  var NR=TR+2;    // Notes row
+
+  // 색상 (ARGB, # 없음)
+  var C={
+    BK:'FF1A1A1A',WT:'FFFFFFFF',
+    GRY:'FFF3F4F6',GRY_F:'FF6B7280',
+    GRN:'FFDCFCE7',GRN_F:'FF15803D',
+    RED:'FFFEE2E2',RED_F:'FFDC2626',
+    BLU:'FFDBEAFE',BLU_F:'FF1D4ED8',
+    YEL:'FFFEF9C3',YEL_F:'FF854D0E',
+    NET:'FFF0FDF4',NET_F:'FF15803D',
+    ST:'FFFAFAF9', // stripe
+    BD:'FFD1D5DB'  // border
+  };
+
+  function xFill(c,a){c.fill={type:'pattern',pattern:'solid',fgColor:{argb:a}};}
+  function xFont(c,a,bold,sz){c.font={name:'맑은 고딕',size:sz||10,bold:!!bold,color:{argb:a||C.BK}};}
+  function xBdr(c,w){var s={style:w||'thin',color:{argb:C.BD}};c.border={top:s,left:s,bottom:s,right:s};}
+  function xAlign(c,h,v){c.alignment={horizontal:h||'center',vertical:v||'middle'};}
+  function xNum(c){c.numFmt='#,##0';}
+  function xH(c,bg,fg,bold){xFill(c,bg);xFont(c,fg,bold!==false);xBdr(c);xAlign(c,'center','middle');}
+  function xD(c,bg,fg,bold,isText){
+    xFill(c,bg||C.WT);xFont(c,fg||C.BK,!!bold);xBdr(c);
+    xAlign(c,isText?'left':'right','middle');
+    if(!isText)xNum(c);
+  }
+  function xT(c,bg,fg){xFill(c,bg||C.YEL);xFont(c,fg||C.BK,true);xBdr(c,'medium');xAlign(c,'right','middle');xNum(c);}
+
+  // ── 행1: 제목 ──
+  ws.mergeCells('A1:V1');
+  var t1=ws.getCell('A1');
+  t1.value='남씨네전통식품   |   '+yr+'년 '+m+'월 인건비 명세서';
+  xFill(t1,C.BK);xFont(t1,C.WT,true,14);xAlign(t1,'left','middle');
+  ws.getRow(1).height=32;
+
+  // ── 행2: 부제 ──
+  ws.mergeCells('A2:V2');
+  var t2=ws.getCell('A2');
+  t2.value='생성일: '+new Date().toLocaleDateString('ko-KR')+
+    '    ※ 산재보험료 별도    4대보험요율(2026): 국민연금 4.5%/4.75%, 건강보험 3.545%/3.595%, 고용보험 0.9%/1.15%, 장기요양×12.95%/13.14%';
+  xFill(t2,'FFF9F8F5');xFont(t2,C.GRY_F,false,9);xAlign(t2,'left','middle');
+  ws.getRow(2).height=18;
+
+  ws.getRow(3).height=8;
+
+  // ── 행4: 섹션 헤더 ──
+  ws.getRow(4).height=20;
+  ws.mergeCells('A4:C4'); var s1=ws.getCell('A4'); s1.value='기본 정보'; xH(s1,C.GRY,C.GRY_F);
+  ws.mergeCells('D4:H4'); var s2=ws.getCell('D4'); s2.value='▶ 지급 항목'; xH(s2,C.GRN,C.GRN_F);
+  ws.mergeCells('I4:O4'); var s3=ws.getCell('I4'); s3.value='▼ 공제 항목 (직원 부담)'; xH(s3,C.RED,C.RED_F);
+  var s4=ws.getCell('P4'); s4.value='실수령액'; xH(s4,C.NET,C.NET_F);
+  ws.mergeCells('Q4:U4'); var s5=ws.getCell('Q4'); s5.value='★ 사업주 4대보험 부담'; xH(s5,C.BLU,C.BLU_F);
+  var s6=ws.getCell('V4'); s6.value='총인건비'; xH(s6,C.YEL,C.YEL_F);
+
+  // ── 행5: 컬럼 헤더 ──
+  ws.getRow(5).height=22;
+  [['A5','직원명',C.GRY,C.GRY_F],['B5','직책',C.GRY,C.GRY_F],['C5','계약유형',C.GRY,C.GRY_F],
+   ['D5','지급합계',C.GRN,C.GRN_F],['E5','식대(비과세)',C.GRN,C.GRN_F],['F5','과세급여 ★',C.GRN,C.GRN_F],
+   ['G5','연장·야간·휴일',C.GRN,C.GRN_F],['H5','추가지급',C.GRN,C.GRN_F],
+   ['I5','국민연금',C.RED,C.RED_F],['J5','건강보험',C.RED,C.RED_F],
+   ['K5','고용보험',C.RED,C.RED_F],['L5','장기요양',C.RED,C.RED_F],
+   ['M5','근로소득세',C.RED,C.RED_F],['N5','지방소득세',C.RED,C.RED_F],
+   ['O5','공제합계 ★',C.RED,C.RED_F],
+   ['P5','실수령액 ★',C.NET,C.NET_F],
+   ['Q5','국민연금',C.BLU,C.BLU_F],['R5','건강보험',C.BLU,C.BLU_F],
+   ['S5','고용보험',C.BLU,C.BLU_F],['T5','장기요양',C.BLU,C.BLU_F],
+   ['U5','소계 ★',C.BLU,C.BLU_F],
+   ['V5','총인건비 ★',C.YEL,C.YEL_F]
+  ].forEach(function(x){var c=ws.getCell(x[0]);c.value=x[1];xH(c,x[2],x[3]);});
+
+  // ── 행6~: 직원 데이터 ──
+  for(var i=0;i<incl.length;i++){
+    var e=incl[i], p=calcPay(e,mo);
     var ins4=e.ins4||{pension:true,health:true,empIns:true,care:true};
-    var b=p.insuranceBase||0;
-    var hr2=e.contractType==="시간제"?(e.hourlyRate||10030)
-            :(e.totalPay?calcBase(e).hourRate:Math.round((e.base||0)/(calcMonthlyPayHours(e)||209)));
-    var contractAmt=e.contractType==="시간제"?(e.hourlyRate||10030):(e.totalPay||e.base||0);
-    var contractType=e.contractType==="시간제"?"시간제":(e.totalPay?"포괄임금":"기본급");
+    var b2=p.insuranceBase||0;
+    var ep2=ins4.pension?Math.round(b2*S.ins.pension/100):0;
+    var eh2=ins4.health?Math.round(b2*S.ins.health/100):0;
+    var ee2=ins4.empIns?Math.round(b2*1.15/100):0;
+    var ec2=(ins4.care&&ins4.health)?Math.round(eh2*S.ins.care/100):0;
+    var cType=e.contractType==='시간제'?'시간제':(e.totalPay?'포괄임금':'기본급');
+    var ot=(p.ext||0)+(p.night||0)+(p.hol||0);
+    var r=DS+i;
+    var bg=i%2===1?C.ST:C.WT;
+    ws.getRow(r).height=21;
+
+    // 기본정보 (text)
+    var cN=ws.getCell('A'+r); cN.value=e.name; xFill(cN,bg);xFont(cN,C.BK,true);xBdr(cN);xAlign(cN,'left','middle');
+    var cRo=ws.getCell('B'+r); cRo.value=e.role||''; xFill(cRo,bg);xFont(cRo,C.GRY_F,false);xBdr(cRo);xAlign(cRo,'left','middle');
+    var cCt=ws.getCell('C'+r); cCt.value=cType; xFill(cCt,bg);xFont(cCt,C.GRY_F,false);xBdr(cCt);xAlign(cCt,'center','middle');
+
+    // 지급항목
+    var cGr=ws.getCell('D'+r); cGr.value=p.gross||0; xD(cGr,bg,C.GRN_F,false);
+    var cMl=ws.getCell('E'+r); cMl.value=p.mealActual||0; xD(cMl,bg,'FF059669',false);
+    // ★ 과세급여: 수식 (직접 수정해도 합계에 반영)
+    var cTx=ws.getCell('F'+r); cTx.value={formula:'=D'+r+'-E'+r}; xD(cTx,bg,C.GRN_F,true);
+    var cOt=ws.getCell('G'+r); cOt.value=ot; xD(cOt,bg,C.BK,false);
+    var cEx=ws.getCell('H'+r); cEx.value=p.extraTotal||0; xD(cEx,bg,C.BK,false);
+
+    // 공제항목
+    var rb='FFFFF9F9';
+    var cPn=ws.getCell('I'+r); cPn.value=p.pension||0; xD(cPn,rb,C.RED_F,false);
+    var cHl=ws.getCell('J'+r); cHl.value=p.health||0; xD(cHl,rb,C.RED_F,false);
+    var cEi=ws.getCell('K'+r); cEi.value=p.empIns||0; xD(cEi,rb,C.RED_F,false);
+    var cCa=ws.getCell('L'+r); cCa.value=p.care||0; xD(cCa,rb,C.RED_F,false);
+    var cIt=ws.getCell('M'+r); cIt.value=p.incomeTax||0; xD(cIt,rb,'FFB91C1C',false);
+    var cLt=ws.getCell('N'+r); cLt.value=p.localTax||0; xD(cLt,rb,'FFB91C1C',false);
+    // ★ 공제합계: 수식
+    var cDd=ws.getCell('O'+r); cDd.value={formula:'=SUM(I'+r+':N'+r+')'}; xD(cDd,'FFFFF5F5',C.RED_F,true);
+
+    // ★ 실수령액: 수식
+    var cNt=ws.getCell('P'+r); cNt.value={formula:'=D'+r+'-O'+r}; xD(cNt,C.NET,C.NET_F,true);
+
     // 사업주 4대보험
-    var ep=ins4.pension?Math.round(b*S.ins.pension/100):0;
-    var eh=ins4.health?Math.round(b*S.ins.health/100):0;
-    var ee=ins4.empIns?Math.round(b*1.15/100):0; // 사업주 고용보험 1.15%
-    var ec=(ins4.care&&ins4.health)?Math.round(eh*S.ins.care/100):0; // 장기요양 = 건강보험료 × 13.14%
-    var eTotal=ep+eh+ee+ec;
-    var row=[
-      e.name, e.role||"", contractType, contractAmt, hr2,
-      p.ext||0, p.night||0, p.hol||0, p.earlyDed||0, p.absDeduct||0, p.lostJuhyu||0,
-      p.mealActual||0, p.extraTotal||0, p.gross,
-      p.pension||0, p.health||0, p.empIns||0, p.care||0, p.incomeTax||0, p.localTax||0, p.totalDed, p.net,
-      ep, eh, ee, ec, eTotal, p.gross+eTotal
-    ];
-    rows.push(row);
-    for(var c=4;c<row.length;c++) tot[c]=(tot[c]||0)+(typeof row[c]==="number"?row[c]:0);
+    var bb='FFEFF6FF';
+    var cEp=ws.getCell('Q'+r); cEp.value=ep2; xD(cEp,bb,C.BLU_F,false);
+    var cEh=ws.getCell('R'+r); cEh.value=eh2; xD(cEh,bb,C.BLU_F,false);
+    var cEe=ws.getCell('S'+r); cEe.value=ee2; xD(cEe,bb,C.BLU_F,false);
+    var cEc=ws.getCell('T'+r); cEc.value=ec2; xD(cEc,bb,C.BLU_F,false);
+    // ★ 사업주 소계: 수식
+    var cEtot=ws.getCell('U'+r); cEtot.value={formula:'=SUM(Q'+r+':T'+r+')'}; xD(cEtot,C.BLU,C.BLU_F,true);
+
+    // ★ 총인건비: 수식
+    var cTc=ws.getCell('V'+r); cTc.value={formula:'=D'+r+'+U'+r}; xD(cTc,C.YEL,C.YEL_F,true);
   }
-  var totRow=["합계","","","",""].concat(tot.slice(4));
-  rows.push([]);
-  rows.push(totRow);
-  // CSV 빌드 (BOM 포함, 한국어 Excel 호환)
-  var csv="\uFEFF";
-  csv+=yr+"년 "+m+"월 인건비 내역 (남씨네전통식품)\r\n";
-  csv+="* 사업주 고용보험 1.15% (실업급여 0.9% + 고용안정 0.25%) / 장기요양 = 건강보험료 × 13.14% / 산재보험 별도 (2026년 기준)\r\n\r\n";
-  for(var r=0;r<rows.length;r++){
-    csv+=rows[r].map(function(v){
-      var s=String(v==null?"":v);
-      return (s.indexOf(",")>=0||s.indexOf('"')>=0)? '"'+s.replace(/"/g,'""')+'"' : s;
-    }).join(",")+"\r\n";
-  }
-  var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+
+  // ── 합계행 (모두 SUM 수식) ──
+  ws.getRow(TR).height=26;
+  var tA=ws.getCell('A'+TR); tA.value='합  계'; xFill(tA,C.BK);xFont(tA,C.WT,true);xBdr(tA);xAlign(tA,'center','middle');
+  ['B','C'].forEach(function(col){var c=ws.getCell(col+TR);xFill(c,C.BK);xBdr(c);});
+  // 수식 합계 컬럼
+  var sumMap={D:C.GRN_F,E:'FF059669',F:C.GRN_F,G:C.BK,H:C.BK,
+              I:C.RED_F,J:C.RED_F,K:C.RED_F,L:C.RED_F,M:'FFB91C1C',N:'FFB91C1C',O:C.RED_F,
+              P:C.NET_F,Q:C.BLU_F,R:C.BLU_F,S:C.BLU_F,T:C.BLU_F,U:C.BLU_F,V:C.YEL_F};
+  Object.keys(sumMap).forEach(function(col){
+    var tc=ws.getCell(col+TR);
+    tc.value={formula:'=SUM('+col+DS+':'+col+(TR-1)+')'};
+    xT(tc,col==='V'?'FFFEF08A':C.YEL,sumMap[col]);
+  });
+
+  // ── 안내문 ──
+  ws.mergeCells('A'+NR+':V'+NR);
+  var nc=ws.getCell('A'+NR);
+  nc.value='[세무사무소 기장 참고]  ① 원천세신고(매월10일): 과세급여·근로소득세·지방소득세 기준  '+
+           '② 사업주 4대보험 소계 전액 손금산입  ③ 식대 월20만원 한도 비과세  ④ 주민등록번호 별도 제공 요망  ⑤ 산재보험료 별도';
+  xFill(nc,'FFF0F9FF');xFont(nc,'FF0369A1',false,9);xAlign(nc,'left','middle');
+  nc.border={top:{style:'thin',color:{argb:'FFBAE6FD'}},left:{style:'thin',color:{argb:'FFBAE6FD'}},
+             bottom:{style:'thin',color:{argb:'FFBAE6FD'}},right:{style:'thin',color:{argb:'FFBAE6FD'}}};
+  ws.getRow(NR).height=28;
+
+  // ── 다운로드 ──
+  var buffer=await wb.xlsx.writeBuffer();
+  var blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");
-  a.href=url; a.download=yr+"년"+m+"월_인건비.csv";
+  var a=document.createElement('a');
+  a.href=url; a.download=yr+'년'+m+'월_인건비명세서_남씨네전통식품.xlsx';
   document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
-  toast("✓ "+m+"월 인건비 CSV 다운로드 완료");
+  toast('✓ '+m+'월 인건비 명세서 Excel(.xlsx) 다운로드 완료');
 }
 function toggleSchedDay(d){
   var cb=document.getElementById("sd_"+d);
