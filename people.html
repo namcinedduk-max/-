@@ -680,19 +680,36 @@ function loadAll(){
       if(d.pw && typeof d.pw==="string" && d.pw.length>=4){
         localStorage.setItem(PW_STORE_KEY, d.pw);
       }
-      // ptLogs: 서버값 기준 병합 (서버에 없는 항목은 로컬 보존)
-      if(d.ptLogs && Object.keys(d.ptLogs).length>0){
-        var serverPt=d.ptLogs;
-        Object.keys(S.ptLogs).forEach(function(eid6){
-          if(!serverPt[eid6]) serverPt[eid6]={};
-          Object.keys(S.ptLogs[eid6]||{}).forEach(function(mo6){
-            if(!serverPt[eid6][mo6]) serverPt[eid6][mo6]=S.ptLogs[eid6][mo6];
-          });
+      // ptLogs: 서버값 기준 병합 + 로컬 전용 키도 체크
+      var _localPt={};
+      try{var _ptRaw=localStorage.getItem('tteok_ptlogs');if(_ptRaw)_localPt=JSON.parse(_ptRaw)||{};}catch(e){}
+      var _serverPt=d.ptLogs||{};
+      // 서버 + 로컬 모두 합쳐서 최종 ptLogs 구성
+      var _mergedPt=JSON.parse(JSON.stringify(_serverPt)); // 서버값 복사
+      // 로컬에만 있는 항목 추가 (서버에 없는 것만)
+      var _toUpload=[];
+      Object.keys(_localPt).forEach(function(eid6){
+        if(!_mergedPt[eid6]) _mergedPt[eid6]={};
+        Object.keys(_localPt[eid6]||{}).forEach(function(mo6){
+          var localLogs=_localPt[eid6][mo6]||[];
+          if(!_mergedPt[eid6][mo6] || !_mergedPt[eid6][mo6].length){
+            // 서버에 없는 로컬 데이터 → 병합 후 서버 업로드 예약
+            if(localLogs.length>0){
+              _mergedPt[eid6][mo6]=localLogs;
+              _toUpload.push({eid:eid6,mo:mo6,logs:localLogs});
+            }
+          }
         });
-        S.ptLogs=serverPt;
-      } else {
-        // 서버에 아직 없으면 로컬 전용 키에서 복원
-        try{var _ptR=JSON.parse(localStorage.getItem('tteok_ptlogs')||'null');if(_ptR)S.ptLogs=_ptR;}catch(e){}
+      });
+      S.ptLogs=_mergedPt;
+      // 로컬에만 있던 데이터 서버로 업로드 (마이그레이션)
+      if(_toUpload.length){
+        setTimeout(function(){
+          for(var _ui=0;_ui<_toUpload.length;_ui++){
+            (function(_u){ apiSavePtLogs(_u.eid,_u.mo,_u.logs); })(_toUpload[_ui]);
+          }
+          toast("↑ 알바 근무기록 서버 업로드 완료 ("+_toUpload.length+"건)");
+        },1500);
       }
       setSyncSt("ok"); toast("✓ 데이터 불러옴"); saveCache();
       try{localStorage.setItem('tteok_ptlogs',JSON.stringify(S.ptLogs));}catch(e){}
