@@ -282,6 +282,8 @@ function doChangePw(){
   if(n1.length<4){ errEl.textContent="새 비밀번호는 4자 이상이어야 합니다"; return; }
   if(n1!==n2){ errEl.textContent="새 비밀번호가 일치하지 않습니다"; return; }
   localStorage.setItem(PW_STORE_KEY, n1);
+  // GAS 시트에도 비밀번호 동기화
+  apiPost({type:"savePw", pw: n1}).catch(function(){});
   setAuthed();
   document.getElementById("pw-change-screen").style.display="none";
   errEl.textContent="";
@@ -655,6 +657,10 @@ function loadAll(){
       if(d.extras) S.extras=d.extras;
       if(d.payHistory) S.payHistory=d.payHistory;
       if(!S.otEmp&&S.emps.length) S.otEmp=S.emps[0].id;
+      // 서버 비밀번호 동기화: GAS에 저장된 값이 있으면 로컬에 반영
+      if(d.pw && typeof d.pw==="string" && d.pw.length>=4){
+        localStorage.setItem(PW_STORE_KEY, d.pw);
+      }
       setSyncSt("ok"); toast("✓ 데이터 불러옴"); saveCache();
       autoSavePayHistory();
       checkNotifications();
