@@ -193,11 +193,17 @@ textarea{resize:vertical;min-height:70px}
       <div class="settings-title">GAS 연결 설정</div>
       <div class="fg"><label class="fl">장부앱 GAS URL</label><input type="text" id="set_gasUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
       <div class="fg"><label class="fl">인사앱 GAS URL</label><input type="text" id="set_hrGasUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
-      <div class="fg"><label class="fl">사장님앱 데이터 GAS URL (동기화용)</label><input type="text" id="set_dataGasUrl" placeholder="https://script.google.com/macros/s/.../exec"><div style="font-size:11px;color:var(--text3);margin-top:4px">경영노트·회의록·메모를 모든 기기에서 쓰려면 입력하세요</div></div>
+      <div class="fg"><label class="fl">사장님앱 데이터 GAS URL (동기화용)</label><input type="text" id="set_dataGasUrl" placeholder="https://script.google.com/macros/s/.../exec"><div style="font-size:11px;color:var(--text3);margin-top:4px">경영노트·회의록·메모·모든 설정을 기기 간에 동기화합니다</div></div>
       <div class="btn-row">
         <button class="btn pri" onclick="saveSettings()">저장 및 연결</button>
         <button class="btn" onclick="loadSyncData()">🔄 동기화 새로고침</button>
+        <button class="btn" style="background:var(--blue2);color:var(--blue);border-color:var(--blue)" onclick="copyBookmarkUrl()">📋 북마크 URL 복사</button>
         <button class="btn" onclick="showPanel('dash')">취소</button>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--blue2);border-radius:8px;font-size:12px;color:var(--blue);line-height:1.7">
+        💡 <strong>새 컴퓨터 자동 연결 방법</strong><br>
+        ① GAS URL 입력 후 저장 &nbsp;→&nbsp; ② "📋 북마크 URL 복사" 클릭 &nbsp;→&nbsp; ③ 그 URL을 북마크 저장<br>
+        다음부터 새 기기에서 북마크만 열면 모든 설정이 자동으로 복원됩니다
       </div>
     </div>
     <div class="card">
@@ -237,10 +243,13 @@ textarea{resize:vertical;min-height:70px}
 
 <script>
 // ── 상태 ──────────────────────────────────────────────
+// ★ 사장님앱 데이터 GAS URL 고정 (어느 기기든 자동 연결)
+const FIXED_DATA_GAS_URL = 'https://script.google.com/macros/s/AKfycbwI6sFrpqmIU5awB1si6D5l0675paHATPy6wFoUeDgtUSEFVRKWdZfZm-v2KCGoFSgHiw/exec';
+
 const S = {
   gasUrl: '',
   hrGasUrl: '',
-  dataGasUrl: '',
+  dataGasUrl: FIXED_DATA_GAS_URL,
   apiKey: '',
   ownerName: '사장님',
   orders: [],
@@ -265,23 +274,40 @@ const S = {
 
 function init() {
   loadConfig();
-  if (S.gasUrl) {
-    loadAllData();
-  } else {
-    showPanel('settings');
-    toast('GAS URL을 먼저 설정해 주세요', 3000);
-  }
-  if (S.dataGasUrl) loadSyncData();
-  renderMeeting();
-  renderMemo();
-  renderNote();
-  renderAI();
+  renderMeeting(); renderMemo(); renderNote(); renderAI();
+  // GAS에서 최신 설정 먼저 가져온 뒤 데이터 로드
+  loadSyncData().then(() => {
+    if (S.gasUrl) {
+      loadAllData();
+    } else {
+      showPanel('settings');
+      toast('GAS URL을 먼저 설정해 주세요', 3000);
+    }
+  }).catch(() => {
+    // 동기화 실패해도 로컬 설정으로 진행
+    if (S.gasUrl) loadAllData();
+    else { showPanel('settings'); toast('GAS URL을 먼저 설정해 주세요', 3000); }
+  });
 }
 
 function loadConfig() {
+  // URL 파라미터에서 dataGasUrl 자동 주입 (?gas=...)
+  // → 새 컴퓨터에서 북마크 URL만 열면 모든 설정 자동 복원
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gasFromUrl = urlParams.get('gas');
+    if (gasFromUrl && gasFromUrl.startsWith('https://script.google.com/')) {
+      const existing = ls('dataGasUrl') || '';
+      if (existing !== gasFromUrl) {
+        setLs('dataGasUrl', gasFromUrl);
+      }
+    }
+  } catch(e) {}
+
   S.gasUrl = ls('gasUrl') || '';
   S.hrGasUrl = ls('hrGasUrl') || '';
-  S.dataGasUrl = ls('dataGasUrl') || '';
+  S.dataGasUrl = FIXED_DATA_GAS_URL; // 항상 고정 URL 사용
+  setLs('dataGasUrl', FIXED_DATA_GAS_URL);
   S.apiKey = ls('apiKey') || '';
   S.ownerName = ls('ownerName') || '사장님';
   S.meetings = JSON.parse(ls('meetings') || '[]');
@@ -294,6 +320,23 @@ function loadConfig() {
   document.getElementById('set_dataGasUrl').value = S.dataGasUrl;
   document.getElementById('set_apiKey').value = S.apiKey;
   document.getElementById('set_ownerName').value = S.ownerName;
+}
+
+// 북마크용 URL 복사 (dataGasUrl을 ?gas= 파라미터로 포함)
+function copyBookmarkUrl() {
+  const dataGasUrl = document.getElementById('set_dataGasUrl').value.trim() || S.dataGasUrl;
+  if (!dataGasUrl) {
+    toast('사장님앱 데이터 GAS URL을 먼저 입력해 주세요', 3000);
+    return;
+  }
+  const base = window.location.href.split('?')[0].split('#')[0];
+  const bookmarkUrl = base + '?gas=' + encodeURIComponent(dataGasUrl);
+  navigator.clipboard.writeText(bookmarkUrl).then(() => {
+    toast('📋 북마크 URL 복사됐어요! 새 컴퓨터에서 이 URL을 열면 자동 연결됩니다', 4000);
+  }).catch(() => {
+    // 클립보드 실패 시 직접 보여주기
+    prompt('아래 URL을 복사해서 북마크하세요:', bookmarkUrl);
+  });
 }
 
 function syncSettings() {
@@ -354,7 +397,7 @@ function gasGetJSONP(url, params, timeoutMs) {
 }
 
 async function loadSyncData() {
-  if (!S.dataGasUrl) return;
+  if (!S.dataGasUrl) return Promise.resolve();
   try {
     const r = await gasGet(S.dataGasUrl, { action: 'loadAll' });
     if (r.success && r.data) {
