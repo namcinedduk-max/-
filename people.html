@@ -453,6 +453,8 @@ try{
     if(_c.extras) S.extras=_c.extras;
     if(_c.slipMemo) S.slipMemo=_c.slipMemo;
     if(_c.ptLogs) S.ptLogs=_c.ptLogs;
+    // ptLogs 전용 키도 체크 (메인 캐시보다 우선)
+    try{var _pt=JSON.parse(localStorage.getItem('tteok_ptlogs')||'null');if(_pt)S.ptLogs=_pt;}catch(e){}
     if(!S.otEmp&&S.emps.length) S.otEmp=S.emps[0].id;
     S.loading=false;
   }
@@ -496,6 +498,7 @@ function apiSaveAbsence(eid,mo,day,v){ apiPost({type:"saveAbsence",empId:eid,mon
 function apiSaveLeave(eid,d){ apiPost({type:"saveLeave",empId:eid,data:d}).then(function(){ setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); }); }
 function apiSaveSlipMemo(eid,mo,memo){ apiPost({type:"saveSlipMemo",empId:eid,month:mo,memo:memo}).then(function(){ setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); }); }
 function apiSaveExtras(eid,ym){ apiPost({type:"saveExtras",empId:eid,month:ym,extras:(S.extras[eid]&&S.extras[eid][ym])?S.extras[eid][ym]:[]}).then(function(){ setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); }); }
+function apiSavePtLogs(eid,mo,logs){ apiPost({type:"savePtLogs",empId:eid,month:mo,logs:logs||[]}).then(function(){ setSyncSt("ok"); }).catch(function(){ setSyncSt("err"); }); }
 function saveSlip(eid, mo){
   var exs=getEmpExtras(eid,mo);
   // 기존 항목 수정값 반영
@@ -589,7 +592,9 @@ function loadAll(){
           nationality:se.nationality||local.nationality||"내국인",
           hourlyRate:se.hourlyRate||local.hourlyRate||0,
           ins4:se.ins4||local.ins4||{pension:true,health:true,empIns:true,care:true},
-          dependents:se.dependents!=null?se.dependents:(local.dependents||1)
+          dependents:se.dependents!=null?se.dependents:(local.dependents||1),
+          flexPartTime:se.flexPartTime!=null?se.flexPartTime:(local.flexPartTime||false),
+          excelExclude:se.excelExclude!=null?se.excelExclude:(local.excelExclude||false)
         };
       });
       S.emps=merged;
@@ -675,7 +680,22 @@ function loadAll(){
       if(d.pw && typeof d.pw==="string" && d.pw.length>=4){
         localStorage.setItem(PW_STORE_KEY, d.pw);
       }
+      // ptLogs: 서버값 기준 병합 (서버에 없는 항목은 로컬 보존)
+      if(d.ptLogs && Object.keys(d.ptLogs).length>0){
+        var serverPt=d.ptLogs;
+        Object.keys(S.ptLogs).forEach(function(eid6){
+          if(!serverPt[eid6]) serverPt[eid6]={};
+          Object.keys(S.ptLogs[eid6]||{}).forEach(function(mo6){
+            if(!serverPt[eid6][mo6]) serverPt[eid6][mo6]=S.ptLogs[eid6][mo6];
+          });
+        });
+        S.ptLogs=serverPt;
+      } else {
+        // 서버에 아직 없으면 로컬 전용 키에서 복원
+        try{var _ptR=JSON.parse(localStorage.getItem('tteok_ptlogs')||'null');if(_ptR)S.ptLogs=_ptR;}catch(e){}
+      }
       setSyncSt("ok"); toast("✓ 데이터 불러옴"); saveCache();
+      try{localStorage.setItem('tteok_ptlogs',JSON.stringify(S.ptLogs));}catch(e){}
       autoSavePayHistory();
       checkNotifications();
     } else { setSyncSt("err"); toast("불러오기 실패"); }
@@ -998,7 +1018,13 @@ function getMonthAbsence(eid,mo){
 
 // ── 비정기 알바 근무 기록 (ptLogs) ──
 function getPtLogs(eid,mo){ return (S.ptLogs[eid]&&S.ptLogs[eid][mo])?S.ptLogs[eid][mo].slice():[]; }
-function setPtLogs(eid,mo,logs){ if(!S.ptLogs[eid])S.ptLogs[eid]={}; S.ptLogs[eid][mo]=logs; saveCache(); }
+function setPtLogs(eid,mo,logs){
+  if(!S.ptLogs[eid])S.ptLogs[eid]={};
+  S.ptLogs[eid][mo]=logs;
+  saveCache();
+  try{localStorage.setItem('tteok_ptlogs',JSON.stringify(S.ptLogs));}catch(e){}
+  apiSavePtLogs(eid,mo,logs); // GAS 서버 동기화
+}
 function logToHours(log){
   function toH(v){ if(!v&&v!==0)return 0; var s=String(v); if(s.indexOf(':')>=0){var p=s.split(':');return parseInt(p[0])+(parseInt(p[1])||0)/60;} return parseFloat(v)||0; }
   var h=toH(log.e)-toH(log.s)-(parseFloat(log.b)||0);
