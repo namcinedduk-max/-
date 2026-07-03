@@ -7220,36 +7220,55 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('gasUrl').value = gasUrl;
     document.getElementById('sheetStatus').textContent = '연결됨';
     document.getElementById('sheetStatus').className = 'sheet-status connected';
-    // 앱 시작 시 3개 시트 동시 프리로드 (콜드 스타트 워밍업)
+    // 앱 시작 시 요청 분산 로드 (GAS 동시 요청 큐잉 방지)
+    // ① 즉시: 일반 주문 (현재 탭, 최우선)
     loadOrdersFromSheet(true);
-    loadFuneralOrdersFromSheet(true);
-    loadWeddingOrdersFromSheet(true);
-    // 거래처도 앱 시작 시 미리 불러오기
-    gasGet({ action: 'getPartners' }).then(function(data) {
-      if (data.success && data.partners) {
-        purchasePartners = data.partners.map(function(p) {
-          return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
-        });
-        localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
-        if (typeof updatePartnerSelect === 'function') updatePartnerSelect();
-      }
-    }).catch(function(){});
-    // 매입기록도 앱 시작 시 미리 불러오기 (A↔B 컴퓨터 동기화)
-    gasGet({ action: 'getPurchases' }).then(function(data) {
-      if (data.success && data.records) {
-        purchaseRecords = data.records;
-        purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
-        localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
-        if (typeof renderPurchaseTable === 'function') renderPurchaseTable();
-        if (typeof renderPurchaseSummary === 'function') renderPurchaseSummary();
-      }
-    }).catch(function(){});
+    // ② 2초 후: 장례 주문
+    setTimeout(function() { loadFuneralOrdersFromSheet(true); }, 2000);
+    // ③ 4초 후: 웨딩 주문
+    setTimeout(function() { loadWeddingOrdersFromSheet(true); }, 4000);
+    // ④ 6초 후: 거래처
+    setTimeout(function() {
+      gasGet({ action: 'getPartners' }).then(function(data) {
+        if (data.success && data.partners) {
+          purchasePartners = data.partners.map(function(p) {
+            return { id: p.id, name: p.name, type: p.type||'etc', phone: p.phone||'', memo: p.memo||'' };
+          });
+          localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
+          if (typeof updatePartnerSelect === 'function') updatePartnerSelect();
+        }
+      }).catch(function(){});
+    }, 6000);
+    // ⑤ 8초 후: 매입기록 (A↔B 컴퓨터 동기화)
+    setTimeout(function() {
+      gasGet({ action: 'getPurchases' }).then(function(data) {
+        if (data.success && data.records) {
+          purchaseRecords = data.records;
+          purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+          localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
+          if (typeof renderPurchaseTable === 'function') renderPurchaseTable();
+          if (typeof renderPurchaseSummary === 'function') renderPurchaseSummary();
+        }
+      }).catch(function(){});
+    }, 8000);
   }
   initExtraVenues();
   startClock();
   initQuickAlarm();
+  // A↔B 2대 동기화: 일반·웨딩 주문도 주기적으로 자동 새로고침
   if (gasUrl) {
-    // 자동 새로고침 제거 (수동 새로고침만 사용)
+    // 일반 주문: 2분 30초마다 조용히 새로고침 (장례 2분 인터벌과 엇갈리게)
+    setInterval(function() {
+      if (typeof gasUrl !== 'undefined' && gasUrl) {
+        loadOrdersFromSheet(true, true).catch(function(){});
+      }
+    }, 150000); // 2분 30초
+    // 웨딩 주문: 3분마다 조용히 새로고침
+    setInterval(function() {
+      if (typeof gasUrl !== 'undefined' && gasUrl) {
+        loadWeddingOrdersFromSheet(true, true).catch(function(){});
+      }
+    }, 180000); // 3분
   }
 });
 
