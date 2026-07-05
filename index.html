@@ -4006,12 +4006,14 @@ function renderTteokAllList() {
   if (ehyeList) {
     ehyeList.innerHTML = Object.keys(SET_DB['은혜세트'].prices).map(function(name) {
       const price = SET_DB['은혜세트'].prices[name];
-      const key = JSON.stringify(name);
+      const safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       return '<div style="display:flex;align-items:center;gap:6px;background:#fdf3e8;border:1px solid #FF980033;border-radius:7px;padding:7px 10px;margin-bottom:3px;">' +
-        '<span style="flex:1;font-size:13px;font-weight:600;">' + name + '</span>' +
-        '<span style="font-size:11px;color:#888;">개당</span>' +
-        '<input type="number" value="' + price + '" style="width:75px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="SET_DB[\"은혜세트\"].prices[' + key + ']=Number(this.value)">' +
-        '<span style="font-size:11px;color:#888;">원</span></div>';
+        '<input type="text" value="' + name.replace(/"/g,'&quot;') + '" style="flex:1;min-width:80px;font-size:13px;font-weight:600;border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;" onchange="updateEhyeName(\'' + safeName + '\',this.value)">' +
+        '<span style="font-size:11px;color:#888;white-space:nowrap;">개당</span>' +
+        '<input type="number" value="' + price + '" style="width:75px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateEhyePrice(\'' + safeName + '\',Number(this.value))">' +
+        '<span style="font-size:11px;color:#888;">원</span>' +
+        '<button onclick="deleteEhyeItem(\'' + safeName + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0;">✕</button>' +
+        '</div>';
     }).join('');
   }
 }
@@ -5331,13 +5333,37 @@ function addEhyeItem() {
   SET_DB['은혜세트'].prices[name] = price;
   document.getElementById('ehye-new-name').value = '';
   document.getElementById('ehye-new-price').value = '';
+  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
   renderTteokAllList();
   showToast('✅ ' + name + ' 추가됐어요!', 'success');
+}
+
+function updateEhyePrice(name, value) {
+  if (SET_DB['은혜세트'].prices[name] === undefined) return;
+  SET_DB['은혜세트'].prices[name] = value;
+  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
+}
+
+function updateEhyeName(oldName, newName) {
+  newName = newName.trim();
+  if (!newName || newName === oldName) return;
+  if (SET_DB['은혜세트'].prices[newName] !== undefined) {
+    showToast('같은 이름의 떡이 이미 있어요.', 'error');
+    renderTteokAllList();
+    return;
+  }
+  const price = SET_DB['은혜세트'].prices[oldName];
+  delete SET_DB['은혜세트'].prices[oldName];
+  SET_DB['은혜세트'].prices[newName] = price;
+  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
+  renderTteokAllList();
+  showToast('✅ ' + oldName + ' → ' + newName + ' 이름 변경됐어요!', 'success');
 }
 
 function deleteEhyeItem(name) {
   if (!confirm(name + '을(를) 은혜세트에서 삭제할까요?')) return;
   delete SET_DB['은혜세트'].prices[name];
+  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
   renderTteokAllList();
   showToast('🗑 ' + name + ' 삭제됐어요.', 'error');
 }
