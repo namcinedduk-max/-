@@ -3612,7 +3612,11 @@ function loadTteokPriceSettings() {
     Object.assign(TTEOK_DB, parsed);
   } catch(e){} }
   const savedSet = localStorage.getItem('ehyeSetPrices');
-  if (savedSet) { try { Object.assign(SET_DB['은혜세트'].prices, JSON.parse(savedSet)); } catch(e){} }
+  if (savedSet) { try {
+    const parsed = JSON.parse(savedSet);
+    Object.keys(SET_DB['은혜세트'].prices).forEach(function(k){ delete SET_DB['은혜세트'].prices[k]; });
+    Object.assign(SET_DB['은혜세트'].prices, parsed);
+  } catch(e){} }
   loadTteokCategories();
   // 구글 시트에서 최신 설정 불러오기
   if (gasUrl) {
@@ -3652,7 +3656,11 @@ function loadTteokPriceSettings() {
         if (typeof refreshQuickCells === 'function') refreshQuickCells();
         if (typeof checkQuickAlarms === 'function') checkQuickAlarms();
       } catch(e){} }
-      if (d.ehyeSetPrices) { try { Object.assign(SET_DB['은혜세트'].prices, d.ehyeSetPrices); } catch(e){} }
+      if (d.ehyeSetPrices) { try {
+        Object.keys(SET_DB['은혜세트'].prices).forEach(function(k){ delete SET_DB['은혜세트'].prices[k]; });
+        Object.assign(SET_DB['은혜세트'].prices, d.ehyeSetPrices);
+        localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
+      } catch(e){} }
       if (d.tteokCategories) { try { window.TTEOK_CATEGORIES = d.tteokCategories; } catch(e){} }
       if (d.pinkBoxFee !== undefined) SET_DB['분홍세트'].boxFee = d.pinkBoxFee;
       if (d.koreaLargeBoxFee !== undefined && SET_DB['코리아(대)']) SET_DB['코리아(대)'].boxFee = d.koreaLargeBoxFee;
