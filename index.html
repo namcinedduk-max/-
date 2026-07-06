@@ -5333,15 +5333,15 @@ function addEhyeItem() {
   SET_DB['은혜세트'].prices[name] = price;
   document.getElementById('ehye-new-name').value = '';
   document.getElementById('ehye-new-price').value = '';
-  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
   renderTteokAllList();
+  saveTteokPriceSettings();
   showToast('✅ ' + name + ' 추가됐어요!', 'success');
 }
 
 function updateEhyePrice(name, value) {
   if (SET_DB['은혜세트'].prices[name] === undefined) return;
   SET_DB['은혜세트'].prices[name] = value;
-  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
+  saveTteokPriceSettings();
 }
 
 function updateEhyeName(oldName, newName) {
@@ -5355,16 +5355,16 @@ function updateEhyeName(oldName, newName) {
   const price = SET_DB['은혜세트'].prices[oldName];
   delete SET_DB['은혜세트'].prices[oldName];
   SET_DB['은혜세트'].prices[newName] = price;
-  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
   renderTteokAllList();
+  saveTteokPriceSettings();
   showToast('✅ ' + oldName + ' → ' + newName + ' 이름 변경됐어요!', 'success');
 }
 
 function deleteEhyeItem(name) {
   if (!confirm(name + '을(를) 은혜세트에서 삭제할까요?')) return;
   delete SET_DB['은혜세트'].prices[name];
-  localStorage.setItem('ehyeSetPrices', JSON.stringify(SET_DB['은혜세트'].prices));
   renderTteokAllList();
+  saveTteokPriceSettings();
   showToast('🗑 ' + name + ' 삭제됐어요.', 'error');
 }
 
