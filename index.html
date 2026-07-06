@@ -9669,7 +9669,7 @@ function renderList() {
     const priceDisplay = isBundle && (Number(o.priceTotal)||0) === 0
       ? `<span style="color:#b45309;font-size:11px;">합계참조</span>`
       : `${(Number(o.priceTotal)||0).toLocaleString()}원`;
-    const smsBtnRow = (!isPending && o.receiverPhone)
+    const smsBtnRow = (!isPending && (o.receiverPhone || o.senderPhone))
       ? `<button class="btn-small" onclick="event.stopPropagation();openSmsPopup(${o.id})" style="padding:4px 8px;font-size:11px;background:#00C73C;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-bottom:2px;display:block;width:100%;">📱 문자</button>`
       : '';
     const actionBtns = isPending
@@ -9925,7 +9925,7 @@ function openModal(id) {
   document.getElementById('modalEditBtn').style.display = '';
   document.getElementById('modalSaveBtn').style.display = 'none';
   const smsBtn = document.getElementById('modalSmsBtn');
-  if (smsBtn) smsBtn.style.display = (o.receiverPhone) ? '' : 'none';
+  if (smsBtn) smsBtn.style.display = (o.receiverPhone || o.senderPhone) ? '' : 'none';
   document.getElementById('detailModal').classList.add('open');
 }
 
@@ -9936,21 +9936,30 @@ function openSmsPopup(id) {
   const existing = document.getElementById('smsPopupLayer');
   if (existing) existing.remove();
 
+  const hasReceiver = !!o.receiverPhone;
+  const hasSender = !!o.senderPhone;
   const isDifferent = o.senderName && o.senderName !== o.receiverName;
+
+  // 번호가 한 쪽만 있으면 팝업 없이 바로 복사
+  if (hasReceiver && !hasSender) { buildAndCopySms(id, 'receiver'); return; }
+  if (!hasReceiver && hasSender) { buildAndCopySms(id, 'sender'); return; }
+
   const receiverLine = `<div style="font-size:13px;color:#555;margin-bottom:4px;">📦 받는 분: <strong>${o.receiverName||'-'}</strong></div>`;
   const senderLine = isDifferent
     ? `<div style="font-size:13px;color:#555;margin-bottom:16px;">💳 보내는 분: <strong>${o.senderName||'-'}</strong></div>`
     : `<div style="margin-bottom:16px;"></div>`;
 
-  const receiverBtn = `<button onclick="buildAndCopySms(${id},'receiver');document.getElementById('smsPopupLayer').remove();"
-    style="flex:1;padding:14px 8px;background:#1976D2;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;line-height:1.4;">
-    📞 받는 분에게<br><span style="font-size:11px;font-weight:400;">${o.receiverPhone||''}</span>
-  </button>`;
+  const receiverBtn = hasReceiver
+    ? `<button onclick="buildAndCopySms(${id},'receiver');document.getElementById('smsPopupLayer').remove();"
+        style="flex:1;padding:14px 8px;background:#1976D2;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;line-height:1.4;">
+        📞 받는 분에게<br><span style="font-size:11px;font-weight:400;">${o.receiverPhone}</span>
+      </button>`
+    : '';
 
-  const senderBtn = isDifferent
+  const senderBtn = (isDifferent && hasSender)
     ? `<button onclick="buildAndCopySms(${id},'sender');document.getElementById('smsPopupLayer').remove();"
         style="flex:1;padding:14px 8px;background:#E65100;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;line-height:1.4;">
-        📞 보내는 분에게<br><span style="font-size:11px;font-weight:400;">${o.senderPhone||''}</span>
+        📞 보내는 분에게<br><span style="font-size:11px;font-weight:400;">${o.senderPhone}</span>
       </button>`
     : '';
 
