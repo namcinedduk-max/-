@@ -1822,7 +1822,8 @@
               <select id="w_tteokSelect">
                 <option value="">-- 목록에서 선택 --</option>
               </select>
-              <input type="number" id="w_tteokQty" placeholder="kg" min="0" step="0.5" style="width:80px;">
+              <input type="number" id="w_tteokQty" placeholder="kg" min="0" step="0.5" style="width:70px;">
+              <button type="button" id="w_tteokQtyUnit" onclick="toggleWeddingQtyUnit()" data-unit="kg" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:#f9f5f0;color:var(--text-mid);cursor:pointer;min-width:36px;">kg</button>
               <button class="btn-add-tteok" type="button" onclick="addWeddingTteokItem()">+ 추가</button>
             </div>
           </div>
@@ -2533,7 +2534,7 @@
         </div>
         <div id="priceList-wedding" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-          <input id="wedding-new-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <input id="wedding-new-name" placeholder="떡 이름 * (개별포장떡은 이름에 (개별포장) 등으로 구분)" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <input id="wedding-new-price" type="number" placeholder="납품단가 (원)" style="width:110px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
           <button onclick="addVenuePrice('wedding')" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
         </div>
@@ -7192,7 +7193,7 @@ function calcVenuePrice(type) {
   items.forEach(item => {
     const lookupName = item.baseName || item.name; // 층 접두어 제거한 실제 떡 이름
     const priceVal = prices[lookupName];
-    if (!priceVal || !item.qty) return;
+    if (priceVal === undefined || !item.qty) return;
     const qtyStr = String(item.qty).trim();
 
     if (isDaecheong && typeof priceVal === 'object') {
@@ -7207,7 +7208,7 @@ function calcVenuePrice(type) {
       const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
       if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
     } else {
-      // 웨딩/기타: kg당 단가 × kg수량
+      // 웨딩/기타: 등록된 단가 × 수량 (kg 또는 개, 단위는 접수 시 선택한 수량 표기에 따름)
       const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
       const numMatch = qtyStr.match(/^(\d+\.?\d*)/);
       if (numMatch) total += parseFloat(numMatch[1]) * unitPrice;
@@ -11392,7 +11393,7 @@ function printInvoice(order, orderType) {
       }
       return { unitPrice: 0, amount: 0 };
     } else if (type === 'wedding') {
-      // 웨딩홀은 kg당 단가
+      // 웨딩홀: 등록된 단가 × 수량 (kg 또는 개, 접수 시 선택한 수량 단위 그대로 반영)
       const kgPrice = (venuePrices['wedding'] || {})[itemName] || 0;
       const qtyNum = parseFloat(String(qty||'').replace(/[^0-9.\-]/g,'')) || 0;
       return { unitPrice: kgPrice, amount: kgPrice > 0 && qtyNum > 0 ? Math.round(kgPrice * qtyNum) : 0 };
@@ -14159,20 +14160,34 @@ function loadWeddingPresetKgArea(hallName) {
         <span style="font-size:13px;color:var(--text-dark);">${tteokName}</span>
         <div style="display:flex;align-items:center;gap:4px;">
           <input type="number" id="preset_kg_${fi}_${ti}" placeholder="0" min="0" step="0.5"
-            style="width:64px;padding:6px 8px;text-align:right;border:1.5px solid var(--border);border-radius:8px;font-size:13px;"
-            data-floor="${floor}" data-name="${tteokName}"
+            style="width:60px;padding:6px 8px;text-align:right;border:1.5px solid var(--border);border-radius:8px;font-size:13px;"
+            data-floor="${floor}" data-name="${tteokName}" data-unit="kg"
             oninput="syncPresetToTteokItems()">
-          <span style="font-size:12px;color:var(--text-mid);">kg</span>
+          <button type="button" id="preset_unit_${fi}_${ti}" onclick="togglePresetUnit(${fi},${ti})"
+            style="padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:#f9f5f0;color:var(--text-mid);cursor:pointer;min-width:34px;">kg</button>
         </div>
       </div>`;
     });
   });
   html += `<div style="padding:8px 12px;background:#f9f5f0;border-top:.5px solid var(--border);">
-    <button type="button" onclick="applyPresetKg()" style="width:100%;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✅ kg 입력 완료 — 목록에 반영</button>
+    <button type="button" onclick="applyPresetKg()" style="width:100%;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✅ 입력 완료 — 목록에 반영</button>
   </div>`;
   area.innerHTML = html;
   area.style.display = 'flex';
   area.style.flexDirection = 'column';
+}
+
+function togglePresetUnit(fi, ti) {
+  const input = document.getElementById('preset_kg_' + fi + '_' + ti);
+  const btn = document.getElementById('preset_unit_' + fi + '_' + ti);
+  if (!input || !btn) return;
+  const isEa = input.dataset.unit === 'ea';
+  const next = isEa ? 'kg' : 'ea';
+  input.dataset.unit = next;
+  input.step = next === 'ea' ? '1' : '0.5';
+  btn.textContent = next === 'ea' ? '개' : 'kg';
+  btn.style.background = next === 'ea' ? '#ede9fe' : '#f9f5f0';
+  btn.style.color = next === 'ea' ? '#7c3aed' : 'var(--text-mid)';
 }
 
 function applyPresetKg() {
@@ -14188,15 +14203,16 @@ function applyPresetKg() {
     return !presetNames.includes(key);
   });
   inputs.forEach(inp => {
-    const kg = parseFloat(inp.value);
-    if (!kg || kg <= 0) return;
+    const val = parseFloat(inp.value);
+    if (!val || val <= 0) return;
     const floor = inp.dataset.floor || '';
     const name = inp.dataset.name;
-    const qtyStr = (kg % 1 === 0 ? String(kg) : String(kg)) + 'kg';
+    const isEa = inp.dataset.unit === 'ea';
+    const qtyStr = isEa ? String(Math.round(val)) + '개' : String(val) + 'kg';
     const fullName = floor ? floor + ' ' + name : name;
-    // 단가 자동 계산
+    // 단가 자동 계산 (등록된 단가 × 수량 — kg/개 어느 쪽이든 동일하게 적용)
     const unitPrice = (venuePrices['wedding'] || {})[name] || 0;
-    const price = unitPrice ? Math.round(unitPrice * kg) : 0;
+    const price = unitPrice ? Math.round(unitPrice * (isEa ? Math.round(val) : val)) : 0;
     weddingTteokItems.push({ name: fullName, qty: qtyStr, floor, baseName: name, price });
   });
   renderWeddingTteokList();
@@ -14333,14 +14349,29 @@ function editHallPreset(safeId) {
   document.getElementById('presetItemInputs')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+function toggleWeddingQtyUnit() {
+  const btn = document.getElementById('w_tteokQtyUnit');
+  const qtyEl = document.getElementById('w_tteokQty');
+  if (!btn) return;
+  const isEa = btn.dataset.unit === 'ea';
+  const next = isEa ? 'kg' : 'ea';
+  btn.dataset.unit = next;
+  btn.textContent = next === 'ea' ? '개' : 'kg';
+  btn.style.background = next === 'ea' ? '#ede9fe' : '#f9f5f0';
+  btn.style.color = next === 'ea' ? '#7c3aed' : 'var(--text-mid)';
+  if (qtyEl) { qtyEl.placeholder = next === 'ea' ? '개' : 'kg'; qtyEl.step = next === 'ea' ? '1' : '0.5'; }
+}
+
 function addWeddingTteokItem() {
   const sel = document.getElementById('w_tteokSelect');
   const qty = document.getElementById('w_tteokQty').value.trim();
   const floor = (document.getElementById('w_tteokFloor')||{}).value?.trim() || '';
   const name = sel.value;
+  const unitBtn = document.getElementById('w_tteokQtyUnit');
+  const isEa = unitBtn && unitBtn.dataset.unit === 'ea';
   if (!name) { showToast('떡 종류를 선택해주세요.', 'error'); return; }
-  if (!qty) { showToast('kg을 입력해주세요.', 'error'); return; }
-  const qtyStr = parseFloat(qty) % 1 === 0 ? qty + 'kg' : parseFloat(qty) + 'kg';
+  if (!qty) { showToast('수량을 입력해주세요.', 'error'); return; }
+  const qtyStr = isEa ? String(Math.round(parseFloat(qty))) + '개' : (parseFloat(qty) % 1 === 0 ? qty + 'kg' : parseFloat(qty) + 'kg');
   const fullName = floor ? floor + ' ' + name : name;
   weddingTteokItems.push({ name: fullName, qty: qtyStr, floor: floor, baseName: name });
   renderWeddingTteokList();
@@ -14817,7 +14848,7 @@ function addVenuePrice(venue) {
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
   if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
   if (!venuePrices[venue]) venuePrices[venue] = {};
-  // 충대는 5kg 고정가격 객체로 저장, 식당/웨딩은 kg당 단가 숫자로 저장
+  // 충대는 5kg 고정가격 객체로 저장, 식당/웨딩은 kg당(또는 개당) 단가 숫자로 저장
   venuePrices[venue][name] = venue === 'chungdae' ? { price5: price } : price;
   nameEl.value = ''; priceEl.value = '';
   saveVenuePriceData();
@@ -14915,20 +14946,21 @@ function renderVenuePrices(venue) {
     }).join('');
 
   } else {
+    const unitLabel = (venue === 'wedding') ? '원' : '원/kg';
     el.innerHTML = entries.map(([name, price]) => {
       const p = typeof price === 'object' ? (price.price5 || 0) : price;
       const eid = 'edit-' + venue + '-' + name.replace(/[^a-zA-Z0-9가-힣]/g,'_');
       return `<div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:4px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="flex:1;font-size:13px;font-weight:700;">${name}</span>
-          <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(p).toLocaleString()}원/kg</span>
+          <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(p).toLocaleString()}${unitLabel}</span>
           <button onclick="toggleVenueEdit('${eid}')" style="padding:4px 10px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">✏️ 수정</button>
           <button onclick="removeVenuePrice('${venue}','${name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700;">삭제</button>
         </div>
         <div id="${eid}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="number" id="${eid}-price" value="${p}" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
-            <span style="font-size:13px;color:var(--brown-mid);white-space:nowrap;">원/kg</span>
+            <span style="font-size:13px;color:var(--brown-mid);white-space:nowrap;">${unitLabel}</span>
             <button onclick="saveVenuePriceEdit('${venue}','${name}','${eid}')" style="padding:7px 16px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 저장</button>
           </div>
         </div>
