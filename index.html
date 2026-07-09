@@ -9723,6 +9723,17 @@ function renderList() {
   });
 
   const chungdaeSec = document.getElementById('chungdaeSection');
+  const weddingSec = document.getElementById('weddingSection');
+  const otherSec = document.getElementById('otherSection');
+
+  // 검색어가 있을 때는 거래처 섹션 전체 숨김 — 개인 고객 검색 결과만 표시
+  if (search) {
+    if (chungdaeSec) chungdaeSec.style.display = 'none';
+    if (weddingSec) weddingSec.style.display = 'none';
+    if (otherSec) otherSec.style.display = 'none';
+    return;
+  }
+
   chungdaeSec.style.display = 'none'; // 초기화
   console.log('[충대섹션] orders:', chungdaeOrders.length, 'filterDate:', filterDate);
   if (chungdaeOrders.length > 0) {
@@ -9753,7 +9764,6 @@ function renderList() {
     return true;
   });
 
-  const weddingSec = document.getElementById('weddingSection');
   if (todayWeddingOrders.length > 0) {
     weddingSec.style.display = 'block';
     weddingSec.innerHTML = `
@@ -9802,7 +9812,6 @@ function renderList() {
     }
     return true;
   });
-  const otherSec = document.getElementById('otherSection');
   if (otherSec) {
     if (filteredOtherOrders.length > 0) {
       otherSec.style.display = 'block';
