@@ -1271,7 +1271,30 @@ function calcMonthlyPayHours(e){
   }
   var wh=e.workHours||8; return Math.round((wh*5+wh)*4.345);
 }
-function calcMonthWorkDays(e,ym){
+// ── 입사일/계약종료일 기준, 해당 월(ym) 내 실제 재직일 범위(일자, 1~dim) ──
+// 입사 전/퇴사 후 달이면 endDay<startDay 가 되어 재직일수=0
+function empServiceDayRange(e,yr,mth,dim){
+  var startDay=1, endDay=dim;
+  if(e.joinDate){
+    var jd=new Date(e.joinDate);
+    if(!isNaN(jd)){
+      var jy=jd.getFullYear(), jm=jd.getMonth()+1;
+      if(jy===yr && jm===mth) startDay=jd.getDate();
+      else if(jy>yr || (jy===yr && jm>mth)) startDay=dim+1; // 이 달엔 아직 입사 전
+    }
+  }
+  if(e.contractEnd){
+    var ced=new Date(e.contractEnd);
+    if(!isNaN(ced)){
+      var cy=ced.getFullYear(), cm=ced.getMonth()+1;
+      if(cy===yr && cm===mth) endDay=ced.getDate();
+      else if(cy<yr || (cy===yr && cm<mth)) endDay=0; // 이 달 이전에 이미 계약종료
+    }
+  }
+  return {startDay:startDay,endDay:endDay};
+}
+// 해당월 전체 기준 소정근무일수 (입사/퇴사와 무관, 식대 비율의 분모로 사용)
+function calcMonthWorkDaysFull(e,ym){
   var yr=parseInt(ym.split("-")[0]),mo=parseInt(ym.split("-")[1]);
   var dim=new Date(yr,mo,0).getDate();
   var DN=["일","월","화","수","목","금","토"];
@@ -1284,6 +1307,23 @@ function calcMonthWorkDays(e,ym){
     if(isWorkDay && !isHoliday(dateStr)) cnt++;
   }
   return cnt||22;
+}
+// 입사일/계약종료일로 재직기간 내로 제한한 소정근무일수 (식대 비율의 분자용)
+function calcMonthWorkDays(e,ym){
+  var yr=parseInt(ym.split("-")[0]),mo=parseInt(ym.split("-")[1]);
+  var dim=new Date(yr,mo,0).getDate();
+  var DN=["일","월","화","수","목","금","토"];
+  var sched=e.schedule&&Object.keys(e.schedule).length>0?e.schedule:null;
+  var rng=empServiceDayRange(e,yr,mo,dim);
+  var full=(rng.startDay===1 && rng.endDay===dim);
+  var cnt=0;
+  for(var d=rng.startDay;d<=rng.endDay;d++){
+    var dateStr=ym+"-"+p2(d);
+    var dow=new Date(yr,mo-1,d).getDay();
+    var isWorkDay=sched?!!sched[DN[dow]]:(dow>=1&&dow<=5); // 스케줄 없으면 월~금 기본
+    if(isWorkDay && !isHoliday(dateStr)) cnt++;
+  }
+  return cnt||(full?22:0);
 }
 function getEmpExtras(eid,ym){return (S.extras[eid]&&S.extras[eid][ym])?S.extras[eid][ym]:[];}
 
@@ -1319,9 +1359,10 @@ function calcJuhyuForMonth(e, mo){
   if(wkH<15) return {juhyuWeeks:0,noJuhyuWeeks:0,juhyuH:0,juhyuAmt:0,lostJuhyuH:0,lostJuhyuAmt:0,detail:[]};
   var dailyJuhyu=wkH/wkDays;
 
-  // 소정근무일별 결근 여부 수집 (공휴일 제외)
+  // 소정근무일별 결근 여부 수집 (공휴일 제외, 재직기간 밖 제외)
+  var jRng=empServiceDayRange(e,yr,mth,dim);
   var schedAbsArr=[]; // {d, wk, isAbs}
-  for(var d=1;d<=dim;d++){
+  for(var d=jRng.startDay;d<=jRng.endDay;d++){
     var dow=new Date(yr,mth-1,d).getDay();
     if(!sched[DN[dow]]) continue;          // 스케줄 없는 요일
     var dateStr=mo+"-"+p2(d);
@@ -1392,6 +1433,15 @@ function calcJuhyuForMonth(e, mo){
 
 function calcPay(e,mo){
   var probRate=isProbMonth(e,mo)?0.9:1.0; // 수습기간이면 임금 90%
+  // ── 입사/퇴사가 이번 달 중간에 있으면 달력일수 기준 일할계산 비율 ──
+  // (월급 × 재직일수/그 달 총 일수). flexPartTime/시간제 스케줄 모드는
+  // 실근무일수 기반이라 자연히 반영되므로 이 비율은 정규직 고정급에만 사용.
+  var _pYr=parseInt(mo.split("-")[0]), _pMth=parseInt(mo.split("-")[1]);
+  var _pDim=new Date(_pYr,_pMth,0).getDate();
+  var _pRng=empServiceDayRange(e,_pYr,_pMth,_pDim);
+  var _pSvcDays=Math.max(0,_pRng.endDay-_pRng.startDay+1);
+  var _pFull=(_pRng.startDay===1 && _pRng.endDay===_pDim);
+  var payRatio=_pFull?1:(_pDim>0?_pSvcDays/_pDim:0);
   // ── 비정기 호출형 알바 (flexPartTime) ──
   if((e.contractType||e.workType)==='시간제' && e.flexPartTime){
     var hr2f=Math.round((e.hourlyRate||10030)*probRate);
@@ -1425,7 +1475,8 @@ function calcPay(e,mo){
       incomeTax:insF.incomeTax,localTax:insF.localTax,
       totalDed:insF.total,net:grossF-insF.total,insuranceBase:b4f,
       tot:{ext:0,night:0,holiday:0,early:0},
-      monthH:totalHf,weekH:0,actualDays:actualDaysF,dailyH:0,isProb:probRate<1,flexPT:true,ptWeeks:ptWeeks};
+      monthH:totalHf,weekH:0,actualDays:actualDaysF,dailyH:0,isProb:probRate<1,flexPT:true,ptWeeks:ptWeeks,
+      payRatio:payRatio,isPartialMonth:!_pFull,svcDays:_pSvcDays,totalDaysInMonth:_pDim};
   }
   // ── 시간제 모드 (고정 스케줄) ──
   if((e.contractType||e.workType)==='시간제'){
@@ -1433,8 +1484,9 @@ function calcPay(e,mo){
     var hr2=Math.round((e.hourlyRate||10030)*probRate); // 수습기간 반영
     var mealAmt2=e.meal||0;
     var absDays2=getMonthAbsence(e.id,mo);
-    var mWD2=calcMonthWorkDays(e,mo);
-    var mealActual2=mWD2>0?Math.round(mealAmt2*Math.max(0,mWD2-absDays2)/mWD2):mealAmt2;
+    var mWD2=calcMonthWorkDays(e,mo);       // 재직기간 내 소정근무일 (분자)
+    var mWD2Full=calcMonthWorkDaysFull(e,mo); // 월 전체 소정근무일 (분모)
+    var mealActual2=_pSvcDays<=0?0:(mWD2Full>0?Math.round(mealAmt2*Math.max(0,mWD2-absDays2)/mWD2Full):mealAmt2);
     var mealDed2=mealAmt2-mealActual2;
     var sched2=e.schedule||{}, schedDays2=Object.keys(sched2), weekH2=0;
     for(var di2=0;di2<schedDays2.length;di2++){var ds2=sched2[schedDays2[di2]];var wh3=(parseInt(ds2.e)-parseInt(ds2.s))-(parseFloat(ds2.b)||0);if(wh3<0)wh3+=24;weekH2+=wh3;}
@@ -1446,14 +1498,15 @@ function calcPay(e,mo){
     var _ptDIM=new Date(_ptYr,_ptMo+1,0).getDate();
     var _ptDOWs=schedDays2.map(function(d){return _PTDI[d];}).filter(function(v){return v!==undefined;});
     var _ptActual=0;
+    var _ptRng=empServiceDayRange(e,_ptYr,_ptMo+1,_ptDIM); // 입사/퇴사 반영한 재직일 범위
     if(_ptDOWs.length){
-      for(var _ptD=1;_ptD<=_ptDIM;_ptD++){
+      for(var _ptD=_ptRng.startDay;_ptD<=_ptRng.endDay;_ptD++){
         if(_ptDOWs.indexOf(new Date(_ptYr,_ptMo,_ptD).getDay())>=0) _ptActual++;
       }
     }
     var _dailyH3=wkD3>0?weekH2/wkD3:weekH2;
-    // 스케줄 요일이 설정돼 있으면 실제 일수×일근무시간, 없으면 4.345 평균
-    var monthH3=_ptActual>0?Math.round(_ptActual*_dailyH3):Math.round(weekH2*4.345);
+    // 스케줄 요일이 설정돼 있으면 실제 일수×일근무시간(재직기간 반영), 없으면 4.345주 평균에 재직비율 적용
+    var monthH3=_ptActual>0?Math.round(_ptActual*_dailyH3):Math.round(weekH2*4.345*payRatio);
     var hasJuhyu3=weekH2>=15;
     var jInfo3=hasJuhyu3?calcJuhyuForMonth(e,mo):{juhyuWeeks:0,noJuhyuWeeks:0,juhyuH:0,juhyuAmt:0,lostJuhyuH:0,lostJuhyuAmt:0,detail:[]};
     var basePay3=Math.round(hr2*monthH3);
@@ -1476,7 +1529,8 @@ function calcPay(e,mo){
       gross:gross3,pension:insR4.pension,health:insR4.health,empIns:insR4.empIns,care:insR4.care,
       incomeTax:insR4.incomeTax,localTax:insR4.localTax,
       totalDed:insR4.total,net:gross3-insR4.total,insuranceBase:b4_3,
-      tot:tot2,monthH:monthH3,weekH:weekH2,actualDays:_ptActual,dailyH:_dailyH3,isProb:probRate<1};
+      tot:tot2,monthH:monthH3,weekH:weekH2,actualDays:_ptActual,dailyH:_dailyH3,isProb:probRate<1,
+      payRatio:payRatio,isPartialMonth:!_pFull,svcDays:_pSvcDays,totalDaysInMonth:_pDim};
   }
   var tot=getMonthOT(e.id,mo);
   var over5=isOver5(mo);
@@ -1485,7 +1539,8 @@ function calcPay(e,mo){
   var mWD=calcMonthWorkDays(e,mo);             // 월 소정근무일수
   // 식대: 결근일만 차감 (연차는 유급휴가이므로 식대 전액 지급)
   var mealAmt=e.meal||0;
-  var mealActual=mWD>0?Math.round(mealAmt*Math.max(0,mWD-absDays)/mWD):mealAmt;
+  var mWDFull=calcMonthWorkDaysFull(e,mo); // 월 전체 소정근무일 (분모)
+  var mealActual=_pSvcDays<=0?0:(mWDFull>0?Math.round(mealAmt*Math.max(0,mWD-absDays)/mWDFull):mealAmt);
   var mealDed=mealAmt-mealActual;
   var offDays=absDays; // 식대 차감은 결근만
   // 추가 항목
@@ -1506,7 +1561,7 @@ function calcPay(e,mo){
   var juhyuH=jInfo.juhyuH;
 
   if(over5 && e.totalPay){
-    var effTotalPay=Math.round(e.totalPay*probRate); // 수습 90% 반영
+    var effTotalPay=Math.round(e.totalPay*probRate*payRatio); // 수습 90% + 입사/퇴사 일할계산 반영
     var cb=calcBase(e);
     var hr=Math.round(cb.hourRate*probRate);
     // 주휴수당 금액도 수습 비율 반영
@@ -1523,22 +1578,24 @@ function calcPay(e,mo){
     var pension=insR1.pension,health=insR1.health,empIns=insR1.empIns,care=insR1.care;
     var totalDed=insR1.total;
     var juhyuAmt=jInfo.juhyuAmt;
-    var effCbBase=Math.round(cb.base*probRate);
+    var effCbBase=Math.round(cb.base*probRate*payRatio);
     var baseOnly=Math.max(0,effCbBase-juhyuAmt-jInfo.lostJuhyuAmt);
     return {mode:"over5",h:hr,base:effCbBase,baseOnly:baseOnly,juhyuAmt:juhyuAmt,juhyuH:juhyuH,hasJuhyu:hasJuhyu,
       jInfo:jInfo,lostJuhyu:lostJuhyu,
-      nightPayFixed:Math.round(cb.nightPay*probRate),nightH:cb.nightH,
+      nightPayFixed:Math.round(cb.nightPay*probRate*payRatio),nightH:cb.nightH,
       ext:extPay,night:nightPay2,hol:holPay,earlyDed:earlyDed,
       mealAmt:mealAmt,mealActual:mealActual,mealDed:mealDed,offDays:offDays,absDays:absDays,lvDays:lvDays,
       extras:extras,extraTotal:extraTotal,
       gross:gross,pension:pension,health:health,empIns:empIns,care:care,
       incomeTax:insR1.incomeTax,localTax:insR1.localTax,
       totalDed:totalDed,net:gross-totalDed,insuranceBase:b4,
-      tot:tot,absDeduct:absDeduct,totalPay:effTotalPay,isProb:probRate<1};
+      tot:tot,absDeduct:absDeduct,totalPay:effTotalPay,isProb:probRate<1,
+      payRatio:payRatio,isPartialMonth:!_pFull,svcDays:_pSvcDays,totalDaysInMonth:_pDim};
   } else {
-    var effBase=Math.round(e.base*probRate); // 수습 90% 반영
+    var fullBase=Math.round(e.base*probRate); // 수습 90% 반영 (시급 산정 기준, 일할계산 미반영)
     var mPayH=calcMonthlyPayHours(e)||209;
-    var h=effBase/mPayH;
+    var h=fullBase/mPayH;
+    var effBase=Math.round(fullBase*payRatio); // 입사/퇴사 일할계산 반영 (실지급 기준액)
     var juhyuAmt2=jInfo.juhyuAmt;
     var lostJuhyu2=jInfo.lostJuhyuAmt;
     if(probRate<1){ juhyuAmt2=Math.round(juhyuAmt2*probRate); lostJuhyu2=Math.round(lostJuhyu2*probRate); }
@@ -1561,7 +1618,8 @@ function calcPay(e,mo){
       gross:gross,pension:pension,health:health,empIns:empIns,care:care,
       incomeTax:insR2.incomeTax,localTax:insR2.localTax,
       totalDed:totalDed,net:gross-totalDed,insuranceBase:b4,
-      tot:tot,absDeduct:absDeduct,isProb:probRate<1};
+      tot:tot,absDeduct:absDeduct,isProb:probRate<1,
+      payRatio:payRatio,isPartialMonth:!_pFull,svcDays:_pSvcDays,totalDaysInMonth:_pDim};
   }
 }
 
@@ -2984,6 +3042,11 @@ function renderMod(){
     h+="<div class='slip'>";
     h+="<div class='sl-title'>임금명세서</div>";
     h+="<div class='sl-sub'>"+yr+"년 "+mon+"월분 · "+e.name+" ("+e.role+")"+(p.mode==="over5"?" · 5인이상 포괄":p.mode==="parttime"?" · 시간제":"")+"</div>";
+    if(p.isPartialMonth){
+      h+="<div style='background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:.4rem .7rem;font-size:11.5px;color:#c2410c;margin:.4rem 0'>"
+        +"📅 이번 달 재직 "+p.svcDays+"일 / "+p.totalDaysInMonth+"일 (입사일·계약종료일 기준 일할계산 적용"
+        +(e.joinDate?" · 입사 "+fmtDate(e.joinDate):"")+(e.contractEnd?" · 종료 "+fmtDate(e.contractEnd):"")+")</div>";
+    }
     h+="<hr class='sl-div'>";
     // ── 시간제 모드 ──
     if(p.mode==="parttime"){
