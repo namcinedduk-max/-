@@ -2668,6 +2668,23 @@
           <button onclick="saveOrderCatAndApply()" style="width:100%;padding:10px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-top:12px;">💾 카테고리 저장</button>
         </div>
 
+        <!-- 카테고리 아이템 수정/삭제 모달 -->
+        <div id="catItemModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:none;align-items:center;justify-content:center;">
+          <div style="background:#fff;border-radius:16px;padding:24px 20px;width:320px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            <div style="font-size:15px;font-weight:800;color:var(--brown-deep);margin-bottom:4px;" id="catItemModalTitle">🍡 떡 관리</div>
+            <div style="font-size:12px;color:var(--text-mid);margin-bottom:16px;" id="catItemModalSub"></div>
+            <div style="margin-bottom:14px;">
+              <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">카테고리 이동</div>
+              <select id="catItemMoveTo" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;"></select>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button onclick="catItemModalMove()" style="flex:1;padding:10px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📂 이동</button>
+              <button onclick="catItemModalRemove()" style="flex:1;padding:10px;background:#fee2e2;color:var(--accent-red);border:1.5px solid #fca5a5;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🗑 미배정으로</button>
+              <button onclick="closeCatItemModal()" style="padding:10px 14px;background:#f3f4f6;color:#555;border:none;border-radius:8px;font-size:13px;cursor:pointer;">닫기</button>
+            </div>
+          </div>
+        </div>
+
         <!-- 떡 단가별 분류 -->
         <div style="border-top:2px solid var(--brown-pale);padding-top:16px;margin-top:16px;">
           <div style="font-size:14px;font-weight:800;color:var(--brown-deep);margin-bottom:8px;">📋 떡 단가별 분류</div>
@@ -3744,14 +3761,15 @@ function loadTteokPriceSettings() {
           if (rateEl) rateEl.value = daecheongRate || '';
         } catch(e) {}
       }
-      if (d.orderCategories) { 
-        try { 
+      if (d.orderCategories) {
+        try {
           window.ORDER_CATEGORIES = d.orderCategories;
           if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
             window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
           }
-          renderOrderCategoryButtons(); 
-        } catch(e){} 
+          localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
+          renderOrderCategoryButtons();
+        } catch(e) {}
       }
     }).catch(function(){});
   }
@@ -4169,7 +4187,7 @@ function chooseSetType(setType) {
   if (totalQtyRow) totalQtyRow.style.display = (isKorea || isDeok) ? 'none' : 'flex';
   if (koreanSetAddRow) koreanSetAddRow.style.display = 'none';
   if (deokConfigArea) {
-    if (setType === '덕세트') {  // 덕6구세트는 deokConfigArea 사용 안 함
+    if (setType === '덕세트' || setType === '덕6구세트') {
       deokConfigArea.style.display = 'block';
       renderDeokConfigs(setType);
     } else if (isIbaji) {
@@ -4573,25 +4591,28 @@ window.ORDER_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_ORDER_CATS));
 window._dragTteok = null; // 드래그 중인 떡 정보
 
 function loadOrderCategories() {
-  // localStorage 기본값 먼저 적용
+  // localStorage로 빠른 초기 렌더링
   const saved = localStorage.getItem('orderCategories');
-  if (saved) { 
-    try { 
+  if (saved) {
+    try {
       window.ORDER_CATEGORIES = JSON.parse(saved);
-      // 이바지 카테고리 없으면 자동 추가
       if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
         window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
       }
-    } catch(e){} 
+    } catch(e) {}
   }
-  renderOrderCategoryButtons(); // 항상 먼저 렌더링
+  renderOrderCategoryButtons();
 
-  // 구글 시트에서 최신값 불러오기
+  // GAS가 기준: 최신값으로 덮어쓰고 localStorage도 갱신
   if (gasUrl) {
     gasGet({ action: 'getTteokSettings' }).then(function(data) {
       if (!data.success || !data.data) return;
       if (data.data.orderCategories) {
         window.ORDER_CATEGORIES = data.data.orderCategories;
+        if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
+          window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
+        }
+        localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
         renderOrderCategoryButtons();
       }
     }).catch(function(){});
@@ -4599,7 +4620,7 @@ function loadOrderCategories() {
 }
 
 function saveOrderCategories() {
-  localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
+  saveOrderCategoriesAndSync();
 }
 
 // 주문 접수 카테고리 버튼 렌더링
@@ -4694,11 +4715,23 @@ function getTteokListAll() {
 }
 
 // ============ 단가설정 탭 카테고리 관리 렌더링 ============
+function getCatItemLabel(name) {
+  return name === '__분홍세트__' ? '🎁 분홍세트'
+    : name === '__은혜세트__' ? '🎁 은혜세트'
+    : name === '__이바지大__' ? '🎀 이바지大'
+    : name === '__이바지小__' ? '🎀 이바지小'
+    : '🍡 ' + name;
+}
+
+function saveOrderCategoriesAndSync() {
+  localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { orderCategories: window.ORDER_CATEGORIES } }).catch(function(){});
+}
+
 function renderOrderCatSettings() {
   const el = document.getElementById('order-cat-settings');
   if (!el) return;
 
-  // 미배정 떡 (어떤 카테고리에도 없는 떡)
   const allAssigned = [];
   window.ORDER_CATEGORIES.forEach(function(cat) {
     cat.items.forEach(function(n) { if (!allAssigned.includes(n)) allAssigned.push(n); });
@@ -4707,46 +4740,42 @@ function renderOrderCatSettings() {
   unassigned.push('__분홍세트__', '__은혜세트__', '__이바지大__', '__이바지小__');
   const unassignedFiltered = unassigned.filter(function(n){ return !allAssigned.includes(n); });
 
+  function makeItem(name, catId) {
+    const label = getCatItemLabel(name);
+    return '<div draggable="true" data-item="' + name.replace(/"/g,'&quot;') + '" data-from-cat="' + catId + '" ' +
+      'ondragstart="onCatDragStart(event)" ' +
+      'style="padding:6px 8px;background:' + (catId==='__unassigned__'?'#f0f0f0':'#fff') + ';border:1px solid ' + (catId==='__unassigned__'?'#ddd':'var(--border)') + ';border-radius:6px;margin-bottom:3px;font-size:12px;cursor:grab;display:flex;align-items:center;gap:4px;">' +
+      '<span style="color:#aaa;font-size:11px;">⠿</span>' +
+      '<span style="flex:1;">' + label + '</span>' +
+      '<button type="button" onclick="openCatItemModal(event,\'' + name.replace(/'/g,"\\'") + '\',\'' + catId + '\')" ' +
+        'style="padding:2px 7px;font-size:11px;background:#f3f4f6;border:1px solid #ddd;border-radius:5px;cursor:pointer;color:#555;flex-shrink:0;">✏️</button>' +
+      '</div>';
+  }
+
   el.innerHTML =
     '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;align-items:flex-start;">' +
 
-    // 미배정 떡 컬럼
     (unassignedFiltered.length > 0 ?
-      '<div style="min-width:160px;border:1.5px dashed #aaa;border-radius:10px;overflow:hidden;flex-shrink:0;">' +
-      '<div style="background:#888;color:#fff;padding:8px 12px;font-size:13px;font-weight:700;">📋 미배정</div>' +
-      '<div style="padding:8px;min-height:60px;" data-cat-id="__unassigned__" ondragover="onCatDragOver(event)" ondrop="onCatDrop(event)">' +
-      unassignedFiltered.map(function(name, idx) {
-        const label = name === '__분홍세트__' ? '🎁 분홍세트' : name === '__은혜세트__' ? '🎁 은혜세트' : name === '__이바지大__' ? '🎀 이바지大' : name === '__이바지小__' ? '🎀 이바지小' : '🍡 ' + name;
-        return '<div draggable="true" data-item="' + name.replace(/"/g,'&quot;') + '" data-from-cat="__unassigned__" ' +
-          'ondragstart="onCatDragStart(event)" ' +
-          'style="padding:6px 8px;background:#f0f0f0;border:1px solid #ddd;border-radius:6px;margin-bottom:3px;font-size:12px;cursor:grab;display:flex;align-items:center;gap:4px;">' +
-          '<span style="color:#aaa;">⠿</span><span>' + label + '</span></div>';
-      }).join('') +
+      '<div style="min-width:170px;border:1.5px dashed #aaa;border-radius:10px;overflow:hidden;flex-shrink:0;">' +
+      '<div style="background:#888;color:#fff;padding:8px 12px;font-size:13px;font-weight:700;">📋 미배정 (' + unassignedFiltered.length + ')</div>' +
+      '<div style="padding:8px;min-height:60px;max-height:420px;overflow-y:auto;" data-cat-id="__unassigned__" ondragover="onCatDragOver(event)" ondrop="onCatDrop(event)">' +
+      unassignedFiltered.map(function(name){ return makeItem(name, '__unassigned__'); }).join('') +
       '</div></div>' : '') +
 
-    // 카테고리 컬럼들
     window.ORDER_CATEGORIES.map(function(cat) {
-      return '<div style="min-width:180px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;flex-shrink:0;">' +
+      return '<div style="min-width:190px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;flex-shrink:0;">' +
         '<div style="background:var(--brown-deep);color:#fff;padding:0;display:flex;align-items:center;">' +
         '<span style="padding:8px 6px;font-size:14px;">' + cat.icon + '</span>' +
-        '<input value="' + cat.name + '" style="flex:1;background:transparent;border:none;color:#fff;font-size:13px;font-weight:700;outline:none;padding:8px 4px;" ' +
+        '<input value="' + cat.name.replace(/"/g,'&quot;') + '" style="flex:1;background:transparent;border:none;color:#fff;font-size:13px;font-weight:700;outline:none;padding:8px 4px;" ' +
         'onchange="updateOrderCatName(\'' + cat.id + '\',this.value)">' +
-        '<button onclick="deleteOrderCat(\'' + cat.id + '\')" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:6px 8px;cursor:pointer;font-size:11px;">✕</button>' +
+        '<button onclick="deleteOrderCat(\'' + cat.id + '\')" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:6px 8px;cursor:pointer;font-size:11px;" title="카테고리 삭제">✕</button>' +
         '</div>' +
-        '<div style="padding:8px;min-height:80px;" data-cat-id="' + cat.id + '" ondragover="onCatDragOver(event)" ondrop="onCatDrop(event)">' +
-        cat.items.map(function(name) {
-          const label = name === '__분홍세트__' ? '🎁 분홍세트' : name === '__은혜세트__' ? '🎁 은혜세트' : name === '__이바지大__' ? '🎀 이바지大' : name === '__이바지小__' ? '🎀 이바지小' : '🍡 ' + name;
-          return '<div draggable="true" data-item="' + name.replace(/"/g,'&quot;') + '" data-from-cat="' + cat.id + '" ' +
-            'ondragstart="onCatDragStart(event)" ' +
-            'style="padding:6px 8px;background:#fff;border:1px solid var(--border);border-radius:6px;margin-bottom:3px;font-size:12px;cursor:grab;display:flex;align-items:center;gap:4px;">' +
-            '<span style="color:#aaa;">⠿</span><span>' + label + '</span>' +
-            '</div>';
-        }).join('') +
+        '<div style="padding:8px;min-height:80px;max-height:420px;overflow-y:auto;" data-cat-id="' + cat.id + '" ondragover="onCatDragOver(event)" ondrop="onCatDrop(event)">' +
+        cat.items.map(function(name){ return makeItem(name, cat.id); }).join('') +
         '</div>' +
         '</div>';
     }).join('') +
 
-    // 새 카테고리 추가 버튼
     '<div style="min-width:140px;flex-shrink:0;">' +
     '<div style="border:2px dashed var(--border);border-radius:10px;padding:16px 8px;text-align:center;cursor:pointer;" onclick="addOrderCategory()">' +
     '<div style="font-size:24px;color:#ccc;">+</div>' +
@@ -4754,6 +4783,63 @@ function renderOrderCatSettings() {
     '</div></div>' +
 
     '</div>';
+}
+
+// ── 카테고리 아이템 수정/삭제 모달 ────────────────────
+window._catItemModal = { name: null, fromCat: null };
+
+function openCatItemModal(e, name, fromCat) {
+  e.stopPropagation(); e.preventDefault();
+  window._catItemModal = { name: name, fromCat: fromCat };
+  const modal = document.getElementById('catItemModal');
+  if (!modal) return;
+  document.getElementById('catItemModalTitle').textContent = getCatItemLabel(name);
+  const fromCatObj = window.ORDER_CATEGORIES.find(function(c){ return c.id === fromCat; });
+  document.getElementById('catItemModalSub').textContent = '현재 위치: ' + (fromCat === '__unassigned__' ? '미배정' : (fromCatObj ? fromCatObj.name : fromCat));
+  const sel = document.getElementById('catItemMoveTo');
+  sel.innerHTML = window.ORDER_CATEGORIES.map(function(cat) {
+    return '<option value="' + cat.id + '"' + (cat.id === fromCat ? ' selected' : '') + '>' + cat.icon + ' ' + cat.name + '</option>';
+  }).join('');
+  modal.style.display = 'flex';
+}
+
+function closeCatItemModal() {
+  const modal = document.getElementById('catItemModal');
+  if (modal) modal.style.display = 'none';
+  window._catItemModal = { name: null, fromCat: null };
+}
+
+function catItemModalMove() {
+  const { name, fromCat } = window._catItemModal;
+  if (!name) return;
+  const toCatId = document.getElementById('catItemMoveTo').value;
+  if (!toCatId || toCatId === fromCat) { closeCatItemModal(); return; }
+
+  if (fromCat !== '__unassigned__') {
+    const fc = window.ORDER_CATEGORIES.find(function(c){ return c.id === fromCat; });
+    if (fc) fc.items = fc.items.filter(function(n){ return n !== name; });
+  }
+  const tc = window.ORDER_CATEGORIES.find(function(c){ return c.id === toCatId; });
+  if (tc && !tc.items.includes(name)) {
+    tc.items.push(name);
+    showToast('✅ ' + getCatItemLabel(name) + ' → ' + tc.name + ' 이동!', 'success');
+  }
+  saveOrderCategoriesAndSync();
+  renderOrderCatSettings();
+  renderOrderCategoryButtons();
+  closeCatItemModal();
+}
+
+function catItemModalRemove() {
+  const { name, fromCat } = window._catItemModal;
+  if (!name || fromCat === '__unassigned__') { closeCatItemModal(); return; }
+  const fc = window.ORDER_CATEGORIES.find(function(c){ return c.id === fromCat; });
+  if (fc) fc.items = fc.items.filter(function(n){ return n !== name; });
+  showToast('✅ ' + getCatItemLabel(name) + ' → 미배정으로 이동', 'success');
+  saveOrderCategoriesAndSync();
+  renderOrderCatSettings();
+  renderOrderCategoryButtons();
+  closeCatItemModal();
 }
 
 function onCatDragStart(e) {
@@ -4768,63 +4854,60 @@ function onCatDragOver(e) {
   e.preventDefault();
   e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
-  // data-cat-id 찾아서 하이라이트
   let target = e.target;
-  while (target && !target.dataset.catId) target = target.parentElement;
+  let depth = 0;
+  while (target && !target.dataset.catId && depth < 12) { target = target.parentElement; depth++; }
   document.querySelectorAll('[data-cat-id]').forEach(function(el){ el.style.background = ''; });
-  if (target) target.style.background = '#f0f7ff';
+  if (target && target.dataset.catId) target.style.background = '#f0f7ff';
 }
 
 function onCatDrop(e) {
   e.preventDefault();
   e.stopPropagation();
-  // 배경색 초기화
   document.querySelectorAll('[data-cat-id]').forEach(function(el){ el.style.background = ''; });
   if (!window._dragTteok) return;
 
-  // data-cat-id를 가진 가장 가까운 요소 찾기
   let target = e.target;
-  while (target && !target.dataset.catId) {
-    target = target.parentElement;
-  }
-  if (!target) return;
+  let depth = 0;
+  while (target && !target.dataset.catId && depth < 12) { target = target.parentElement; depth++; }
+  if (!target || !target.dataset.catId) { window._dragTteok = null; return; }
 
   const toCatId = target.dataset.catId;
   const fromCatId = window._dragTteok.fromCat;
   const itemName = window._dragTteok.name;
+  window._dragTteok = null;
 
-  if (!toCatId || toCatId === fromCatId) { window._dragTteok = null; return; }
+  if (!toCatId || toCatId === fromCatId) return;
 
-  // 원본에서 제거
   if (fromCatId !== '__unassigned__') {
     const fromCat = window.ORDER_CATEGORIES.find(function(c){ return c.id === fromCatId; });
     if (fromCat) fromCat.items = fromCat.items.filter(function(n){ return n !== itemName; });
   }
 
-  // 대상에 추가
   if (toCatId !== '__unassigned__') {
     const toCat = window.ORDER_CATEGORIES.find(function(c){ return c.id === toCatId; });
     if (toCat && !toCat.items.includes(itemName)) {
       toCat.items.push(itemName);
-      showToast('✅ ' + itemName + ' → ' + toCat.name + ' 이동!', 'success');
+      showToast('✅ ' + getCatItemLabel(itemName) + ' → ' + toCat.name + '!', 'success');
     }
   } else {
     showToast('✅ 미배정으로 이동!', 'success');
   }
 
-  window._dragTteok = null;
+  saveOrderCategoriesAndSync();
   renderOrderCatSettings();
   renderOrderCategoryButtons();
 }
 
 function updateOrderCatName(catId, newName) {
   const cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
-  if (cat) { cat.name = newName; renderOrderCategoryButtons(); }
+  if (cat) { cat.name = newName; saveOrderCategoriesAndSync(); renderOrderCategoryButtons(); }
 }
 
 function deleteOrderCat(catId) {
   if (!confirm('이 카테고리를 삭제할까요? 안에 있는 떡은 미배정으로 이동해요.')) return;
   window.ORDER_CATEGORIES = window.ORDER_CATEGORIES.filter(function(c){ return c.id !== catId; });
+  saveOrderCategoriesAndSync();
   renderOrderCatSettings();
   renderOrderCategoryButtons();
 }
@@ -4833,6 +4916,7 @@ function addOrderCategory() {
   const name = prompt('새 카테고리 이름을 입력하세요:');
   if (!name) return;
   window.ORDER_CATEGORIES.push({ id: 'cat_' + Date.now(), name: name, icon: '🍡', items: [] });
+  saveOrderCategoriesAndSync();
   renderOrderCatSettings();
   renderOrderCategoryButtons();
 }
