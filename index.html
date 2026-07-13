@@ -2679,7 +2679,8 @@
             </div>
             <div style="display:flex;gap:8px;">
               <button onclick="catItemModalMove()" style="flex:1;padding:10px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📂 이동</button>
-              <button onclick="catItemModalRemove()" style="flex:1;padding:10px;background:#fee2e2;color:var(--accent-red);border:1.5px solid #fca5a5;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🗑 미배정으로</button>
+              <button onclick="catItemModalRemove()" style="flex:1;padding:10px;background:#fef3c7;color:#92400e;border:1.5px solid #fbbf24;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📋 미배정으로</button>
+              <button onclick="catItemModalDeleteAll()" style="flex:1;padding:10px;background:#fee2e2;color:var(--accent-red);border:1.5px solid #fca5a5;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🗑 완전삭제</button>
               <button onclick="closeCatItemModal()" style="padding:10px 14px;background:#f3f4f6;color:#555;border:none;border-radius:8px;font-size:13px;cursor:pointer;">닫기</button>
             </div>
           </div>
@@ -3767,6 +3768,7 @@ function loadTteokPriceSettings() {
           if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
             window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
           }
+          cleanOrphanCatItems();
           localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
           renderOrderCategoryButtons();
         } catch(e) {}
@@ -4612,6 +4614,7 @@ function loadOrderCategories() {
         if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
           window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
         }
+        cleanOrphanCatItems();
         localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
         renderOrderCategoryButtons();
       }
@@ -4623,7 +4626,21 @@ function saveOrderCategories() {
   saveOrderCategoriesAndSync();
 }
 
-// 주문 접수 카테고리 버튼 렌더링
+// 카테고리에 있는데 TTEOK_DB에 없는 유령 항목 자동 정리
+function cleanOrphanCatItems() {
+  const validNames = Object.keys(TTEOK_DB);
+  const specials = ['__분홍세트__', '__은혜세트__', '__이바지大__', '__이바지小__', '__덕세트__', '__덕6구세트__'];
+  let changed = false;
+  window.ORDER_CATEGORIES.forEach(function(cat) {
+    const before = cat.items.length;
+    cat.items = cat.items.filter(function(n) {
+      return validNames.includes(n) || specials.includes(n);
+    });
+    if (cat.items.length !== before) changed = true;
+  });
+  if (changed) saveOrderCategoriesAndSync();
+  return changed;
+}
 function renderOrderCategoryButtons() {
   const container = document.getElementById('order-cat-buttons');
   if (!container) { setTimeout(renderOrderCategoryButtons, 100); return; }
@@ -4842,6 +4859,27 @@ function catItemModalRemove() {
   closeCatItemModal();
 }
 
+function catItemModalDeleteAll() {
+  const { name } = window._catItemModal;
+  if (!name) return;
+  const label = getCatItemLabel(name);
+  if (!confirm(label + '\n\n카테고리에서도 제거하고 전체 떡 목록에서도 완전히 삭제할까요?\n\n되돌릴 수 없어요.')) return;
+  // 전체 떡 목록에서 삭제
+  delete TTEOK_DB[name];
+  // 모든 카테고리에서 제거
+  window.ORDER_CATEGORIES.forEach(function(cat) {
+    cat.items = cat.items.filter(function(n){ return n !== name; });
+  });
+  localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
+  localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER, orderCategories: window.ORDER_CATEGORIES } }).catch(function(){});
+  renderTteokAllList();
+  renderOrderCatSettings();
+  renderOrderCategoryButtons();
+  showToast('🗑 ' + label + ' 완전삭제됐어요.', 'error');
+  closeCatItemModal();
+}
+
 function onCatDragStart(e) {
   window._dragTteok = {
     name: e.currentTarget.dataset.item,
@@ -4987,12 +5025,14 @@ function deleteTteokFromGlobalList(name) {
   window.ORDER_CATEGORIES.forEach(function(cat) {
     cat.items = cat.items.filter(function(n){ return n !== name; });
   });
-  // 즉시 저장
+  // 즉시 저장 (TTEOK_DB + 카테고리 둘 다)
   localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
+  localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
   if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER, orderCategories: window.ORDER_CATEGORIES } }).catch(() => {});
 
   renderTteokAllList();
   renderOrderCatSettings();
+  renderOrderCategoryButtons();
   showToast('🗑 ' + name + ' 삭제됐어요.', 'error');
 }
 
