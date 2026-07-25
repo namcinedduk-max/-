@@ -386,7 +386,10 @@ function calcDailyWage(e){
 // 이 달(mo)이 수습기간 내인지 판별
 function isProbMonth(e, mo){
   if(!e.probEnd) return false;
-  return new Date(mo+'-01') <= new Date(e.probEnd);
+  // 수습종료일이 입사일과 같으면 수습 없음 처리
+  if(e.joinDate && e.probEnd === e.joinDate) return false;
+  // 해당 월 1일이 수습종료일보다 strictly 이전인 경우만 수습
+  return new Date(mo+'-01') < new Date(e.probEnd);
 }
 
 var GLOBAL = [
@@ -575,6 +578,7 @@ function loadAll(){
           isNight:se.isNight!=null?se.isNight:local.isNight,
           base:se.base||local.base,
           meal:se.meal!=null?se.meal:local.meal,
+          carAllow:se.carAllow!=null?se.carAllow:(local.carAllow||0),
           colorIdx:se.colorIdx!=null?se.colorIdx:local.colorIdx,
           healthCert:se.healthCert||local.healthCert||"",
           healthCertExpiry:se.healthCertExpiry||local.healthCertExpiry||"",
@@ -1456,19 +1460,22 @@ function calcPay(e,mo){
     var actualDaysF=logsF.length;
     var mealAmtF=e.meal||0;
     var mealActualF=actualDaysF>0?mealAmtF:0;
+    var carAmtF=e.carAllow||0;
+    var carActualF=actualDaysF>0?carAmtF:0;
     var basePayF=Math.round(hr2f*totalHf);
     var juhyuAmtF=Math.round(hr2f*juhyuHf);
     var extrasF=getEmpExtras(e.id,mo),extraTotalF=0;
     for(var eif=0;eif<extrasF.length;eif++)extraTotalF+=extrasF[eif].amount||0;
-    var grossF=basePayF+juhyuAmtF+mealActualF+extraTotalF;
+    var grossF=basePayF+juhyuAmtF+mealActualF+carActualF+extraTotalF;
     var b4f=Math.max(0,basePayF+juhyuAmtF+extraTotalF);
-    var insF=calcEmpIns(b4f,e.ins4,Math.max(0,grossF-mealActualF),e.dependents||1);
+    var insF=calcEmpIns(b4f,e.ins4,Math.max(0,grossF-mealActualF-carActualF),e.dependents||1);
     return {mode:'parttime',h:hr2f,base:basePayF,baseOnly:basePayF,
       juhyuAmt:juhyuAmtF,juhyuH:juhyuHf,hasJuhyu:juhyuHf>0,
       jInfo:{juhyuWeeks:juhyuWksf,noJuhyuWeeks:0,juhyuH:juhyuHf,juhyuAmt:juhyuAmtF,lostJuhyuAmt:0,lostJuhyuH:0,detail:ptWeeks},
       lostJuhyu:0,
       ext:0,night:0,hol:0,earlyDed:0,
       mealAmt:mealAmtF,mealActual:mealActualF,mealDed:0,
+      carAmt:carAmtF,carActual:carActualF,carDed:0,
       offDays:0,absDays:0,lvDays:0,absDeduct:0,
       extras:extrasF,extraTotal:extraTotalF,
       gross:grossF,pension:insF.pension,health:insF.health,empIns:insF.empIns,care:insF.care,
@@ -1488,6 +1495,9 @@ function calcPay(e,mo){
     var mWD2Full=calcMonthWorkDaysFull(e,mo); // 월 전체 소정근무일 (분모)
     var mealActual2=_pSvcDays<=0?0:(mWD2Full>0?Math.round(mealAmt2*Math.max(0,mWD2-absDays2)/mWD2Full):mealAmt2);
     var mealDed2=mealAmt2-mealActual2;
+    var carAmt2=e.carAllow||0;
+    var carActual2=_pSvcDays<=0?0:(mWD2Full>0?Math.round(carAmt2*Math.max(0,mWD2-absDays2)/mWD2Full):carAmt2);
+    var carDed2=carAmt2-carActual2;
     var sched2=e.schedule||{}, schedDays2=Object.keys(sched2), weekH2=0;
     for(var di2=0;di2<schedDays2.length;di2++){var ds2=sched2[schedDays2[di2]];var wh3=(parseInt(ds2.e)-parseInt(ds2.s))-(parseFloat(ds2.b)||0);if(wh3<0)wh3+=24;weekH2+=wh3;}
     if(!weekH2) weekH2=(e.workHours||4)*(schedDays2.length||5);
@@ -1518,14 +1528,15 @@ function calcPay(e,mo){
     var lvDays2=getMonthLeaveDays(e.id,mo);
     var extras3=getEmpExtras(e.id,mo), extraTotal3=0;
     for(var ei3=0;ei3<extras3.length;ei3++) extraTotal3+=extras3[ei3].amount||0;
-    var gross3=basePay3+jInfo3.juhyuAmt-jInfo3.lostJuhyuAmt+extP3+nightP3+holP3-earlyD3-absD3+mealActual2+extraTotal3;
+    var gross3=basePay3+jInfo3.juhyuAmt-jInfo3.lostJuhyuAmt+extP3+nightP3+holP3-earlyD3-absD3+mealActual2+carActual2+extraTotal3;
     var b4_3=Math.max(0,basePay3+jInfo3.juhyuAmt-jInfo3.lostJuhyuAmt+extP3+nightP3+holP3-earlyD3-absD3+extraTotal3);
-    var insR4=calcEmpIns(b4_3,e.ins4,Math.max(0,gross3-mealActual2),e.dependents||1);
+    var insR4=calcEmpIns(b4_3,e.ins4,Math.max(0,gross3-mealActual2-carActual2),e.dependents||1);
     return {mode:'parttime',h:hr2,base:basePay3,baseOnly:basePay3,
       juhyuAmt:jInfo3.juhyuAmt,juhyuH:jInfo3.juhyuH,hasJuhyu:hasJuhyu3,
       jInfo:jInfo3,lostJuhyu:jInfo3.lostJuhyuAmt,
       ext:extP3,night:nightP3,hol:holP3,earlyDed:earlyD3,
       mealAmt:mealAmt2,mealActual:mealActual2,mealDed:mealDed2,
+      carAmt:carAmt2,carActual:carActual2,carDed:carDed2,
       offDays:absDays2,absDays:absDays2,lvDays:lvDays2,absDeduct:absD3,
       extras:extras3,extraTotal:extraTotal3,
       gross:gross3,pension:insR4.pension,health:insR4.health,empIns:insR4.empIns,care:insR4.care,
@@ -1544,6 +1555,10 @@ function calcPay(e,mo){
   var mWDFull=calcMonthWorkDaysFull(e,mo); // 월 전체 소정근무일 (분모)
   var mealActual=_pSvcDays<=0?0:(mWDFull>0?Math.round(mealAmt*Math.max(0,mWD-absDays)/mWDFull):mealAmt);
   var mealDed=mealAmt-mealActual;
+  // 자가운전보조금: 식대와 동일하게 결근일 비례 차감 (비과세)
+  var carAmt=e.carAllow||0;
+  var carActual=_pSvcDays<=0?0:(mWDFull>0?Math.round(carAmt*Math.max(0,mWD-absDays)/mWDFull):carAmt);
+  var carDed=carAmt-carActual;
   var offDays=absDays; // 식대 차감은 결근만
   // 추가 항목
   var extras=getEmpExtras(e.id,mo);
@@ -1575,9 +1590,9 @@ function calcPay(e,mo){
     var earlyDed  =Math.round(hr*tot.early);
     var absDeduct =Math.round(absDays*(hr*dailyH));
     var lostJuhyu=jInfo.lostJuhyuAmt;
-    var gross=effTotalPay+extPay+nightPay2+holPay+mealActual+extraTotal-absDeduct-lostJuhyu-earlyDed;
+    var gross=effTotalPay+extPay+nightPay2+holPay+mealActual+carActual+extraTotal-absDeduct-lostJuhyu-earlyDed;
     var b4=Math.max(0,effTotalPay+extPay+nightPay2+holPay+extraTotal-absDeduct-lostJuhyu-earlyDed);
-    var insR1=calcEmpIns(b4,e.ins4,Math.max(0,gross-mealActual),e.dependents||1);
+    var insR1=calcEmpIns(b4,e.ins4,Math.max(0,gross-mealActual-carActual),e.dependents||1);
     var pension=insR1.pension,health=insR1.health,empIns=insR1.empIns,care=insR1.care;
     var totalDed=insR1.total;
     var juhyuAmt=jInfo.juhyuAmt;
@@ -1587,7 +1602,7 @@ function calcPay(e,mo){
       jInfo:jInfo,lostJuhyu:lostJuhyu,
       nightPayFixed:Math.round(cb.nightPay*probRate*payRatio),nightH:cb.nightH,
       ext:extPay,night:nightPay2,hol:holPay,earlyDed:earlyDed,
-      mealAmt:mealAmt,mealActual:mealActual,mealDed:mealDed,offDays:offDays,absDays:absDays,lvDays:lvDays,
+      mealAmt:mealAmt,mealActual:mealActual,mealDed:mealDed,carAmt:carAmt,carActual:carActual,carDed:carDed,offDays:offDays,absDays:absDays,lvDays:lvDays,
       extras:extras,extraTotal:extraTotal,
       gross:gross,pension:pension,health:health,empIns:empIns,care:care,
       incomeTax:insR1.incomeTax,localTax:insR1.localTax,
@@ -1608,15 +1623,15 @@ function calcPay(e,mo){
     var hol=Math.round(h*1.5*tot.holiday);
     var earlyDed=Math.round(h*tot.early);
     var absDeduct=Math.round(absDays*(h*dailyH));
-    var gross=effBase+ext+night+hol+mealActual+extraTotal-absDeduct-lostJuhyu2-earlyDed;
+    var gross=effBase+ext+night+hol+mealActual+carActual+extraTotal-absDeduct-lostJuhyu2-earlyDed;
     var b4=Math.max(0,effBase+ext+night+hol+extraTotal-absDeduct-lostJuhyu2-earlyDed);
-    var insR2=calcEmpIns(b4,e.ins4,Math.max(0,gross-mealActual),e.dependents||1);
+    var insR2=calcEmpIns(b4,e.ins4,Math.max(0,gross-mealActual-carActual),e.dependents||1);
     var pension=insR2.pension,health=insR2.health,empIns=insR2.empIns,care=insR2.care;
     var totalDed=insR2.total;
     return {mode:"under5",h:h,base:effBase,baseOnly:baseOnly2,juhyuAmt:juhyuAmt2,juhyuH:juhyuH,hasJuhyu:hasJuhyu,
       jInfo:jInfo,lostJuhyu:lostJuhyu2,
       ext:ext,night:night,hol:hol,earlyDed:earlyDed,
-      mealAmt:mealAmt,mealActual:mealActual,mealDed:mealDed,offDays:offDays,absDays:absDays,lvDays:lvDays,
+      mealAmt:mealAmt,mealActual:mealActual,mealDed:mealDed,carAmt:carAmt,carActual:carActual,carDed:carDed,offDays:offDays,absDays:absDays,lvDays:lvDays,
       extras:extras,extraTotal:extraTotal,
       gross:gross,pension:pension,health:health,empIns:empIns,care:care,
       incomeTax:insR2.incomeTax,localTax:insR2.localTax,
@@ -1652,12 +1667,13 @@ function updateOTSum(){
   var s=document.getElementById("sta"); if(s) s.innerHTML=renderStats();
 }
 function buildDeductDetail(p){
-  if(!p||(!p.absDays&&!p.lostJuhyu&&!p.earlyDed&&!p.mealDed)) return "";
+  if(!p||(!p.absDays&&!p.lostJuhyu&&!p.earlyDed&&!p.mealDed&&!p.carDed)) return "";
   var rows="";
   if(p.absDays>0)   rows+="<span style='margin-right:12px'>결근 "+p.absDays+"일 일급 <b>-"+comma(p.absDeduct)+"원</b></span>";
   if(p.lostJuhyu>0) rows+="<span style='margin-right:12px'>주휴박탈 "+p.jInfo.noJuhyuWeeks+"주 <b>-"+comma(p.lostJuhyu)+"원</b></span>";
   if(p.earlyDed>0)  rows+="<span style='margin-right:12px'>조기퇴근 "+p.tot.early.toFixed(1)+"h <b>-"+comma(p.earlyDed)+"원</b></span>";
-  if(p.mealDed>0)   rows+="<span>식대 차감 <b>-"+comma(p.mealDed)+"원</b></span>";
+  if(p.mealDed>0)   rows+="<span style='margin-right:12px'>식대 차감 <b>-"+comma(p.mealDed)+"원</b></span>";
+  if(p.carDed>0)    rows+="<span>자가운전보조금 차감 <b>-"+comma(p.carDed)+"원</b></span>";
   return "<div style='grid-column:1/-1;font-size:12px;color:#dc2626;background:#fff9f9;border:1px solid #fca5a5;border-radius:6px;padding:.45rem .8rem;line-height:1.9'>📌 차감 내역: "+rows+"</div>";
 }
 
@@ -1798,6 +1814,7 @@ function renderInfo(e){
   h+=ii2("입사일",fmtDate(e.joinDate))+ii2("근속기간",Math.floor(mo/12)+"년 "+(mo%12)+"개월");
   h+=ii2("수습종료일",fmtDate(e.probEnd))+ii2("근무시간",e.shift||"-");
   h+=ii2(e.totalPay?"포괄임금":"기본급",comma(e.totalPay||e.base)+"원")+ii2("식대",comma(e.meal||0)+"원");
+  if(e.carAllow>0) h+=ii2("자가운전보조금",comma(e.carAllow)+"원");
   if(e.totalPay){
     var cb=calcBase(e);
     h+="<div class='ii wb' style='grid-column:1/-1'><div class='il'>💰 포괄임금 (5인이상)</div><div class='iv'>"+comma(e.totalPay)+"원 = 기본급 "+comma(cb.base)+"원 + 야간수당(월 "+cb.nightH+"h) "+comma(cb.nightPay)+"원 / 시급 "+comma(cb.hourRate)+"원</div></div>";
@@ -1988,7 +2005,7 @@ function renderFlexPT(emp,mo){
     h+="<div><div style='color:#888;margin-bottom:2px'>출근일수</div><b>"+p.actualDays+"일</b></div>";
     h+="</div>";
     h+="<div style='margin-top:.75rem;padding-top:.75rem;border-top:1px solid #bbf7d0;display:flex;justify-content:space-between;align-items:center'>";
-    h+="<span style='font-size:12px;color:#555'>기본급 "+comma(p.base)+"원 + 주휴 "+comma(p.juhyuAmt)+"원"+(p.mealActual>0?" + 식대 "+comma(p.mealActual)+"원":"")+"</span>";
+    h+="<span style='font-size:12px;color:#555'>기본급 "+comma(p.base)+"원 + 주휴 "+comma(p.juhyuAmt)+"원"+(p.mealActual>0?" + 식대 "+comma(p.mealActual)+"원":"")+(p.carActual>0?" + 자가운전 "+comma(p.carActual)+"원":"")+"</span>";
     h+="<span style='font-size:15px;font-weight:700;color:#15803d'>예상 지급 "+comma(p.gross)+"원</span>";
     h+="</div>";
     h+="<div style='margin-top:4px;font-size:11px;color:#888'>4대보험 공제 후 실수령 <b>"+comma(p.net)+"원</b></div>";
@@ -2191,7 +2208,7 @@ function renderPay(){
     h+="<button class='btn pri' data-action='openMod' data-id='slip' data-val='"+e.id+"'>명세서</button></div>";
   }
   // ── 인건비 총액 요약 ──
-  var totGross=0,totNet=0,totDed=0,totEmpIns=0,totMeal=0,totExt=0;
+  var totGross=0,totNet=0,totDed=0,totEmpIns=0,totMeal=0,totCar=0,totExt=0;
   for(var j=0;j<S.emps.length;j++){
     var _ep=calcPay(S.emps[j],S.cm);
     var _ei=S.emps[j].ins4||{pension:true,health:true,empIns:true,care:true};
@@ -2202,7 +2219,7 @@ function renderPay(){
                +(_ei.empIns?Math.round(_eb*1.15/100):0)
                +((_ei.care&&_ei.health)?Math.round(_eh*S.ins.care/100):0);
     totGross+=_ep.gross||0; totNet+=_ep.net||0; totDed+=_ep.totalDed||0;
-    totEmpIns+=_empIns; totMeal+=_ep.mealActual||0; totExt+=(_ep.ext||0)+(_ep.night||0)+(_ep.hol||0);
+    totEmpIns+=_empIns; totMeal+=_ep.mealActual||0; totCar+=_ep.carActual||0; totExt+=(_ep.ext||0)+(_ep.night||0)+(_ep.hol||0);
   }
   h+="<div class='card' style='margin-top:.5rem;background:#f9f8f5'>";
   h+="<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem'>";
@@ -2214,6 +2231,7 @@ function renderPay(){
   h+="<div style='background:#fff;border-radius:8px;padding:10px 12px'><div style='color:#888;margin-bottom:3px'>직원 4대보험 (공제)</div><div style='font-size:15px;font-weight:700;color:#dc2626'>-"+comma(totDed)+"원</div></div>";
   h+="<div style='background:#fff;border-radius:8px;padding:10px 12px'><div style='color:#888;margin-bottom:3px'>사업주 4대보험 부담</div><div style='font-size:15px;font-weight:700;color:#d97706'>"+comma(totEmpIns)+"원</div></div>";
   h+="<div style='background:#fff;border-radius:8px;padding:10px 12px'><div style='color:#888;margin-bottom:3px'>식대 합계 (비과세)</div><div style='font-size:15px;font-weight:700'>"+comma(totMeal)+"원</div></div>";
+  if(totCar>0) h+="<div style='background:#fff;border-radius:8px;padding:10px 12px'><div style='color:#888;margin-bottom:3px'>자가운전보조금 합계 (비과세)</div><div style='font-size:15px;font-weight:700'>"+comma(totCar)+"원</div></div>";
   h+="<div style='background:#dbeafe;border-radius:8px;padding:10px 12px;border:1px solid #93c5fd'><div style='color:#1e40af;margin-bottom:3px;font-weight:600'>총 인건비 (사업주 지출)</div><div style='font-size:15px;font-weight:700;color:#1e40af'>"+comma(totGross+totEmpIns)+"원</div></div>";
   h+="</div><div style='font-size:10.5px;color:#aaa;margin-top:6px'>* 사업주 4대보험(2026년): 국민연금 4.75% + 건강보험 3.595% + 고용보험 1.15% + 장기요양(건강보험료×13.14%) / 산재보험 별도</div>";
   h+="</div>";
@@ -2292,7 +2310,7 @@ function renderCT(){
     h+="<div style='font-size:12px;color:#666;margin-top:2px'>"+(e.contractType||"정규직");
     if(e.contractEnd){h+=" · 계약종료: "+fmtDate(e.contractEnd);if(ctd!==null)h+=" <span style='color:"+(ctd<0?"#dc2626":ctd<=30?"#d97706":"#555")+"'>(D"+(ctd>=0?"-":"+")+Math.abs(ctd)+")</span>";}
     h+="</div>";
-    h+="<div style='font-size:12px;color:#555;margin-top:2px'>"+(e.totalPay?"포괄임금: <b>"+comma(e.totalPay)+"원</b>":"기본급: <b>"+comma(e.base)+"원</b>")+(e.meal?" · 식대: "+comma(e.meal)+"원":"")+"</div>";
+    h+="<div style='font-size:12px;color:#555;margin-top:2px'>"+(e.totalPay?"포괄임금: <b>"+comma(e.totalPay)+"원</b>":"기본급: <b>"+comma(e.base)+"원</b>")+(e.meal?" · 식대: "+comma(e.meal)+"원":"")+(e.carAllow?" · 자가운전: "+comma(e.carAllow)+"원":"")+"</div>";
     h+="</div>"+(ct.signed?"<span class='badge bs'>계약완료</span>":"<span class='badge bd'>미완료</span>")+"</div>";
     h+="<div class='btn-row'>";
     h+="<button class='btn"+(ct.signed?" dan":"  pri")+"' data-action='toggleSigned' data-id='"+e.id+"'>"+(ct.signed?"✓ 완료 취소":"계약 완료 표시")+"</button>";
@@ -2413,6 +2431,7 @@ function saveAdd(){
   var probEndVal=document.getElementById("fprob")?document.getElementById("fprob").value||addMonths(join,3):addMonths(join,3);
   var base=parseInt(document.getElementById("fb2")?document.getElementById("fb2").value:0)||2400000;
   var meal=getMealFromForm();
+  var carAllow=getCarFromForm();
   var totalPay=parseInt(document.getElementById("ftotal")?document.getElementById("ftotal").value:0)||0;
   var hourlyRate=parseInt(document.getElementById("fhourly")?document.getElementById("fhourly").value:0)||0;
   var hc=document.getElementById("fhc").value||"", he=document.getElementById("fhe").value||"";
@@ -2426,7 +2445,7 @@ function saveAdd(){
     schedule:sched,workDays:schedDays,weeklyHours:weekH,monthlyPayHours:monthPayH,
     startTime:firstSched.s,endTime:firstSched.e,breakHour:firstSched.b,workHours:(parseInt(firstSched.e)-parseInt(firstSched.s)-firstSched.b)||8,
     isNight:parseInt(firstSched.s)<6,
-    base:base,meal:meal,totalPay:totalPay,colorIdx:S.emps.length%6,healthCert:hc,healthCertExpiry:he,memo:memo,
+    base:base,meal:meal,carAllow:carAllow,totalPay:totalPay,colorIdx:S.emps.length%6,healthCert:hc,healthCertExpiry:he,memo:memo,
     payDay:document.getElementById("fpd")?document.getElementById("fpd").value||"10":"10",
     contractType:document.getElementById("fct")?document.getElementById("fct").value||"정규직":"정규직",
     contractEnd:document.getElementById("fce")?document.getElementById("fce").value||"":"",
@@ -2458,6 +2477,7 @@ function saveEdit(id){
   if(schedDays.length){var fs=sched[schedDays[0]];e.startTime=fs.s;e.endTime=fs.e;e.breakHour=fs.b;e.workHours=(parseInt(fs.e)-parseInt(fs.s)-fs.b)||8;e.isNight=parseInt(fs.s)<6;}
   var fb2v=document.getElementById("fb2"); if(fb2v&&!e.totalPay) e.base=parseInt(fb2v.value)||e.base;
   e.meal=getMealFromForm();
+  e.carAllow=getCarFromForm();
   e.totalPay=parseInt(document.getElementById("ftotal")?document.getElementById("ftotal").value:0)||0;
   e.hourlyRate=parseInt(document.getElementById("fhourly")?document.getElementById("fhourly").value:0)||0;
   e.healthCert=document.getElementById("fhc").value;
@@ -2496,7 +2516,7 @@ function buildBrkOpts(selVal){
   return o;
 }
 function buildEmpForm(e,isEdit){
-  var x=e||{name:"",role:"제조원",joinDate:"",base:2400000,meal:200000,healthCert:"",healthCertExpiry:"",totalPay:0,payDay:"10",contractType:"정규직",contractEnd:"",memo:"",schedule:{},hourlyRate:10030,workType:"정규직",nationality:"내국인",ins4:{pension:true,health:true,empIns:true,care:true},dependents:1};
+  var x=e||{name:"",role:"제조원",joinDate:"",base:2400000,meal:200000,carAllow:0,healthCert:"",healthCertExpiry:"",totalPay:0,payDay:"10",contractType:"정규직",contractEnd:"",memo:"",schedule:{},hourlyRate:10030,workType:"정규직",nationality:"내국인",ins4:{pension:true,health:true,empIns:true,care:true},dependents:1};
   var sched=x.schedule||{};
   var DAYS=["월","화","수","목","금","토","일"];
   var h="<div class='fr'><div class='fg'><label class='fl'>이름</label><input type='text' id='fn' value='"+(x.name||"")+"'></div>";
@@ -2535,11 +2555,13 @@ function buildEmpForm(e,isEdit){
   h+="<div id='flex-hint' style='font-size:11px;color:#92400e;margin:-6px 0 8px 4px;"+(x.flexPartTime?"":"display:none")+"'>연장근무 탭에서 출근일마다 시간을 직접 입력하면 급여가 자동 계산됩니다.</div>";
   h+="<div class='fr'><div class='fg'><label class='fl'>시급 (원) ★시간제</label><input type='number' id='fhourly' value='"+(x.hourlyRate||10030)+"'  step='10' placeholder='최저시급 10,030원'></div>";
   h+="<div class='fg'><label class='fl'>식대 (원)</label><input type='number' id='fm' value='"+(x.meal||0)+"'  step='10000'></div></div>";
+  h+="<div class='fr'><div class='fg'><label class='fl'>자가운전보조금 (원) <span style='color:#888;font-weight:400'>비과세·월20만한도</span></label><input type='number' id='fcar' value='"+(x.carAllow||0)+"'  step='10000'></div></div>";
   h+="</div>";
   h+="<div id='pay-regular' style='"+(isPartTime?"display:none":"")+"'>";
   h+="<div class='alert' style='margin-bottom:.6rem;font-size:12px'>5월 이후 포괄임금 총액 입력 시 기본급·야간수당 자동 역산</div>";
   h+="<div class='fr'><div class='fg'><label class='fl'>포괄임금 총액 (원) <span style='color:#dc2626'>★5인이상</span></label><input type='number' id='ftotal' value='"+(x.totalPay||"")+"'  step='10000' placeholder='0이면 기본급 적용' onchange='updSchedPv()'></div>";
   h+="<div class='fg'><label class='fl'>식대 (원)</label><input type='number' id='fm2' value='"+(x.meal||0)+"'  step='10000'></div></div>";
+  h+="<div class='fr'><div class='fg'><label class='fl'>자가운전보조금 (원) <span style='color:#888;font-weight:400'>비과세·월20만한도</span></label><input type='number' id='fcar2' value='"+(x.carAllow||0)+"'  step='10000'></div></div>";
   h+="<div id='base-row' style='"+(x.totalPay?"display:none":"")+"'><div class='fg'><label class='fl'>기본급 (원)</label><input type='number' id='fb2' value='"+(x.base||2400000)+"'  step='10000'></div></div>";
   h+="<div id='paypr' style='background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:.5rem .9rem;font-size:12px;color:#166534;margin-top:.5rem;"+(x.totalPay?"":"display:none")+"'></div>";
   h+="</div>";
@@ -2596,6 +2618,13 @@ function getMealFromForm(){
   if(fm&&fm.offsetParent!==null) return parseInt(fm.value)||0;
   if(fm2&&fm2.offsetParent!==null) return parseInt(fm2.value)||0;
   return parseInt((fm||fm2||{}).value)||0;
+}
+function getCarFromForm(){
+  // 시간제는 fcar, 정규직은 fcar2 (표시된 쪽 우선)
+  var fc=document.getElementById("fcar"), fc2=document.getElementById("fcar2");
+  if(fc&&fc.offsetParent!==null) return parseInt(fc.value)||0;
+  if(fc2&&fc2.offsetParent!==null) return parseInt(fc2.value)||0;
+  return parseInt((fc||fc2||{}).value)||0;
 }
 function onNatChange(){
   var nat=document.getElementById("fnat"); if(!nat) return;
@@ -2791,7 +2820,7 @@ async function doPayrollExcel(mo){
   // ── 행5: 컬럼 헤더 ──
   ws.getRow(5).height=22;
   [['A5','직원명',C.GRY,C.GRY_F],['B5','직책',C.GRY,C.GRY_F],['C5','계약유형',C.GRY,C.GRY_F],
-   ['D5','지급합계',C.GRN,C.GRN_F],['E5','식대(비과세)',C.GRN,C.GRN_F],['F5','과세급여 ★',C.GRN,C.GRN_F],
+   ['D5','지급합계',C.GRN,C.GRN_F],['E5','비과세(식대+자가운전)',C.GRN,C.GRN_F],['F5','과세급여 ★',C.GRN,C.GRN_F],
    ['G5','연장·야간·휴일',C.GRN,C.GRN_F],['H5','추가지급',C.GRN,C.GRN_F],
    ['I5','국민연금',C.RED,C.RED_F],['J5','건강보험',C.RED,C.RED_F],
    ['K5','고용보험',C.RED,C.RED_F],['L5','장기요양',C.RED,C.RED_F],
@@ -2826,7 +2855,7 @@ async function doPayrollExcel(mo){
 
     // 지급항목
     var cGr=ws.getCell('D'+r); cGr.value=p.gross||0; xD(cGr,bg,C.GRN_F,false);
-    var cMl=ws.getCell('E'+r); cMl.value=p.mealActual||0; xD(cMl,bg,'FF059669',false);
+    var cMl=ws.getCell('E'+r); cMl.value=(p.mealActual||0)+(p.carActual||0); xD(cMl,bg,'FF059669',false);
     // ★ 과세급여: 수식 (직접 수정해도 합계에 반영)
     var cTx=ws.getCell('F'+r); cTx.value={formula:'=D'+r+'-E'+r}; xD(cTx,bg,C.GRN_F,true);
     var cOt=ws.getCell('G'+r); cOt.value=ot; xD(cOt,bg,C.BK,false);
@@ -2877,7 +2906,7 @@ async function doPayrollExcel(mo){
   ws.mergeCells('A'+NR+':V'+NR);
   var nc=ws.getCell('A'+NR);
   nc.value='[세무사무소 기장 참고]  ① 원천세신고(매월10일): 과세급여·근로소득세·지방소득세 기준  '+
-           '② 사업주 4대보험 소계 전액 손금산입  ③ 식대 월20만원 한도 비과세  ④ 주민등록번호 별도 제공 요망  ⑤ 산재보험료 별도';
+           '② 사업주 4대보험 소계 전액 손금산입  ③ 식대 월20만원 한도 비과세  ③-1 자가운전보조금 월20만원 한도 비과세 (실제 차량 사용 시)  ④ 주민등록번호 별도 제공 요망  ⑤ 산재보험료 별도';
   xFill(nc,'FFF0F9FF');xFont(nc,'FF0369A1',false,9);xAlign(nc,'left','middle');
   nc.border={top:{style:'thin',color:{argb:'FFBAE6FD'}},left:{style:'thin',color:{argb:'FFBAE6FD'}},
              bottom:{style:'thin',color:{argb:'FFBAE6FD'}},right:{style:'thin',color:{argb:'FFBAE6FD'}}};
@@ -3070,6 +3099,7 @@ function renderMod(){
       if(p.tot.early>0)  h+=frow("조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)",p.tot.early.toFixed(1)+"h","-"+comma(p.earlyDed)+"원","ded");
       if(p.absDays>0)    h+=frow("결근 차감 ("+p.absDays+"일)","일근로시간 × "+p.absDays+"일","-"+comma(p.absDeduct)+"원","ded");
       if(p.mealAmt>0)    h+=frow("식대"+(p.absDays>0?" (결근차감)":""),"",comma(p.mealActual)+"원");
+      if(p.carAmt>0)     h+=frow("자가운전보조금"+(p.absDays>0?" (결근차감)":""),"",comma(p.carActual)+"원");
     } else {
     // ── 기준 정보 박스 ──
     h+="<div style='background:#f9f8f5;border-radius:6px;padding:.5rem .8rem;font-size:11px;color:#555;margin-bottom:.6rem;line-height:1.9'>";
@@ -3097,11 +3127,17 @@ function renderMod(){
       }
       h+=frow("야간수당 포괄 ("+p.nightH+"h)",p.nightH+"h × 0.5배 (야간가산)",comma(p.nightPayFixed)+"원");
       h+="<div class='sl-row tot'><span>포괄임금 합계</span><span>"+comma(p.totalPay)+"원"+(p.isProb?" <span style='font-size:10px;color:#f59e0b;font-weight:400'>(수습 90%)</span>":"")+"</span></div>";
-      if(p.mealAmt>0){
+      if(p.mealAmt>0||p.carAmt>0){
         h+="<div class='sl-sec'>▸ 비과세 항목</div>";
         var mWD3=calcMonthWorkDays(e,S.cm);
-        var mf3=p.absDays>0?"월 "+comma(p.mealAmt)+"원 × ("+(mWD3-p.absDays)+"일 ÷ "+mWD3+"일) 결근차감":"월 고정 (비과세)";
-        h+=frow("식대"+(p.absDays>0?" (결근 "+p.absDays+"일 차감)":""),mf3,comma(p.mealActual)+"원");
+        if(p.mealAmt>0){
+          var mf3=p.absDays>0?"월 "+comma(p.mealAmt)+"원 × ("+(mWD3-p.absDays)+"일 ÷ "+mWD3+"일) 결근차감":"월 고정 (비과세)";
+          h+=frow("식대"+(p.absDays>0?" (결근 "+p.absDays+"일 차감)":""),mf3,comma(p.mealActual)+"원");
+        }
+        if(p.carAmt>0){
+          var cf3=p.absDays>0?"월 "+comma(p.carAmt)+"원 × ("+(mWD3-p.absDays)+"일 ÷ "+mWD3+"일) 결근차감":"월 고정 (비과세)";
+          h+=frow("자가운전보조금"+(p.absDays>0?" (결근 "+p.absDays+"일 차감)":""),cf3,comma(p.carActual)+"원");
+        }
       }
       if(p.tot.ext>0||p.tot.night>0||p.tot.holiday>0||p.tot.early>0||p.absDays>0||p.lostJuhyu>0){
         h+="<div class='sl-sec'>▸ 이달 추가수당 / 차감</div>";
@@ -3128,16 +3164,16 @@ function renderMod(){
       if(p.tot.holiday>0) h+=frow("휴일수당 ("+p.tot.holiday.toFixed(1)+"h)",p.tot.holiday.toFixed(1)+"h × 1.5배","+"+comma(p.hol)+"원");
       if(p.tot.early>0)  h+=frow("조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)",p.tot.early.toFixed(1)+"h","-"+comma(p.earlyDed)+"원","ded");
       if(p.absDays>0)    h+=frow("결근 차감 ("+p.absDays+"일)",((e.weeklyHours||40)/wkDays2).toFixed(1)+"h × "+p.absDays+"일","-"+comma(p.absDeduct)+"원","ded");
-      if(p.mealAmt>0){
+      if(p.mealAmt>0||p.carAmt>0){
         h+="<div class='sl-sec'>▸ 비과세 항목</div>";
         var mWD4=calcMonthWorkDays(e,S.cm);
-        var mf4=p.absDays>0?"월 "+comma(p.mealAmt)+"원 × ("+(mWD4-p.absDays)+"일 ÷ "+mWD4+"일) 결근차감":"월 고정 (비과세)";
-        h+=frow("식대"+(p.absDays>0?" (결근 "+p.absDays+"일 차감)":""),mf4,comma(p.mealActual)+"원");
+        if(p.mealAmt>0){var mf4=p.absDays>0?"월 "+comma(p.mealAmt)+"원 × ("+(mWD4-p.absDays)+"일 ÷ "+mWD4+"일) 결근차감":"월 고정 (비과세)"; h+=frow("식대"+(p.absDays>0?" (결근 "+p.absDays+"일 차감)":""),mf4,comma(p.mealActual)+"원");}
+        if(p.carAmt>0){var cf4=p.absDays>0?"월 "+comma(p.carAmt)+"원 × ("+(mWD4-p.absDays)+"일 ÷ "+mWD4+"일) 결근차감":"월 고정 (비과세)"; h+=frow("자가운전보조금"+(p.absDays>0?" (결근 "+p.absDays+"일 차감)":""),cf4,comma(p.carActual)+"원");}
       }
     }
     } // end else (not parttime)
-    // 식대 (parttime은 위 블록 내 처리, over5/under5는 각 섹션 내 처리됨)
-    if(p.mode==="parttime"&&p.mealAmt>0){}
+    // 비과세 항목 (parttime은 위 블록 내 처리, over5/under5는 각 섹션 내 처리됨)
+    if(p.mode==="parttime"&&(p.mealAmt>0||p.carAmt>0)){}
     // 추가 지급
     if(p.extras&&p.extras.length){
       h+="<div class='sl-sec'>▸ 추가 지급 (4대보험 적용)</div>";
@@ -3198,7 +3234,7 @@ function printSlip(eid){
     } else s+="<tr style='color:#dc2626;font-size:10px'><td style='padding:2px 6px 2px 14px'>└ 주휴수당 미지급 (주15h 미만)</td><td style='text-align:right;padding:2px 6px'>0원</td></tr>";
     s+="<tr><td style='padding:4px 6px'>야간근로수당 포괄 ("+p.nightH+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.nightPayFixed)+"원</td></tr>";
     s+="<tr style='font-weight:700;border-top:1px solid #ddd'><td style='padding:4px 6px'>포괄임금 합계</td><td style='text-align:right;padding:4px 6px'>"+comma(p.totalPay)+"원</td></tr>";
-    if(p.mealAmt>0){ s+="<tr style='background:#f0f9ff'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#0369a1'>▸ 비과세 항목</td></tr>"; s+="<tr><td style='padding:3px 6px'>식대"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.mealActual)+"원</td></tr>"; }
+    if(p.mealAmt>0||p.carAmt>0){ s+="<tr style='background:#f0f9ff'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#0369a1'>▸ 비과세 항목</td></tr>"; if(p.mealAmt>0) s+="<tr><td style='padding:3px 6px'>식대"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.mealActual)+"원</td></tr>"; if(p.carAmt>0) s+="<tr><td style='padding:3px 6px'>자가운전보조금"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.carActual)+"원</td></tr>"; }
     if(p.tot.ext>0||p.tot.night>0||p.tot.holiday>0||p.tot.early>0||p.lostJuhyu>0){
       s+="<tr style='background:#fff7ed'><td colspan='2' style='padding:4px 6px;font-weight:700;font-size:10px;color:#92400e'>▸ 추가 수당 / 차감</td></tr>";
       if(p.tot.ext>0) s+="<tr><td style='padding:4px 6px'>추가 연장 ("+p.tot.ext.toFixed(1)+"h × 1.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.ext)+"원</td></tr>";
@@ -3217,7 +3253,7 @@ function printSlip(eid){
     if(p.tot.night>0) s+="<tr><td style='padding:4px 6px'>야간연장수당 ("+p.tot.night.toFixed(1)+"h × 2.0)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.night)+"원</td></tr>";
     if(p.tot.holiday>0) s+="<tr><td style='padding:4px 6px'>휴일수당 ("+p.tot.holiday.toFixed(1)+"h × 1.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.hol)+"원</td></tr>";
     if(p.tot.early>0) s+="<tr style='color:#2563eb'><td style='padding:4px 6px'>조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)</td><td style='text-align:right;padding:4px 6px'>-"+comma(p.earlyDed)+"원</td></tr>";
-    if(p.mealAmt>0){ s+="<tr style='background:#f0f9ff'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#0369a1'>▸ 비과세 항목</td></tr>"; s+="<tr><td style='padding:3px 6px'>식대"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.mealActual)+"원</td></tr>"; }
+    if(p.mealAmt>0||p.carAmt>0){ s+="<tr style='background:#f0f9ff'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#0369a1'>▸ 비과세 항목</td></tr>"; if(p.mealAmt>0) s+="<tr><td style='padding:3px 6px'>식대"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.mealActual)+"원</td></tr>"; if(p.carAmt>0) s+="<tr><td style='padding:3px 6px'>자가운전보조금"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.carActual)+"원</td></tr>"; }
   }
   if(p.absDays>0) s+="<tr style='color:#dc2626'><td style='padding:4px 6px'>결근 임금차감 ("+p.absDays+"일)</td><td style='text-align:right;padding:4px 6px'>-"+comma(p.absDeduct)+"원</td></tr>";
   if(p.extras&&p.extras.length){ s+="<tr style='background:#f0fdf4'><td colspan='2' style='padding:4px 6px;font-weight:700;font-size:10px;color:#166534'>▸ 추가 지급</td></tr>"; for(var xi=0;xi<p.extras.length;xi++) s+="<tr><td style='padding:4px 6px'>"+p.extras[xi].label+"</td><td style='text-align:right;padding:4px 6px'>"+comma(p.extras[xi].amount)+"원</td></tr>"; }
@@ -3262,6 +3298,7 @@ function printSlip(eid){
   if(p.tot.night>0) s2+="<tr><td style='padding:4px 6px'>야간연장수당<div style='font-size:10px;color:#888'>"+p.tot.night.toFixed(1)+"h × 2.0배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.night)+"원</td></tr>";
   if(p.tot.holiday>0) s2+="<tr><td style='padding:4px 6px'>휴일수당<div style='font-size:10px;color:#888'>"+p.tot.holiday.toFixed(1)+"h × 1.5배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.hol)+"원</td></tr>";
   if(p.mealAmt>0) s2+="<tr style='background:#f0f9ff'><td style='padding:4px 6px'>식대 (비과세)"+(p.absDays>0?"<div style='font-size:10px;color:#888'>결근 "+p.absDays+"일 차감</div>":"")+"</td><td style='text-align:right;padding:4px 6px;vertical-align:top'>"+comma(p.mealActual)+"원</td></tr>";
+  if(p.carAmt>0)  s2+="<tr style='background:#f0f9ff'><td style='padding:4px 6px'>자가운전보조금 (비과세)"+(p.absDays>0?"<div style='font-size:10px;color:#888'>결근 "+p.absDays+"일 차감</div>":"")+"</td><td style='text-align:right;padding:4px 6px;vertical-align:top'>"+comma(p.carActual)+"원</td></tr>";
   if(p.extras&&p.extras.length){ s2+="<tr style='background:#f0fdf4'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#166534'>▸ 추가 지급</td></tr>"; for(var xi2=0;xi2<p.extras.length;xi2++) s2+="<tr><td style='padding:4px 6px'>"+p.extras[xi2].label+"</td><td style='text-align:right;padding:4px 6px'>"+comma(p.extras[xi2].amount)+"원</td></tr>"; }
   if(p.lostJuhyu>0||p.absDays>0||p.tot.early>0){
     s2+="<tr style='background:#fff7ed'><td colspan='2' style='padding:4px 6px;font-weight:700;font-size:10px;color:#92400e'>▸ 차감 항목</td></tr>";
@@ -3334,7 +3371,7 @@ function buildContractHTML(eid){
     baseText="월 금 <b>"+comma(e.base)+"원</b> (₩ "+comma(e.base)+")<br>"
       +"&nbsp;· 수습기간 3개월, 최저시급의 90% 적용. 수습 중 퇴사 시 식대·상여금 미지급.";
   }
-  mealText="· 식대: 월 <b>"+comma(e.meal||0)+"원</b> (비과세, 연차 사용 시 전액 지급 / 결근 시 일수 비례 차감)&nbsp;&nbsp;· 명절상여금: 유&nbsp;&nbsp;· 주휴수당: 유";
+  mealText="· 식대: 월 <b>"+comma(e.meal||0)+"원</b> (비과세, 연차 사용 시 전액 지급 / 결근 시 일수 비례 차감)"+(e.carAllow>0?"&nbsp;&nbsp;· 자가운전보조금: 월 <b>"+comma(e.carAllow)+"원</b> (비과세, 결근 시 일수 비례 차감)":"")+"&nbsp;&nbsp;· 명절상여금: 유&nbsp;&nbsp;· 주휴수당: 유";
   var h="<div style='font-family:\"맑은 고딕\",\"Apple SD Gothic Neo\",sans-serif;max-width:700px;margin:0 auto;font-size:12px;line-height:1.7;color:#1a1a1a'>";
   h+="<style>@media print{table{page-break-inside:auto}tr{page-break-inside:avoid}div{page-break-inside:auto}}</style>";
   h+="<p style='text-align:center;font-size:11.5px;color:#666;margin:0 0 3px'>근로계약서 (떡류 제조업 / 5인 이상 사업장)</p>";
@@ -3468,7 +3505,7 @@ function dlContract(eid){
       "· 수습기간 3개월, 최저시급 90% 적용. 수습 중 퇴사 시 식대·상여금 미지급."
     ]);
   }
-  var mealLine="· 식대: 월 "+comma(e.meal||0)+"원 (비과세, 연차 사용 시 전액 지급 / 결근 시 일수 비례 차감)  · 명절상여금: 유  · 주휴수당: 유";
+  var mealLine="· 식대: 월 "+comma(e.meal||0)+"원 (비과세, 연차 사용 시 전액 지급 / 결근 시 일수 비례 차감)"+(e.carAllow>0?"  · 자가운전보조금: 월 "+comma(e.carAllow)+"원 (비과세, 결근 시 일수 비례 차감)":"")+"  · 명절상여금: 유  · 주휴수당: 유";
   var now2=new Date(), signDateStr=now2.getFullYear()+"년 "+(now2.getMonth()+1)+"월 "+now2.getDate()+"일";
   var ch=[
     pp("근로계약서 (떡류 제조업 / 5인 이상 사업장)",{center:true,size:18,color:"555555",before:0,after:40}),
