@@ -1140,7 +1140,7 @@
                       <div id="deokConfigList" style="display:flex;flex-direction:column;gap:6px;"></div>
                       <!-- 찰떡류 선택 영역 -->
                       <div id="deokChalArea" style="display:none;margin-top:8px;background:#fff9f0;border:1.5px solid var(--brown-pale);border-radius:8px;padding:10px;">
-                        <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🍡 찰떡류 선택</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🍡 구성 선택</div>
                         <div id="deokChalSlots" style="display:flex;flex-direction:column;gap:6px;"></div>
                         <div id="deokPricePreview" style="font-size:13px;font-weight:700;color:var(--accent-red);margin-top:8px;"></div>
                         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
@@ -1185,6 +1185,38 @@
                   <div id="ibaji-order-buttons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
                   <div id="ibaji-order-compose" style="display:none;">
                     <div id="ibaji-order-config-area"></div>
+                  </div>
+                </div>
+
+                <!-- 추석세트 -->
+                <div id="tarea-chuseok" style="display:none;background:#fff9f0;border:1.5px solid var(--brown-pale);border-radius:10px;padding:10px;margin-bottom:6px;">
+                  <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;">🎑 추석세트</div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                    <button type="button" onclick="selectChuseokHo('추석1호')" id="chuseokho-추석1호" style="flex:1;min-width:70px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">1호</button>
+                    <button type="button" onclick="selectChuseokHo('추석2호')" id="chuseokho-추석2호" style="flex:1;min-width:70px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">2호</button>
+                    <button type="button" onclick="selectChuseokHo('추석3호')" id="chuseokho-추석3호" style="flex:1;min-width:70px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">3호</button>
+                    <button type="button" onclick="selectChuseokHo('추석3호반반')" id="chuseokho-추석3호반반" style="flex:1;min-width:90px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">3호반반</button>
+                  </div>
+                  <div id="chuseokConfigList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                  <div id="chuseokChalArea" style="display:none;margin-top:8px;background:#fff;border:1.5px solid var(--brown-pale);border-radius:8px;padding:10px;">
+                    <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🍡 구성 선택</div>
+                    <div id="chuseokChalSlots" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    <div id="chuseokPricePreview" style="font-size:13px;font-weight:700;color:var(--accent-red);margin-top:8px;"></div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                      <span style="font-size:13px;color:var(--brown-mid);font-weight:700;">수량:</span>
+                      <input type="number" id="chuseokQty" value="1" min="1" style="width:70px;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="updateChuseokPrice()">
+                      <span style="font-size:13px;color:var(--brown-mid);">세트</span>
+                    </div>
+                    <button type="button" onclick="addChuseokSetItem()" style="width:100%;margin-top:8px;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+                  </div>
+                  <div id="chuseokFixedAddRow" style="display:none;margin-top:8px;background:#fff;border:1.5px solid var(--brown-pale);border-radius:8px;padding:10px;">
+                    <div id="chuseokFixedPreview" style="font-size:13px;font-weight:700;color:var(--accent-red);margin-bottom:6px;"></div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <span style="font-size:13px;color:var(--brown-mid);font-weight:700;">수량:</span>
+                      <input type="number" id="chuseokQtyFixed" value="1" min="1" style="width:70px;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;" oninput="updateChuseokFixedPreview()">
+                      <span style="font-size:13px;color:var(--brown-mid);">세트</span>
+                    </div>
+                    <button type="button" onclick="addChuseokSetItem()" style="width:100%;padding:8px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
                   </div>
                 </div>
 
@@ -2745,6 +2777,7 @@
               <select id="deok-add-type" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">
                 <option value="덕세트">덕세트</option>
                 <option value="덕6구세트">덕6구세트</option>
+                <option value="추석세트">추석세트</option>
               </select>
               <input id="deok-add-label" placeholder="구성 라벨 (예: 찹쌀떡30구 4종)" style="flex:2;min-width:150px;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">
               <input id="deok-add-price" type="number" placeholder="기본가" style="width:90px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">
@@ -3522,6 +3555,7 @@ const SET_DB = {
   '쿠키상자(소)': { boxFee: 1500 },
   '덕세트': { baseMocciPrice: 1800, baseChalPrice: 1000 }, // 모찌 기준단가 1800원, 찰떡류 기준단가 1000원
   '덕6구세트': { baseMocciPrice: 1800, baseChalPrice: 1000 },
+  '추석3호반반': { baseMocciPrice: 0, baseChalPrice: 1000 }, // 추석 반반구성 기준단가 (구성별로 개별 chalBasePrice로 덮어씀)
 };
 
 // 이바지 세트 구성 정의
@@ -3605,6 +3639,56 @@ const DEOK_SET_CONFIGS = [
     basePrice: 33000,
     items: [{name:'앙금절편',qty:40}],
     hasChalTteok: false,
+  },
+  // ── 추석1호 (택1, 고정금액) ──
+  { id: 'chuseok1_1', setType: '추석1호', label: '모시송편(흑임자) 15개입', basePrice: 16500, items: [{name:'모시송편(흑임자)',qty:'15개입'}], hasChalTteok: false },
+  { id: 'chuseok1_2', setType: '추석1호', label: '주먹송편(녹두기피) 10개입', basePrice: 16500, items: [{name:'주먹송편(녹두기피)',qty:'10개입'}], hasChalTteok: false },
+  { id: 'chuseok1_3', setType: '추석1호', label: '서리태콩송편 900g~1kg', basePrice: 18000, items: [{name:'서리태콩송편',qty:'900g~1kg'}], hasChalTteok: false },
+  { id: 'chuseok1_4', setType: '추석1호', label: '옛날송편(깨) 900g~1kg', basePrice: 18000, items: [{name:'옛날송편(깨)',qty:'900g~1kg'}], hasChalTteok: false },
+  { id: 'chuseok1_5', setType: '추석1호', label: '옛날송편(녹두기피) 900g~1kg', basePrice: 19000, items: [{name:'옛날송편(녹두기피)',qty:'900g~1kg'}], hasChalTteok: false },
+  { id: 'chuseok1_6', setType: '추석1호', label: '알송편(깨) 900g~1kg', basePrice: 18000, items: [{name:'알송편(깨)',qty:'900g~1kg'}], hasChalTteok: false },
+  // ── 추석2호 (택1, 고정금액) ──
+  { id: 'chuseok2_1', setType: '추석2호', label: '모시송편(흑임자) 20개입', basePrice: 25000, items: [{name:'모시송편(흑임자)',qty:'20개입'}], hasChalTteok: false },
+  { id: 'chuseok2_2', setType: '추석2호', label: '주먹송편(녹두기피) 16개입', basePrice: 29000, items: [{name:'주먹송편(녹두기피)',qty:'16개입'}], hasChalTteok: false },
+  { id: 'chuseok2_3', setType: '추석2호', label: '서리태콩송편 1.2~1.4kg', basePrice: 36000, items: [{name:'서리태콩송편',qty:'1.2~1.4kg'}], hasChalTteok: false },
+  { id: 'chuseok2_4', setType: '추석2호', label: '옛날송편(깨) 1.2~1.4kg', basePrice: 36000, items: [{name:'옛날송편(깨)',qty:'1.2~1.4kg'}], hasChalTteok: false },
+  { id: 'chuseok2_5', setType: '추석2호', label: '옛날송편(녹두기피) 1.2~1.4kg', basePrice: 37000, items: [{name:'옛날송편(녹두기피)',qty:'1.2~1.4kg'}], hasChalTteok: false },
+  { id: 'chuseok2_6', setType: '추석2호', label: '알송편(깨) 1.2~1.4kg', basePrice: 36000, items: [{name:'알송편(깨)',qty:'1.2~1.4kg'}], hasChalTteok: false },
+  // ── 추석3호 (택1, 고정금액) ──
+  { id: 'chuseok3ho_1', setType: '추석3호', label: '모시송편(흑임자) 30개입', basePrice: 43000, items: [{name:'모시송편(흑임자)',qty:'30개입'}], hasChalTteok: false },
+  { id: 'chuseok3ho_2', setType: '추석3호', label: '주먹송편(녹두기피) 24개입', basePrice: 45000, items: [{name:'주먹송편(녹두기피)',qty:'24개입'}], hasChalTteok: false },
+  { id: 'chuseok3ho_3', setType: '추석3호', label: '서리태콩송편 1.8~2kg', basePrice: 43000, items: [{name:'서리태콩송편',qty:'1.8~2kg'}], hasChalTteok: false },
+  { id: 'chuseok3ho_4', setType: '추석3호', label: '옛날송편(깨) 1.8~2kg', basePrice: 43000, items: [{name:'옛날송편(깨)',qty:'1.8~2kg'}], hasChalTteok: false },
+  { id: 'chuseok3ho_5', setType: '추석3호', label: '옛날송편(녹두기피) 1.8~2kg', basePrice: 45000, items: [{name:'옛날송편(녹두기피)',qty:'1.8~2kg'}], hasChalTteok: false },
+  { id: 'chuseok3ho_6', setType: '추석3호', label: '알송편(깨) 1.8~2kg', basePrice: 43000, items: [{name:'알송편(깨)',qty:'1.8~2kg'}], hasChalTteok: false },
+  // ── 추석3호 반반구성 (송편/찰떡 기준단가 1,000원 - 개당 실제단가와의 차액이 자동으로 추가금에 반영됨) ──
+  {
+    id: 'chuseok3_1', setType: '추석3호반반', label: '① 송편 택2',
+    basePrice: 45000,
+    items: [],
+    hasChalTteok: true, chalBasePrice: 1000,
+    chalTteokSlots: [{qty:1,label:'송편1'},{qty:1,label:'송편2'}],
+  },
+  {
+    id: 'chuseok3_2', setType: '추석3호반반', label: '② 찹쌀떡3종10개입+송편 택1',
+    basePrice: 46000,
+    items: [{name:'흰모찌',qty:4},{name:'쑥모찌',qty:4},{name:'호박모찌',qty:2}],
+    hasChalTteok: true, chalBasePrice: 1000,
+    chalTteokSlots: [{qty:1,label:'송편'}],
+  },
+  {
+    id: 'chuseok3_3', setType: '추석3호반반', label: '③ 찰떡2종18개입+송편 택1',
+    basePrice: 46000,
+    items: [],
+    hasChalTteok: true, chalBasePrice: 1000,
+    chalTteokSlots: [{qty:9,label:'찰떡1'},{qty:9,label:'찰떡2'},{qty:1,label:'송편'}],
+  },
+  {
+    id: 'chuseok3_4', setType: '추석3호반반', label: '④ 앙금2종20개입+송편 택1',
+    basePrice: 43000,
+    items: [{name:'앙금절편',qty:20}],
+    hasChalTteok: true, chalBasePrice: 1000,
+    chalTteokSlots: [{qty:1,label:'송편'}],
   },
 ];
 
@@ -3883,7 +3967,7 @@ function renderTteokAllList() {
   }
   list.innerHTML = keys.map(function(name) {
     const db = TTEOK_DB[name];
-    const safeN = name.replace(/'/g, "\\'");
+    const safeN = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const noteColor = db.note ? '#fff3cd' : '#fafafa';
     const noteBorder = db.note ? '#ffc107' : 'var(--border)';
     return '<div draggable="true" data-tteok-name="' + name.replace(/"/g,'&quot;') + '" ' +
@@ -4163,7 +4247,7 @@ function selectTteokCategory(cat) {
 function chooseSetType(setType) {
   window._currentSetType = setType;
   window._deokConfigId = null;
-  ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트','이바지大','이바지小'].forEach(function(s) {
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트','추석세트','이바지大','이바지小'].forEach(function(s) {
     const b = document.getElementById('setbtn-' + s);
     if (b) {
       b.style.background = s === setType ? 'var(--brown-deep)' : '#fff';
@@ -4180,7 +4264,7 @@ function chooseSetType(setType) {
 
   const isKorea = setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)';
   const isDeok6 = setType === '덕6구세트';
-  const isDeok = setType === '덕세트' || setType === '덕6구세트';
+  const isDeok = setType === '덕세트' || setType === '덕6구세트' || setType === '추석세트';
   const isIbaji = setType === '이바지大' || setType === '이바지小';
   const totalQtyRow = document.getElementById('setTotalQtyRow');
   const koreanSetAddRow = document.getElementById('koreanSetAddRow');
@@ -4189,7 +4273,7 @@ function chooseSetType(setType) {
   if (totalQtyRow) totalQtyRow.style.display = (isKorea || isDeok) ? 'none' : 'flex';
   if (koreanSetAddRow) koreanSetAddRow.style.display = 'none';
   if (deokConfigArea) {
-    if (setType === '덕세트' || setType === '덕6구세트') {
+    if (setType === '덕세트' || setType === '덕6구세트' || setType === '추석세트') {
       deokConfigArea.style.display = 'block';
       renderDeokConfigs(setType);
     } else if (isIbaji) {
@@ -4587,6 +4671,7 @@ function renderCatLabelSettings() {
 const DEFAULT_ORDER_CATS = [
   { id: 'cat_set', name: '선물세트', icon: '📦', items: ['__분홍세트__', '__은혜세트__'] },
   { id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] },
+  { id: 'cat_chuseok', name: '추석세트', icon: '🎑', items: ['__추석세트__'] },
 ];
 
 window.ORDER_CATEGORIES = JSON.parse(JSON.stringify(DEFAULT_ORDER_CATS));
@@ -4601,6 +4686,9 @@ function loadOrderCategories() {
       if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
         window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
       }
+      if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_chuseok'; })) {
+        window.ORDER_CATEGORIES.push({ id: 'cat_chuseok', name: '추석세트', icon: '🎑', items: ['__추석세트__'] });
+      }
     } catch(e) {}
   }
   renderOrderCategoryButtons();
@@ -4613,6 +4701,9 @@ function loadOrderCategories() {
         window.ORDER_CATEGORIES = data.data.orderCategories;
         if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
           window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
+        }
+        if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_chuseok'; })) {
+          window.ORDER_CATEGORIES.push({ id: 'cat_chuseok', name: '추석세트', icon: '🎑', items: ['__추석세트__'] });
         }
         cleanOrphanCatItems();
         localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
@@ -4629,7 +4720,7 @@ function saveOrderCategories() {
 // 카테고리에 있는데 TTEOK_DB에 없는 유령 항목 자동 정리
 function cleanOrphanCatItems() {
   const validNames = Object.keys(TTEOK_DB);
-  const specials = ['__분홍세트__', '__은혜세트__', '__이바지大__', '__이바지小__', '__덕세트__', '__덕6구세트__'];
+  const specials = ['__분홍세트__', '__은혜세트__', '__이바지大__', '__이바지小__', '__덕세트__', '__덕6구세트__', '__추석세트__'];
   let changed = false;
   window.ORDER_CATEGORIES.forEach(function(cat) {
     const before = cat.items.length;
@@ -4684,28 +4775,41 @@ function selectOrderCategory(catId) {
   // 이바지 세트 감지
   const hasIbaji = cat.items.some(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
   const ibajiArea = document.getElementById('tarea-ibaji');
+  // 추석세트 감지
+  const hasChuseok = cat.items.includes('__추석세트__');
+  const chuseokArea = document.getElementById('tarea-chuseok');
 
-  if (hasIbaji) {
+  if (hasChuseok) {
     if (setArea) setArea.style.display = 'none';
     if (eachArea) eachArea.style.display = 'none';
     if (doeArea) doeArea.style.display = 'none';
+    if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) { chuseokArea.style.display = 'block'; renderChuseokConfigs(); }
+  } else if (hasIbaji) {
+    if (setArea) setArea.style.display = 'none';
+    if (eachArea) eachArea.style.display = 'none';
+    if (doeArea) doeArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
     if (ibajiArea) { ibajiArea.style.display = 'block'; renderIbajiOrderButtons(cat.items); }
   } else if (hasSet) {
     if (setArea) setArea.style.display = 'block';
     if (eachArea) eachArea.style.display = 'none';
     if (doeArea) doeArea.style.display = 'none';
     if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
   } else if (hasDoe && !hasEach) {
     if (setArea) setArea.style.display = 'none';
     if (eachArea) eachArea.style.display = 'none';
     if (doeArea) doeArea.style.display = 'block';
     if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
     initDoeTteokSelFiltered(cat.items);
   } else {
     if (setArea) setArea.style.display = 'none';
     if (eachArea) eachArea.style.display = 'block';
     if (doeArea) doeArea.style.display = 'none';
     if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
   }
 }
 
@@ -4737,6 +4841,7 @@ function getCatItemLabel(name) {
     : name === '__은혜세트__' ? '🎁 은혜세트'
     : name === '__이바지大__' ? '🎀 이바지大'
     : name === '__이바지小__' ? '🎀 이바지小'
+    : name === '__추석세트__' ? '🎑 추석세트'
     : '🍡 ' + name;
 }
 
@@ -5076,18 +5181,29 @@ function selectEditCategory(catId) {
   const eachArea = document.getElementById('edit-tarea-each');
   const doeArea = document.getElementById('edit-tarea-doe');
   const ibajiArea = document.getElementById('edit-tarea-ibaji');
+  const chuseokArea = document.getElementById('edit-tarea-chuseok');
+  // 추석세트 감지 (최우선)
+  const hasChuseok = cat.items.includes('__추석세트__');
   // 이바지 감지 (선물세트와 분리)
-  const hasIbaji = cat.items.some(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
-  const hasSet = !hasIbaji && cat.items.some(function(i){ return i.startsWith('__'); });
+  const hasIbaji = !hasChuseok && cat.items.some(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
+  const hasSet = !hasChuseok && !hasIbaji && cat.items.some(function(i){ return i.startsWith('__'); });
   const hasDoe = cat.items.some(function(i){ return TTEOK_DB[i] && TTEOK_DB[i].unit === '되'; });
   const hasEach = cat.items.some(function(i){ return !i.startsWith('__') && TTEOK_DB[i] && TTEOK_DB[i].unit !== '되'; });
-  if (hasIbaji) {
+  if (hasChuseok) {
     if (setArea) setArea.style.display = 'none';
     if (eachArea) eachArea.style.display = 'none';
     if (doeArea) doeArea.style.display = 'none';
+    if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) { chuseokArea.style.display = 'block'; renderEditChuseokConfigs(); }
+  } else if (hasIbaji) {
+    if (setArea) setArea.style.display = 'none';
+    if (eachArea) eachArea.style.display = 'none';
+    if (doeArea) doeArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
     if (ibajiArea) { ibajiArea.style.display = 'block'; renderEditIbajiButtons(cat.items); }
   } else {
     if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
     if (setArea) setArea.style.display = hasSet ? 'block' : 'none';
     if (eachArea) eachArea.style.display = (!hasSet && (hasEach || (!hasDoe))) ? 'block' : 'none';
     if (doeArea) doeArea.style.display = (!hasSet && hasDoe && !hasEach) ? 'block' : 'none';
@@ -5151,7 +5267,7 @@ function updateEditTteokPrice() {
 
 function editChooseSetType(setType) {
   window._editCurrentSetType = setType;
-  ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트'].forEach(function(s) {
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트','추석세트'].forEach(function(s) {
     const b = document.getElementById('edit-setbtn-' + s);
     if (b) { b.style.background = s===setType?'var(--brown-deep)':'#fff'; b.style.color = s===setType?'#fff':'var(--brown-mid)'; b.style.borderColor = s===setType?'var(--brown-deep)':'var(--border)'; }
   });
@@ -5163,7 +5279,7 @@ function editChooseSetType(setType) {
   document.getElementById('edit-setPricePreview').textContent = '';
 
   const isKorea = setType === '코리아(대)' || setType === '코리아(소)' || setType === '쿠키상자(대)' || setType === '쿠키상자(소)';
-  const isDeok = setType === '덕세트' || setType === '덕6구세트';
+  const isDeok = setType === '덕세트' || setType === '덕6구세트' || setType === '추석세트';
 
   // 코리아/덕세트는 총수량 숨기고 전용 영역 표시
   const totalQtyRow = document.getElementById('edit-setTotalQtyRow');
@@ -5319,7 +5435,178 @@ function addEditDeokItem() {
   document.getElementById('edit-deokConfigArea').style.display = 'none';
   document.getElementById('edit-deokChalArea').style.display = 'none';
   document.getElementById('edit-deokFixedAddRow').style.display = 'none';
-  ['덕세트','덕6구세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
+  ['덕세트','덕6구세트','추석세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
+  showToast('✅ 추가됐어요!', 'success');
+}
+
+// ============ 추석세트 (수정모달, 독립 탭) ============
+window._editChuseokHo = null;
+window._editChuseokConfigId = null;
+window._editChuseokChalSels = {};
+
+function renderEditChuseokConfigs() {
+  window._editChuseokHo = null;
+  window._editChuseokConfigId = null;
+  window._editChuseokChalSels = {};
+  const list = document.getElementById('edit-chuseokConfigList');
+  if (list) list.innerHTML = '<div style="text-align:center;padding:10px;color:#aaa;font-size:11px;">위에서 호수를 먼저 선택해주세요.</div>';
+  ['추석1호','추석2호','추석3호','추석3호반반'].forEach(function(s) {
+    const b = document.getElementById('edit-chuseokho-' + s);
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; b.style.borderColor = 'var(--border)'; }
+  });
+  const chalArea = document.getElementById('edit-chuseokChalArea');
+  const fixedRow = document.getElementById('edit-chuseokFixedAddRow');
+  if (chalArea) chalArea.style.display = 'none';
+  if (fixedRow) fixedRow.style.display = 'none';
+}
+
+function selectEditChuseokHo(setType) {
+  window._editChuseokHo = setType;
+  window._editChuseokConfigId = null;
+  window._editChuseokChalSels = {};
+  ['추석1호','추석2호','추석3호','추석3호반반'].forEach(function(s) {
+    const b = document.getElementById('edit-chuseokho-' + s);
+    if (b) {
+      b.style.background = s === setType ? 'var(--brown-deep)' : '#fff';
+      b.style.color = s === setType ? '#fff' : 'var(--brown-mid)';
+      b.style.borderColor = s === setType ? 'var(--brown-deep)' : 'var(--border)';
+    }
+  });
+  const list = document.getElementById('edit-chuseokConfigList');
+  if (list) {
+    const configs = DEOK_SET_CONFIGS.filter(function(c){ return c.setType === setType; });
+    list.innerHTML = configs.map(function(cfg) {
+      return '<div onclick="selectEditChuseokConfig(\'' + cfg.id + '\')" id="edit-chuseokcfg-' + cfg.id + '" ' +
+        'style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:#fff;margin-bottom:4px;">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--brown-mid);">' + (cfg.customLabel||cfg.label) + '</div>' +
+        '<div style="font-size:11px;color:var(--accent-red);">' + cfg.basePrice.toLocaleString() + '원~</div>' +
+        '</div>';
+    }).join('');
+  }
+  document.getElementById('edit-chuseokChalArea').style.display = 'none';
+  document.getElementById('edit-chuseokFixedAddRow').style.display = 'none';
+}
+
+function selectEditChuseokConfig(configId) {
+  window._editChuseokConfigId = configId;
+  window._editChuseokChalSels = {};
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === configId; });
+  if (!cfg) return;
+  DEOK_SET_CONFIGS.filter(function(c){ return c.setType === cfg.setType; }).forEach(function(c) {
+    const btn = document.getElementById('edit-chuseokcfg-' + c.id);
+    if (btn) { btn.style.borderColor = c.id === configId ? 'var(--brown-deep)' : 'var(--border)'; btn.style.background = c.id === configId ? '#fff9f0' : '#fff'; }
+  });
+  if (cfg.hasChalTteok) {
+    document.getElementById('edit-chuseokChalArea').style.display = 'block';
+    document.getElementById('edit-chuseokFixedAddRow').style.display = 'none';
+    renderEditChuseokChalSlots(cfg);
+  } else {
+    document.getElementById('edit-chuseokChalArea').style.display = 'none';
+    document.getElementById('edit-chuseokFixedAddRow').style.display = 'block';
+    updateEditChuseokFixedPreview();
+  }
+}
+
+function renderEditChuseokChalSlots(cfg) {
+  const slots = document.getElementById('edit-chuseokChalSlots');
+  if (!slots) return;
+  slots.innerHTML = cfg.chalTteokSlots.map(function(slot, idx) {
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">' +
+      '<span style="font-size:11px;color:var(--brown-mid);min-width:55px;">' + slot.label + '(' + slot.qty + '개)</span>' +
+      '<div style="position:relative;flex:1;">' +
+      '<input id="edit-chuseokChal-' + idx + '-input" type="text" placeholder="떡 검색..." autocomplete="off" ' +
+      'style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:11px;box-sizing:border-box;" ' +
+      'oninput="filterEditChuseokChal(\'' + idx + '\',this.value)" onfocus="filterEditChuseokChal(\'' + idx + '\',this.value)" onblur="setTimeout(function(){var d=document.getElementById(\'edit-chuseokChal-\'+idx+\'-dd\');if(d)d.style.display=\'none\'},200)">' +
+      '<div id="edit-chuseokChal-' + idx + '-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:120px;overflow-y:auto;z-index:999;"></div>' +
+      '<input type="hidden" id="edit-chuseokChal-' + idx + '-val">' +
+      '</div></div>';
+  }).join('');
+  const qtyEl = document.getElementById('edit-chuseokQty');
+  if (qtyEl) qtyEl.value = 1;
+  updateEditChuseokPrice();
+}
+
+function filterEditChuseokChal(idx, kw) {
+  const dd = document.getElementById('edit-chuseokChal-' + idx + '-dd');
+  if (!dd) return;
+  const all = Object.keys(TTEOK_DB).filter(function(n){ return TTEOK_DB[n].unitPrice > 0; });
+  const filtered = kw ? all.filter(function(n){ return n.includes(kw); }) : all;
+  dd.innerHTML = filtered.map(function(name) {
+    return '<div onclick="selectEditChuseokChal(' + idx + ',\'' + name + '\')" style="padding:6px 10px;cursor:pointer;font-size:11px;" onmouseenter="this.style.background=\'#f5f0eb\'" onmouseleave="this.style.background=\'#fff\'">🍡 ' + name + '</div>';
+  }).join('');
+  dd.style.display = filtered.length ? 'block' : 'none';
+}
+
+function selectEditChuseokChal(idx, name) {
+  window._editChuseokChalSels[idx] = name;
+  const inp = document.getElementById('edit-chuseokChal-' + idx + '-input');
+  const val = document.getElementById('edit-chuseokChal-' + idx + '-val');
+  const dd = document.getElementById('edit-chuseokChal-' + idx + '-dd');
+  if (inp) inp.value = name; if (val) val.value = name; if (dd) dd.style.display = 'none';
+  updateEditChuseokPrice();
+}
+
+function updateEditChuseokPrice() {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._editChuseokConfigId; });
+  const preview = document.getElementById('edit-chuseokPricePreview');
+  if (!cfg) { if (preview) preview.textContent = ''; return; }
+  const basePrice = cfg.chalBasePrice || 1000;
+  let extra = 0;
+  cfg.chalTteokSlots.forEach(function(slot, idx) {
+    const name = window._editChuseokChalSels[idx];
+    if (name && TTEOK_DB[name]) {
+      extra += Math.max(0, (TTEOK_DB[name].unitPrice || 0) - basePrice) * slot.qty;
+    }
+  });
+  const qty = parseInt(document.getElementById('edit-chuseokQty') ? document.getElementById('edit-chuseokQty').value : 1) || 1;
+  const total = (cfg.basePrice + extra) * qty;
+  if (preview) preview.textContent = total.toLocaleString() + '원' + (extra > 0 ? ' (+' + (extra*qty).toLocaleString() + '원)' : '');
+}
+
+function updateEditChuseokFixedPreview() {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._editChuseokConfigId; });
+  const preview = document.getElementById('edit-chuseokFixedPreview');
+  if (!cfg) { if (preview) preview.textContent = ''; return; }
+  const qty = parseInt(document.getElementById('edit-chuseokQtyFixed') ? document.getElementById('edit-chuseokQtyFixed').value : 1) || 1;
+  const total = cfg.basePrice * qty;
+  if (preview) preview.textContent = total.toLocaleString() + '원' + (qty > 1 ? ' × ' + qty + '세트' : '');
+}
+
+function addEditChuseokItem() {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._editChuseokConfigId; });
+  if (!cfg) { showToast('구성을 선택해주세요.', 'error'); return; }
+  let extra = 0, chalDesc = [], qty = 1;
+  if (cfg.hasChalTteok) {
+    const basePrice = cfg.chalBasePrice || 1000;
+    for (let i = 0; i < cfg.chalTteokSlots.length; i++) {
+      const name = window._editChuseokChalSels[i] || '';
+      if (!name) { showToast('구성을 모두 선택해주세요.', 'error'); return; }
+      const diff = Math.max(0, (TTEOK_DB[name]?TTEOK_DB[name].unitPrice:0) - basePrice);
+      extra += diff * cfg.chalTteokSlots[i].qty;
+      chalDesc.push(name + ' ' + cfg.chalTteokSlots[i].qty + '개');
+    }
+    qty = parseInt(document.getElementById('edit-chuseokQty') ? document.getElementById('edit-chuseokQty').value : 1) || 1;
+  } else {
+    qty = parseInt(document.getElementById('edit-chuseokQtyFixed') ? document.getElementById('edit-chuseokQtyFixed').value : 1) || 1;
+  }
+  const price = (cfg.basePrice + extra) * qty;
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + '개'); });
+  const allDesc = fixedDesc.concat(chalDesc);
+  const useLabel = cfg.customLabel || cfg.label;
+  const displayName = (cfg.customName||cfg.setType) + '(' + useLabel + (allDesc.length ? ' / ' + allDesc.join(', ') : '') + ')';
+  const saveName = (cfg.customName||cfg.setType) + '(' + (allDesc.length ? allDesc.join(', ') : useLabel) + ')';
+  editTteokItems.push({ name: saveName, displayName: displayName, qty: String(qty)+'세트', price: price });
+  renderEditTteokList(); calcEditTotal();
+  const ho = window._editChuseokHo;
+  window._editChuseokConfigId = null; window._editChuseokChalSels = {};
+  document.getElementById('edit-chuseokChalArea').style.display = 'none';
+  document.getElementById('edit-chuseokFixedAddRow').style.display = 'none';
+  const qEl1 = document.getElementById('edit-chuseokQty'); if (qEl1) qEl1.value = 1;
+  const qEl2 = document.getElementById('edit-chuseokQtyFixed'); if (qEl2) qEl2.value = 1;
+  DEOK_SET_CONFIGS.filter(function(c){ return c.setType === ho; }).forEach(function(c) {
+    const btn = document.getElementById('edit-chuseokcfg-' + c.id);
+    if (btn) { btn.style.borderColor = 'var(--border)'; btn.style.background = '#fff'; }
+  });
   showToast('✅ 추가됐어요!', 'success');
 }
 
@@ -5404,7 +5691,7 @@ function addEditTteokFromSet() {
   document.getElementById('edit-setTteokList').innerHTML = '';
   document.getElementById('edit-setTotalQty').value = '';
   document.getElementById('edit-setPricePreview').textContent = '';
-  ['분홍세트','은혜세트','코리아(대)','코리아(소)','덕세트','덕6구세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
+  ['분홍세트','은혜세트','코리아(대)','코리아(소)','덕세트','덕6구세트','추석세트'].forEach(function(s){ const b=document.getElementById('edit-setbtn-'+s); if(b){b.style.background='#fff';b.style.color='var(--brown-mid)';b.style.borderColor='var(--border)';} });
 }
 
 function updateEditDoePrice() {
@@ -5672,13 +5959,231 @@ function addDeokSetItem() {
   document.getElementById('deokConfigArea').style.display = 'none';
   document.getElementById('deokChalArea').style.display = 'none';
   document.getElementById('deokFixedAddRow').style.display = 'none';
-  ['덕세트','덕6구세트'].forEach(function(s) {
+  ['덕세트','덕6구세트','추석세트'].forEach(function(s) {
     const b = document.getElementById('setbtn-' + s);
     if (b) { b.style.background='#fff'; b.style.color='var(--brown-mid)'; b.style.borderColor='var(--border)'; }
   });
   showToast('✅ ' + cfg.setType + ' 추가됐어요!', 'success');
 }
 
+// ============ 추석세트 (독립 탭) ============
+window._chuseokHo = null;
+window._chuseokConfigId = null;
+window._chuseokChalSelections = {};
+
+function renderChuseokConfigs() {
+  // 탭 진입 시 초기화 (호 미선택 상태)
+  window._chuseokHo = null;
+  window._chuseokConfigId = null;
+  window._chuseokChalSelections = {};
+  const list = document.getElementById('chuseokConfigList');
+  if (list) list.innerHTML = '<div style="text-align:center;padding:14px;color:#aaa;font-size:12px;">위에서 호수를 먼저 선택해주세요.</div>';
+  ['추석1호','추석2호','추석3호','추석3호반반'].forEach(function(s) {
+    const b = document.getElementById('chuseokho-' + s);
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; b.style.borderColor = 'var(--border)'; }
+  });
+  const chalArea = document.getElementById('chuseokChalArea');
+  const fixedRow = document.getElementById('chuseokFixedAddRow');
+  if (chalArea) chalArea.style.display = 'none';
+  if (fixedRow) fixedRow.style.display = 'none';
+}
+
+function selectChuseokHo(setType) {
+  window._chuseokHo = setType;
+  window._chuseokConfigId = null;
+  window._chuseokChalSelections = {};
+  ['추석1호','추석2호','추석3호','추석3호반반'].forEach(function(s) {
+    const b = document.getElementById('chuseokho-' + s);
+    if (b) {
+      b.style.background = s === setType ? 'var(--brown-deep)' : '#fff';
+      b.style.color = s === setType ? '#fff' : 'var(--brown-mid)';
+      b.style.borderColor = s === setType ? 'var(--brown-deep)' : 'var(--border)';
+    }
+  });
+  const list = document.getElementById('chuseokConfigList');
+  if (list) {
+    const configs = DEOK_SET_CONFIGS.filter(function(c){ return c.setType === setType; });
+    list.innerHTML = configs.map(function(cfg) {
+      return '<div onclick="selectChuseokConfig(\'' + cfg.id + '\')" id="chuseokcfg-' + cfg.id + '" ' +
+        'style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:#fff;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--brown-mid);">' + (cfg.customLabel||cfg.label) + '</div>' +
+        '<div style="font-size:12px;color:var(--accent-red);font-weight:700;margin-top:2px;">' + cfg.basePrice.toLocaleString() + '원~</div>' +
+        '</div>';
+    }).join('');
+  }
+  document.getElementById('chuseokChalArea').style.display = 'none';
+  document.getElementById('chuseokFixedAddRow').style.display = 'none';
+}
+
+function selectChuseokConfig(configId) {
+  window._chuseokConfigId = configId;
+  window._chuseokChalSelections = {};
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === configId; });
+  if (!cfg) return;
+  DEOK_SET_CONFIGS.filter(function(c){ return c.setType === cfg.setType; }).forEach(function(c) {
+    const btn = document.getElementById('chuseokcfg-' + c.id);
+    if (btn) {
+      btn.style.borderColor = c.id === configId ? 'var(--brown-deep)' : 'var(--border)';
+      btn.style.background = c.id === configId ? '#fff9f0' : '#fff';
+    }
+  });
+  if (cfg.hasChalTteok) {
+    document.getElementById('chuseokChalArea').style.display = 'block';
+    document.getElementById('chuseokFixedAddRow').style.display = 'none';
+    renderChuseokChalSlots(cfg);
+  } else {
+    document.getElementById('chuseokChalArea').style.display = 'none';
+    document.getElementById('chuseokFixedAddRow').style.display = 'block';
+    updateChuseokFixedPreview();
+  }
+}
+
+function renderChuseokChalSlots(cfg) {
+  const slots = document.getElementById('chuseokChalSlots');
+  if (!slots) return;
+  slots.innerHTML = cfg.chalTteokSlots.map(function(slot, idx) {
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">' +
+      '<span style="font-size:12px;color:var(--brown-mid);min-width:45px;flex-shrink:0;">' + slot.label + '</span>' +
+      '<div style="position:relative;flex:1;">' +
+      '<input id="chuseokChal-' + idx + '-input" type="text" placeholder="떡 검색..." autocomplete="off" ' +
+      'style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;box-sizing:border-box;" ' +
+      'oninput="filterChuseokChalList(' + idx + ',this.value)" onfocus="filterChuseokChalList(' + idx + ',this.value)" onblur="setTimeout(function(){hideChuseokChalDd(' + idx + ')},200)">' +
+      '<div id="chuseokChal-' + idx + '-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>' +
+      '<input type="hidden" id="chuseokChal-' + idx + '-val">' +
+      '</div>' +
+      '<input type="number" id="chuseokChal-' + idx + '-qty" value="' + slot.qty + '" min="1" ' +
+        'style="width:54px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;text-align:right;flex-shrink:0;" ' +
+        'oninput="updateChuseokPrice()">' +
+      '<span style="font-size:12px;color:var(--brown-mid);flex-shrink:0;">개</span>' +
+      '</div>';
+  }).join('');
+  updateChuseokPrice();
+}
+
+function filterChuseokChalList(idx, kw) {
+  const dd = document.getElementById('chuseokChal-' + idx + '-dd');
+  if (!dd) return;
+  const allTteok = Object.keys(TTEOK_DB).filter(function(n){ return TTEOK_DB[n].unitPrice > 0; });
+  const filtered = kw ? allTteok.filter(function(n){ return n.includes(kw); }) : allTteok;
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._chuseokConfigId; });
+  const basePrice = cfg ? (cfg.chalBasePrice || 1000) : 1000;
+  dd.innerHTML = filtered.map(function(name) {
+    const price = TTEOK_DB[name] ? TTEOK_DB[name].unitPrice : 0;
+    const extra = Math.max(0, price - basePrice);
+    const extraStr = extra > 0 ? ' <span style="color:var(--accent-red);">+' + extra + '원/개</span>' : '';
+    return '<div onclick="selectChuseokChal(' + idx + ',\'' + name + '\')" ' +
+      'style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;" ' +
+      'onmouseenter="this.style.background=\'#f5f0eb\'" onmouseleave="this.style.background=\'#fff\'">' +
+      '<span>🍡 ' + name + '</span>' +
+      '<span style="color:#888;font-size:11px;">' + price.toLocaleString() + '원' + extraStr + '</span>' +
+      '</div>';
+  }).join('');
+  dd.style.display = filtered.length > 0 ? 'block' : 'none';
+}
+
+function selectChuseokChal(idx, name) {
+  window._chuseokChalSelections[idx] = name;
+  const inp = document.getElementById('chuseokChal-' + idx + '-input');
+  const val = document.getElementById('chuseokChal-' + idx + '-val');
+  const dd = document.getElementById('chuseokChal-' + idx + '-dd');
+  if (inp) inp.value = name;
+  if (val) val.value = name;
+  if (dd) dd.style.display = 'none';
+  updateChuseokPrice();
+}
+
+function hideChuseokChalDd(idx) {
+  const d = document.getElementById('chuseokChal-' + idx + '-dd');
+  if (d) d.style.display = 'none';
+}
+
+function updateChuseokPrice() {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._chuseokConfigId; });
+  if (!cfg) return;
+  const basePrice = cfg.chalBasePrice || 1000;
+  let extra = 0;
+  cfg.chalTteokSlots.forEach(function(slot, idx) {
+    const name = window._chuseokChalSelections[idx];
+    const qtyEl = document.getElementById('chuseokChal-' + idx + '-qty');
+    const qty = qtyEl ? (parseInt(qtyEl.value) || slot.qty) : slot.qty;
+    if (name && TTEOK_DB[name]) {
+      const diff = Math.max(0, (TTEOK_DB[name].unitPrice || 0) - basePrice);
+      extra += diff * qty;
+    }
+  });
+  const total = cfg.basePrice + extra;
+  const qty2 = parseInt(document.getElementById('chuseokQty') ? document.getElementById('chuseokQty').value : 1) || 1;
+  const totalWithQty = total * qty2;
+  const preview = document.getElementById('chuseokPricePreview');
+  if (preview) {
+    preview.textContent = totalWithQty.toLocaleString() + '원' + (extra > 0 ? ' (추가금 ' + (extra*qty2).toLocaleString() + '원 포함)' : '') + (qty2 > 1 ? ' × ' + qty2 + '세트' : '');
+  }
+}
+
+function updateChuseokFixedPreview() {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._chuseokConfigId; });
+  const preview = document.getElementById('chuseokFixedPreview');
+  if (!cfg) { if (preview) preview.textContent = ''; return; }
+  const qty = parseInt(document.getElementById('chuseokQtyFixed') ? document.getElementById('chuseokQtyFixed').value : 1) || 1;
+  const total = cfg.basePrice * qty;
+  if (preview) preview.textContent = total.toLocaleString() + '원' + (qty > 1 ? ' × ' + qty + '세트' : '');
+}
+
+function addChuseokSetItem() {
+  const cfg = DEOK_SET_CONFIGS.find(function(c){ return c.id === window._chuseokConfigId; });
+  if (!cfg) { showToast('구성을 선택해주세요.', 'error'); return; }
+
+  let extra = 0;
+  let chalDesc = [];
+  let qty = 1;
+
+  if (cfg.hasChalTteok) {
+    const basePrice = cfg.chalBasePrice || 1000;
+    for (let i = 0; i < cfg.chalTteokSlots.length; i++) {
+      if (!window._chuseokChalSelections[i]) {
+        showToast('구성을 모두 선택해주세요.', 'error'); return;
+      }
+      const name = window._chuseokChalSelections[i];
+      const slot = cfg.chalTteokSlots[i];
+      const qtyEl = document.getElementById('chuseokChal-' + i + '-qty');
+      const slotQty = qtyEl ? (parseInt(qtyEl.value) || slot.qty) : slot.qty;
+      const diff = Math.max(0, (TTEOK_DB[name] ? TTEOK_DB[name].unitPrice : 0) - basePrice);
+      extra += diff * slotQty;
+      chalDesc.push(name + ' ' + slotQty + '개');
+    }
+    qty = parseInt(document.getElementById('chuseokQty') ? document.getElementById('chuseokQty').value : 1) || 1;
+  } else {
+    qty = parseInt(document.getElementById('chuseokQtyFixed') ? document.getElementById('chuseokQtyFixed').value : 1) || 1;
+  }
+
+  const price = (cfg.basePrice + extra) * qty;
+  const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + '개'); });
+  const allDesc = fixedDesc.concat(chalDesc);
+  const useLabel = cfg.customLabel || cfg.label;
+  const displayName = (cfg.customName || cfg.setType) + '(' + useLabel + (allDesc.length ? ' / ' + allDesc.join(', ') : '') + ')';
+  const saveName = (cfg.customName || cfg.setType) + '(' + (allDesc.length ? allDesc.join(', ') : useLabel) + ')';
+
+  tteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
+  renderTteokList();
+  if (price > 0) {
+    const pp = document.getElementById('priceProduct');
+    if (pp) { pp.value = (parseInt(pp.value)||0) + price; calcTotal(); }
+  }
+
+  // 해당 호수 목록으로 복귀 (다른 맛/구성 연속 추가 편하게)
+  const ho = window._chuseokHo;
+  window._chuseokConfigId = null;
+  window._chuseokChalSelections = {};
+  document.getElementById('chuseokChalArea').style.display = 'none';
+  document.getElementById('chuseokFixedAddRow').style.display = 'none';
+  const qtyEl1 = document.getElementById('chuseokQty'); if (qtyEl1) qtyEl1.value = 1;
+  const qtyEl2 = document.getElementById('chuseokQtyFixed'); if (qtyEl2) qtyEl2.value = 1;
+  DEOK_SET_CONFIGS.filter(function(c){ return c.setType === ho; }).forEach(function(c) {
+    const btn = document.getElementById('chuseokcfg-' + c.id);
+    if (btn) { btn.style.borderColor = 'var(--border)'; btn.style.background = '#fff'; }
+  });
+  showToast('✅ 추가됐어요!', 'success');
+}
 
 // ── 덕6구세트 직접 구성 ────────────────────────────────
 const DEOK6_BOX_PRICE = 5000;
@@ -5851,7 +6356,7 @@ function renderIbajiConfigs(setType) {
     return '<div onclick="selectIbajiConfig(\'' + cfg.id + '\')" id="ibajicfg-' + cfg.id + '" ' +
       'style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:#fff;">' +
       '<div style="font-size:13px;font-weight:700;color:var(--brown-mid);">' + cfg.label + '</div>' +
-      '<div style="font-size:11px;color:#888;margin-top:2px;">' + itemStr + (cfg.hasChalTteok ? ' + 찰떡류 선택' : '') + '</div>' +
+      '<div style="font-size:11px;color:#888;margin-top:2px;">' + itemStr + (cfg.hasChalTteok ? ' + 구성 선택' : '') + '</div>' +
       '<div style="font-size:12px;color:var(--accent-red);font-weight:700;margin-top:2px;">' + cfg.basePrice.toLocaleString() + '원 (고정)</div>' +
       '</div>';
   }).join('');
@@ -6016,7 +6521,7 @@ function selectIbajiOrderType(setType) {
 
     configArea.innerHTML = '<div style="background:#fff9f0;border:1px solid var(--brown-pale);border-radius:8px;padding:10px;">' +
       '<div style="font-size:12px;color:#888;margin-bottom:8px;">고정구성: ' + itemStr + '</div>' +
-      '<div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🍡 찰떡류 선택</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🍡 구성 선택</div>' +
       slotsHtml +
       '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">' +
       '<span style="font-size:13px;color:var(--brown-mid);font-weight:700;">수량:</span>' +
@@ -6113,9 +6618,17 @@ function hideIbajiChalDd(idx) {
 }
 
 
+function persistTteokDB() {
+  localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
+  if (typeof gasUrl !== 'undefined' && gasUrl && typeof gasPost === 'function') {
+    gasPost({ action: 'saveTteokSettings', data: { tteokPriceDB: TTEOK_DB, tteokOrder: window.TTEOK_ORDER } }).catch(function(){});
+  }
+}
+
 function updateTteokDB(name, field, value) {
   if (TTEOK_DB[name] !== undefined) {
     TTEOK_DB[name][field] = value;
+    persistTteokDB();
   }
 }
 
@@ -6136,6 +6649,14 @@ function renameTteokDB(oldName, newName) {
     const idx = window.TTEOK_ORDER.indexOf(oldName);
     if (idx !== -1) window.TTEOK_ORDER[idx] = newName;
   }
+  // 카테고리 내 이름도 함께 갱신
+  if (Array.isArray(window.ORDER_CATEGORIES)) {
+    window.ORDER_CATEGORIES.forEach(function(cat) {
+      cat.items = cat.items.map(function(n){ return n === oldName ? newName : n; });
+    });
+    localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
+  }
+  persistTteokDB();
   showToast('✅ "' + oldName + '" → "' + newName + '"으로 이름이 변경됐어요.', 'success');
   renderTteokAllList();
 }
@@ -8373,7 +8894,7 @@ function loadProductionPlan() {
     //    saveName 형식: "덕세트(흰모찌 8개, 쑥모찌 8개, 호박모찌 4개)"
     //                   "이바지大(흰모찌 20개, 깨끼떡 3kg, ...)"
     //    qty 형식: "2세트" → 전체 multiplier
-    const setHeaderMatch = name.match(/^(덕세트|덕6구세트|이바지大|이바지小)\((.+)\)$/);
+    const setHeaderMatch = name.match(/^(덕세트|덕6구세트|추석세트|이바지大|이바지小)\((.+)\)$/);
     if (setHeaderMatch) {
       const setQtyStr = (itemQty || '1세트').replace(/세트$/, '').trim();
       const multiplier = parseFloat(setQtyStr) || 1;
@@ -9107,7 +9628,7 @@ function onTteokSelectChange() {
 function addTteokItemFromSet() {
   const setType = window._currentSetType;
   // 덕세트(프리셋 구성)만 별도 함수로 처리. 덕6구세트는 코리아처럼 직접 구성이므로 아래 로직 사용
-  if (setType === '덕세트') {
+  if (setType === '덕세트' || setType === '추석세트') {
     addDeokSetItem();
     return;
   }
@@ -10387,7 +10908,7 @@ function renderModalEdit(o) {
               <div style="font-size:11px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">구성 선택</div>
               <div id="edit-deokConfigList" style="display:flex;flex-direction:column;gap:4px;"></div>
               <div id="edit-deokChalArea" style="display:none;background:#fff9f0;border:1px solid var(--brown-pale);border-radius:8px;padding:8px;margin-top:6px;">
-                <div style="font-size:11px;font-weight:700;color:var(--brown-mid);margin-bottom:4px;">🍡 찰떡류 선택</div>
+                <div style="font-size:11px;font-weight:700;color:var(--brown-mid);margin-bottom:4px;">🍡 구성 선택</div>
                 <div id="edit-deokChalSlots"></div>
                 <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
                   <span style="font-size:11px;color:var(--brown-mid);">수량:</span>
@@ -10458,6 +10979,36 @@ function renderModalEdit(o) {
           <div id="edit-ibaji-buttons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
           <div id="edit-ibaji-compose" style="display:none;">
             <div id="edit-ibaji-config-area"></div>
+          </div>
+        </div>
+
+        <!-- 추석세트 영역 -->
+        <div id="edit-tarea-chuseok" style="display:none;background:#fff9f0;border:1.5px solid var(--brown-pale);border-radius:10px;padding:10px;margin-bottom:6px;">
+          <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:8px;">🎑 추석세트</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+            <button type="button" onclick="selectEditChuseokHo('추석1호')" id="edit-chuseokho-추석1호" style="flex:1;min-width:60px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">1호</button>
+            <button type="button" onclick="selectEditChuseokHo('추석2호')" id="edit-chuseokho-추석2호" style="flex:1;min-width:60px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">2호</button>
+            <button type="button" onclick="selectEditChuseokHo('추석3호')" id="edit-chuseokho-추석3호" style="flex:1;min-width:60px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">3호</button>
+            <button type="button" onclick="selectEditChuseokHo('추석3호반반')" id="edit-chuseokho-추석3호반반" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">3호반반</button>
+          </div>
+          <div id="edit-chuseokConfigList" style="display:flex;flex-direction:column;gap:6px;"></div>
+          <div id="edit-chuseokChalArea" style="display:none;margin-top:8px;background:#fff;border:1.5px solid var(--brown-pale);border-radius:8px;padding:10px;">
+            <div style="font-size:11px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🍡 구성 선택</div>
+            <div id="edit-chuseokChalSlots"></div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+              <span style="font-size:11px;color:var(--brown-mid);">수량:</span>
+              <input type="number" id="edit-chuseokQty" value="1" min="1" style="width:60px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;" oninput="updateEditChuseokPrice()">
+              <span id="edit-chuseokPricePreview" style="font-size:11px;color:var(--accent-red);font-weight:700;"></span>
+              <button type="button" onclick="addEditChuseokItem()" style="margin-left:auto;padding:5px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>
+            </div>
+          </div>
+          <div id="edit-chuseokFixedAddRow" style="display:none;margin-top:8px;background:#fff;border:1.5px solid var(--brown-pale);border-radius:8px;padding:10px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:11px;color:var(--brown-mid);">수량:</span>
+              <input type="number" id="edit-chuseokQtyFixed" value="1" min="1" style="width:60px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;" oninput="updateEditChuseokFixedPreview()">
+              <span id="edit-chuseokFixedPreview" style="font-size:11px;color:var(--accent-red);font-weight:700;"></span>
+              <button type="button" onclick="addEditChuseokItem()" style="margin-left:auto;padding:5px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>
+            </div>
           </div>
         </div>
 
