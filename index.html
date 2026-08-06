@@ -3897,8 +3897,8 @@ function renderTteokAllList() {
       '<span style="font-size:11px;color:#888;">원 박스</span>' +
       '<input type="number" value="' + (db.boxPrice||0) + '" style="width:72px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'boxPrice\',Number(this.value))">' +
       '<span style="font-size:11px;color:#888;">원/</span>' +
-      '<input type="text" value="' + (db.boxUnit||'') + '" style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'boxUnit\',this.value)">' +
-      '<input type="text" value="' + (db.note||'') + '" placeholder="참고사항" style="flex:1;min-width:160px;padding:4px 6px;border:1px solid ' + (db.note ? '#ffc107' : 'var(--border)') + ';border-radius:6px;font-size:11px;background:' + (db.note ? '#fff3cd' : '#fff') + ';" onchange="updateTteokDB(\'' + safeN + '\',\'note\',this.value);renderTteokAllList()">' +
+      '<input type="text" value="' + (db.boxUnit||'').replace(/"/g,'&quot;') + '" style="width:48px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;" onchange="updateTteokDB(\'' + safeN + '\',\'boxUnit\',this.value)">' +
+      '<input type="text" value="' + (db.note||'').replace(/"/g,'&quot;') + '" placeholder="참고사항" style="flex:1;min-width:160px;padding:4px 6px;border:1px solid ' + (db.note ? '#ffc107' : 'var(--border)') + ';border-radius:6px;font-size:11px;background:' + (db.note ? '#fff3cd' : '#fff') + ';" onchange="updateTteokDB(\'' + safeN + '\',\'note\',this.value);renderTteokAllList()">' +
       '<button onclick="deleteTteokFromGlobalList(\'' + safeN + '\')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700;">✕</button>' +
       '</div>';
   }).join('');
