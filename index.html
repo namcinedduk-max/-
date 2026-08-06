@@ -4689,8 +4689,11 @@ function loadOrderCategories() {
       if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
         window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
       }
-      if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_chuseok'; })) {
+      var chuseokCat = window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_chuseok'; });
+      if (!chuseokCat) {
         window.ORDER_CATEGORIES.push({ id: 'cat_chuseok', name: '추석세트', icon: '🎑', items: ['__추석세트__'] });
+      } else if (!chuseokCat.items.includes('__추석세트__')) {
+        chuseokCat.items.push('__추석세트__');
       }
     } catch(e) {}
   }
@@ -4702,15 +4705,23 @@ function loadOrderCategories() {
       if (!data.success || !data.data) return;
       if (data.data.orderCategories) {
         window.ORDER_CATEGORIES = data.data.orderCategories;
+        var needsResave = false;
         if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_ibaji'; })) {
           window.ORDER_CATEGORIES.push({ id: 'cat_ibaji', name: '이바지', icon: '🎀', items: ['__이바지大__', '__이바지小__'] });
+          needsResave = true;
         }
-        if (!window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_chuseok'; })) {
+        var chuseokCat2 = window.ORDER_CATEGORIES.find(function(c){ return c.id === 'cat_chuseok'; });
+        if (!chuseokCat2) {
           window.ORDER_CATEGORIES.push({ id: 'cat_chuseok', name: '추석세트', icon: '🎑', items: ['__추석세트__'] });
+          needsResave = true;
+        } else if (!chuseokCat2.items.includes('__추석세트__')) {
+          chuseokCat2.items.push('__추석세트__');
+          needsResave = true;
         }
         cleanOrphanCatItems();
         localStorage.setItem('orderCategories', JSON.stringify(window.ORDER_CATEGORIES));
         renderOrderCategoryButtons();
+        if (needsResave) saveOrderCategoriesAndSync();
       }
     }).catch(function(){});
   }
