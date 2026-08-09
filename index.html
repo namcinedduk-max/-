@@ -5620,8 +5620,14 @@ function addEditChuseokItem() {
   const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + '개'); });
   const allDesc = fixedDesc.concat(chalDesc);
   const useLabel = cfg.customLabel || cfg.label;
-  const displayName = (cfg.customName||cfg.setType) + '(' + useLabel + (allDesc.length ? ' / ' + allDesc.join(', ') : '') + ')';
-  const saveName = (cfg.customName||cfg.setType) + '(' + (allDesc.length ? allDesc.join(', ') : useLabel) + ')';
+  let displayName, saveName;
+  if (cfg.hasChalTteok) {
+    displayName = (cfg.customName||cfg.setType) + '(' + useLabel + (allDesc.length ? ' / ' + allDesc.join(', ') : '') + ')';
+    saveName = (cfg.customName||cfg.setType) + '(' + (allDesc.length ? allDesc.join(', ') : useLabel) + ')';
+  } else {
+    displayName = (cfg.customName||cfg.setType) + '(' + allDesc.join(', ') + ')';
+    saveName = displayName;
+  }
   editTteokItems.push({ name: saveName, displayName: displayName, qty: String(qty)+'세트', price: price });
   renderEditTteokList(); calcEditTotal();
   const ho = window._editChuseokHo;
@@ -6187,10 +6193,15 @@ function addChuseokSetItem() {
   const fixedDesc = cfg.items.map(function(i){ return i.name + ' ' + (typeof i.qty === 'string' ? i.qty : i.qty + '개'); });
   const allDesc = fixedDesc.concat(chalDesc);
   const useLabel = cfg.customLabel || cfg.label;
-  const displayName = (cfg.customName || cfg.setType) + '(' + useLabel + (allDesc.length ? ' / ' + allDesc.join(', ') : '') + ')';
-  const saveName = (cfg.customName || cfg.setType) + '(' + (allDesc.length ? allDesc.join(', ') : useLabel) + ')';
-
-  tteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
+  let displayName, saveName;
+  if (cfg.hasChalTteok) {
+    displayName = (cfg.customName || cfg.setType) + '(' + useLabel + (allDesc.length ? ' / ' + allDesc.join(', ') : '') + ')';
+    saveName = (cfg.customName || cfg.setType) + '(' + (allDesc.length ? allDesc.join(', ') : useLabel) + ')';
+  } else {
+    // 고정금액(택1) 구성은 품목 설명 자체가 곧 라벨이라 중복 표기하지 않음
+    displayName = (cfg.customName || cfg.setType) + '(' + allDesc.join(', ') + ')';
+    saveName = displayName;
+  }
   renderTteokList();
   if (price > 0) {
     const pp = document.getElementById('priceProduct');
@@ -8921,7 +8932,7 @@ function loadProductionPlan() {
     //    saveName 형식: "덕세트(흰모찌 8개, 쑥모찌 8개, 호박모찌 4개)"
     //                   "이바지大(흰모찌 20개, 깨끼떡 3kg, ...)"
     //    qty 형식: "2세트" → 전체 multiplier
-    const setHeaderMatch = name.match(/^(덕세트|덕6구세트|추석세트|이바지大|이바지小)\((.+)\)$/);
+    const setHeaderMatch = name.match(/^(덕세트|덕6구세트|추석1호|추석2호|추석3호|추석3호반반|이바지大|이바지小)\((.+)\)$/);
     if (setHeaderMatch) {
       const setQtyStr = (itemQty || '1세트').replace(/세트$/, '').trim();
       const multiplier = parseFloat(setQtyStr) || 1;
