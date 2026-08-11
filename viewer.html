@@ -182,15 +182,27 @@ function setSort(type) {
   render(document.getElementById('dateInput').value);
 }
 
-function gasGet(params) {
+function gasGetOnce(params, timeoutMs) {
   return new Promise(function(resolve, reject) {
     const cb = 'cb' + Date.now() + Math.floor(Math.random()*9999);
     const url = GAS_URL + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&callback=' + cb;
     const sc = document.createElement('script');
-    const timer = setTimeout(function() { delete window[cb]; sc.remove(); reject(new Error('timeout')); }, 15000);
+    const timer = setTimeout(function() { delete window[cb]; sc.remove(); reject(new Error('timeout')); }, timeoutMs);
     window[cb] = function(data) { clearTimeout(timer); delete window[cb]; sc.remove(); resolve(data); };
     sc.onerror = function() { clearTimeout(timer); delete window[cb]; sc.remove(); reject(new Error('error')); };
     sc.src = url; document.head.appendChild(sc);
+  });
+}
+
+// 타임아웃 15초→28초로 연장, 실패 시 최대 2회까지 자동 재시도(1초 간격)
+function gasGet(params, retriesLeft) {
+  if (retriesLeft === undefined) retriesLeft = 2;
+  return gasGetOnce(params, 28000).catch(function(err) {
+    if (retriesLeft > 0) {
+      return new Promise(function(res) { setTimeout(res, 1000); })
+        .then(function() { return gasGet(params, retriesLeft - 1); });
+    }
+    throw err;
   });
 }
 
@@ -247,19 +259,30 @@ function loadData() {
   document.getElementById('orderCards').innerHTML = '<div class="loading">불러오는 중...</div>';
   document.getElementById('venueSection').innerHTML = '<div class="loading">불러오는 중...</div>';
 
-  Promise.all([
-    gasGet({ action: 'getOrders' }),
-    gasGet({ action: 'getOrders', sheet: 'wedding' }),
-    gasGet({ action: 'getOrders', sheet: 'other' }),
-    gasGet({ action: 'getOrders', sheet: 'funeral' }),
-  ]).then(([data, wData, oData, fData]) => {
-    if (!data.success) { showError(); return; }
-    allOrders = data.orders || [];
-    allWeddingOrders = wData.success ? (wData.orders || []) : [];
-    allOtherOrders = oData.success ? (oData.orders || []) : [];
-    allFuneralOrders = fData.success ? (fData.orders || []) : [];
-    render(document.getElementById('dateInput').value);
-  }).catch(() => showError());
+  // 4개 시트를 동시에(Promise.all) 요청하면 GAS 동시실행 큐잉으로 타임아웃이 잦아지므로
+  // 순차적으로 하나씩 요청 (각 요청은 위 gasGet의 28초 타임아웃 + 자동 재시도 2회 적용됨)
+  gasGet({ action: 'getOrders' })
+    .then(function(data) {
+      if (!data.success) { showError(); return Promise.reject(new Error('stop')); }
+      allOrders = data.orders || [];
+      return gasGet({ action: 'getOrders', sheet: 'wedding' });
+    })
+    .then(function(wData) {
+      allWeddingOrders = wData.success ? (wData.orders || []) : [];
+      return gasGet({ action: 'getOrders', sheet: 'other' });
+    })
+    .then(function(oData) {
+      allOtherOrders = oData.success ? (oData.orders || []) : [];
+      return gasGet({ action: 'getOrders', sheet: 'funeral' });
+    })
+    .then(function(fData) {
+      allFuneralOrders = fData.success ? (fData.orders || []) : [];
+      render(document.getElementById('dateInput').value);
+    })
+    .catch(function(err) {
+      if (err && err.message === 'stop') return; // 이미 showError() 처리됨
+      showError();
+    });
 }
 
 function parseTteokItems(o) {
