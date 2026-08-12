@@ -4,33 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>떡 주문 장부</title>
-<!-- ============ 버전 체크 (캐시된 옛 화면 자동 새로고침) ============
-     배포(수정)할 때마다 아래 APP_VERSION 값만 새 문자열로 바꿔주세요.
-     예: '20260812' → '20260813' (날짜나 순번 아무거나 상관없음, 이전과 다르면 됨)
-     이 스크립트가 실제 서버의 최신 버전과 지금 열린 화면의 버전을 비교해서,
-     다르면 한 번만 자동으로 새로고침합니다. 같으면 아무 일도 안 일어나요. -->
-<script>window.APP_VERSION = '20260812-01';</script>
+<!-- ============ 강제 새로고침 버튼용 함수 ============
+     평소엔 아무것도 자동으로 안 함(딜레이 없음).
+     헤더의 "최신버전 받기" 버튼을 누르면 그때만 캐시 무시하고 서버의 진짜 최신 파일을 가져옴. -->
 <script>
-(function() {
+function forceRefreshApp() {
   try {
-    fetch(location.href, { cache: 'no-store' })
-      .then(function(r) { return r.text(); })
-      .then(function(html) {
-        var m = html.match(/APP_VERSION\s*=\s*'([^']+)'/);
-        if (!m || !m[1]) return;
-        var liveVersion = m[1];
-        if (liveVersion !== window.APP_VERSION) {
-          var doneKey = 'app_reloaded_' + liveVersion;
-          if (!sessionStorage.getItem(doneKey)) {
-            sessionStorage.setItem(doneKey, '1');
-            var sep = location.href.indexOf('?') > -1 ? '&' : '?';
-            location.href = location.href.split('#')[0] + sep + '_v=' + encodeURIComponent(liveVersion) + '#reloaded';
-          }
-        }
-      })
-      .catch(function() {});
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
+      }).catch(function() {});
+    }
+    if (window.caches && caches.keys) {
+      caches.keys().then(function(keys) {
+        keys.forEach(function(k) { caches.delete(k); });
+      }).catch(function() {});
+    }
   } catch (e) {}
-})();
+  var sep = location.href.indexOf('?') > -1 ? '&' : '?';
+  location.href = location.href.split('#')[0] + sep + '_v=' + Date.now();
+}
 </script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3D2314">
@@ -788,6 +781,7 @@
     <div class="header-meta">
       <div class="live-clock" id="clock">--:--:--</div>
       <div id="today-date" style="font-size:12px;margin-top:2px;"></div>
+      <button type="button" onclick="if(confirm('최신 버전을 새로 받아올까요? 화면이 한 번 새로고침돼요.')) forceRefreshApp();" style="margin-top:4px;padding:3px 9px;font-size:11px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:6px;cursor:pointer;white-space:nowrap;">🔄 최신버전 받기</button>
     </div>
   </div>
   <div class="tabs">
