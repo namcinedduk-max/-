@@ -2774,6 +2774,15 @@
                 </div>
               </div>
 
+              <div style="margin-bottom:10px;">
+                <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">접수 방식 — 주문받을 때 어떻게 담나</label>
+                <select id="cs-order-mode" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
+                  <option value="button">버튼 방식 (선물세트처럼 클릭해서 담기)</option>
+                  <option value="search">검색 방식 (일반떡처럼 검색해서 담기)</option>
+                </select>
+                <div style="font-size:11px;color:#94a3b8;margin-top:3px;">모찌1박스처럼 일반떡 카테고리에 넣을 세트는 '검색 방식'을 고르세요.</div>
+              </div>
+
               <!-- 방식별 추가 입력칸 -->
               <div id="cs-mode-fields" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
                 <div id="cs-fixed-wrap" style="width:160px;">
@@ -4389,10 +4398,40 @@ function renderOrderCustomSetBtns(catItems) {
 }
 
 // 커스텀 세트 버튼 클릭 → 담기 영역 열기
+// 검색 방식 세트를 검색 드롭다운에서 골랐을 때
+function selectCustomSetFromSearch(id) {
+  const s = window.CUSTOM_SETS.find(function(x){ return x.id === id; });
+  if (!s) return;
+  // 검색창/드롭다운 닫기
+  const si = document.getElementById('tteokSearchInput');
+  if (si) si.value = '';
+  const dd = document.getElementById('tteokDropdown');
+  if (dd) dd.style.display = 'none';
+  // customSetCompose 영역을 검색 영역(tarea-each) 안으로 옮겨 표시
+  const compose = document.getElementById('customSetCompose');
+  const eachArea = document.getElementById('tarea-each');
+  if (compose && eachArea && compose.parentElement !== eachArea) {
+    eachArea.insertBefore(compose, eachArea.firstChild);
+  }
+  window._orderCustomSet = s;
+  document.getElementById('csOrderName').textContent = '📦 ' + s.name;
+  document.getElementById('csOrderCompo').textContent = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  document.getElementById('csOrderQty').value = '1';
+  if (compose) compose.style.display = 'block';
+  csOrderUpdatePreview();
+}
+
 function chooseCustomSet(id) {
   const s = window.CUSTOM_SETS.find(function(x){ return x.id === id; });
   if (!s) return;
   window._orderCustomSet = s;
+  // 검색 방식에서 옮겨졌을 수 있으니 customSetCompose를 세트영역(tarea-set)으로 복귀
+  const compose = document.getElementById('customSetCompose');
+  const setArea = document.getElementById('tarea-set');
+  const csBtns = document.getElementById('customSetBtns');
+  if (compose && setArea && csBtns && compose.parentElement !== setArea) {
+    csBtns.parentNode.insertBefore(compose, csBtns.nextSibling);
+  }
   // 기존 세트 구성영역 닫기
   const setCompose = document.getElementById('setCompose');
   if (setCompose) setCompose.style.display = 'none';
@@ -4658,7 +4697,14 @@ function filterTteokList(keyword) {
   const kw = keyword.trim();
   // 현재 선택된 카테고리의 떡만 표시
   const baseList = getTteokListForCategory();
-  const filtered = kw ? baseList.filter(function(n){ return n.includes(kw); }) : baseList;
+  const filtered = kw ? baseList.filter(function(n){
+    // 검색 방식 세트는 토큰이 아니라 세트 이름으로 매칭
+    if (n.indexOf('__cs_') === 0) {
+      const cs = (window.CUSTOM_SETS||[]).find(function(s){ return '__' + s.id + '__' === n; });
+      return cs && cs.name.includes(kw);
+    }
+    return n.includes(kw);
+  }) : baseList;
   renderTteokDropdown(filtered, kw);
   dropdown.style.display = filtered.length > 0 ? 'block' : 'none';
 }
@@ -4667,6 +4713,18 @@ function renderTteokDropdown(list, keyword) {
   const dropdown = document.getElementById('tteokDropdown');
   if (!dropdown) return;
   dropdown.innerHTML = list.map(function(name) {
+    // 검색 방식 커스텀 세트 항목
+    if (name.indexOf('__cs_') === 0) {
+      const csId = name.slice(2, -2);
+      const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+      if (!cs) return '';
+      const total = (typeof csTotalForSet === 'function') ? csTotalForSet(cs) : 0;
+      const priceStr = total ? ' <span style="color:#888;font-size:11px;">' + total.toLocaleString() + '원</span>' : '';
+      return '<div onclick="selectCustomSetFromSearch(\'' + cs.id + '\')" ' +
+        'style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;" ' +
+        'onmouseenter="this.style.background=\'#dcfce7\'" onmouseleave="this.style.background=\'#f0fdf4\'">' +
+        '<span>📦 ' + cs.name + '</span>' + priceStr + '</div>';
+    }
     const db = TTEOK_DB[name];
     const unit = db ? db.unit : '';
     const price = db ? (db.unitPrice || db.kgPrice || db.doePrice || 0) : 0;
@@ -5008,9 +5066,28 @@ function selectOrderCategory(catId) {
   const doeArea = document.getElementById('tarea-doe');
 
   // 세트가 있으면 세트 UI, 되가 있으면 되 UI, 나머지는 개당/kg UI
-  const hasSet = cat.items.some(function(i){ return i.startsWith('__'); });
+  // 단, 커스텀 세트 중 '검색 방식'(orderMode:search)은 세트버튼 모드로 치지 않고
+  // 일반떡처럼 검색으로 담게 함. 버튼 방식 세트/기존 하드코딩 세트만 세트 모드로.
+  const hasSet = cat.items.some(function(i){
+    if (!i.startsWith('__')) return false;
+    // 커스텀 세트면 orderMode 확인 (검색 방식이면 세트 모드 아님)
+    if (i.indexOf('__cs_') === 0) {
+      const csId = i.slice(2, -2);
+      const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+      if (cs && cs.orderMode === 'search') return false;
+      return true;
+    }
+    return true; // 하드코딩 세트 토큰(__분홍세트__ 등)은 버튼 모드
+  });
   const hasDoe = cat.items.some(function(i){ return TTEOK_DB[i] && TTEOK_DB[i].unit === '되'; });
-  const hasEach = cat.items.some(function(i){ return !i.startsWith('__') && TTEOK_DB[i] && TTEOK_DB[i].unit !== '되'; });
+  // 검색 방식 커스텀 세트가 있는지 (있으면 검색 UI에 세트도 함께 노출)
+  const hasSearchSet = cat.items.some(function(i){
+    if (i.indexOf('__cs_') !== 0) return false;
+    const csId = i.slice(2, -2);
+    const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+    return cs && cs.orderMode === 'search';
+  });
+  const hasEach = hasSearchSet || cat.items.some(function(i){ return !i.startsWith('__') && TTEOK_DB[i] && TTEOK_DB[i].unit !== '되'; });
 
   // 해당 카테고리 떡들로 검색 드롭다운 필터링
   window._currentCatItems = cat.items;
@@ -5073,7 +5150,17 @@ function getTteokListForCategory() {
   const catId = window._currentCatId;
   const cat = catId ? window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; }) : null;
   if (cat) {
-    return cat.items.filter(function(n){ return !n.startsWith('__'); });
+    // 일반 떡 (세트 토큰 제외)
+    const tteoks = cat.items.filter(function(n){ return !n.startsWith('__'); });
+    // 검색 방식 커스텀 세트도 목록에 포함 (이름 앞에 표시용 마커는 렌더에서 처리)
+    cat.items.forEach(function(n){
+      if (n.indexOf('__cs_') === 0) {
+        const csId = n.slice(2, -2);
+        const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+        if (cs && cs.orderMode === 'search') tteoks.push('__' + cs.id + '__');
+      }
+    });
+    return tteoks;
   }
   return Object.keys(TTEOK_DB);
 }
@@ -7191,6 +7278,7 @@ function toggleCustomSetForm(show) {
       document.getElementById('cs-baseprice').value = '';
       document.getElementById('cs-basestd').value = '';
       document.getElementById('cs-price-mode').value = 'fixed';
+      if (document.getElementById('cs-order-mode')) document.getElementById('cs-order-mode').value = 'button';
       csApplyPriceMode();
     }
     csRefreshDatalist();
@@ -7352,7 +7440,8 @@ function saveCustomSet() {
     return { name: i.name, qty: i.qty, unit: i.unit, customPrice: (i.customPrice != null ? i.customPrice : null) };
   });
 
-  const setData = { name: name, priceMode: mode, fixedPrice: fixedPrice, boxFee: boxFee, basePrice: basePrice, baseStd: baseStd, items: items };
+  const orderMode = document.getElementById('cs-order-mode') ? document.getElementById('cs-order-mode').value : 'button';
+  const setData = { name: name, priceMode: mode, orderMode: orderMode, fixedPrice: fixedPrice, boxFee: boxFee, basePrice: basePrice, baseStd: baseStd, items: items };
 
   if (editId) {
     const s = window.CUSTOM_SETS.find(function(x){ return x.id === editId; });
@@ -7376,6 +7465,7 @@ function editCustomSet(id) {
   document.getElementById('cs-edit-id').value = s.id;
   document.getElementById('cs-name').value = s.name;
   document.getElementById('cs-price-mode').value = s.priceMode || 'sum';
+  if (document.getElementById('cs-order-mode')) document.getElementById('cs-order-mode').value = s.orderMode || 'button';
   document.getElementById('cs-fixedprice').value = s.fixedPrice || '';
   document.getElementById('cs-boxfee').value = s.boxFee || '';
   document.getElementById('cs-baseprice').value = s.basePrice || '';
