@@ -5528,6 +5528,183 @@ function selectEditCategory(catId) {
   const hasChuseok = cat.items.includes('__추석세트__');
   // 이바지 감지 (선물세트와 분리)
   const hasIbaji = !hasChuseok && cat.items.some(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
+  // 세트 판정: 커스텀 세트 중 검색 방식(orderMode:search)은 세트모드에서 제외
+  const hasSet = !hasChuseok && !hasIbaji && cat.items.some(function(i){
+    if (!i.startsWith('__')) return false;
+    if (i.indexOf('__cs_') === 0) {
+      const csId = i.slice(2, -2);
+      const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+      if (cs && cs.orderMode === 'search') return false;
+      return true;
+    }
+    return true;
+  });
+  // 검색 방식 커스텀 세트 존재 여부 (있으면 검색 UI 유지 + 목록에 세트 노출)
+  const hasSearchSet = cat.items.some(function(i){
+    if (i.indexOf('__cs_') !== 0) return false;
+    const csId = i.slice(2, -2);
+    const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+    return cs && cs.orderMode === 'search';
+  });
+  const hasDoe = cat.items.some(function(i){ return TTEOK_DB[i] && TTEOK_DB[i].unit === '되'; });
+  const hasEach = hasSearchSet || cat.items.some(function(i){ return !i.startsWith('__') && TTEOK_DB[i] && TTEOK_DB[i].unit !== '되'; });
+  if (hasChuseok) {
+    if (setArea) setArea.style.display = 'none';
+    if (eachArea) eachArea.style.display = 'none';
+    if (doeArea) doeArea.style.display = 'none';
+    if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) { chuseokArea.style.display = 'block'; renderEditChuseokConfigs(); }
+  } else if (hasIbaji) {
+    if (setArea) setArea.style.display = 'none';
+    if (eachArea) eachArea.style.display = 'none';
+    if (doeArea) doeArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
+    if (ibajiArea) { ibajiArea.style.display = 'block'; renderEditIbajiButtons(cat.items); }
+  } else if (hasSet) {
+    if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
+    if (setArea) setArea.style.display = 'block';
+    if (eachArea) eachArea.style.display = 'none';
+    if (doeArea) doeArea.style.display = 'none';
+    editFilterHardcodedSetButtons(catId);
+    renderEditCustomSetBtns(cat.items);
+    const csCompose = document.getElementById('edit-customSetCompose');
+    if (csCompose) csCompose.style.display = 'none';
+  } else {
+    if (ibajiArea) ibajiArea.style.display = 'none';
+    if (chuseokArea) chuseokArea.style.display = 'none';
+    if (setArea) setArea.style.display = 'none';
+    if (eachArea) eachArea.style.display = (hasEach || (!hasDoe)) ? 'block' : 'none';
+    if (doeArea) doeArea.style.display = (hasDoe && !hasEach) ? 'block' : 'none';
+  }
+}
+
+// ── 수정 모달용 커스텀 세트 (신규 접수 로직의 edit- 복제) ──
+function editFilterHardcodedSetButtons(catId) {
+  var cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
+  var items = (cat && cat.items) ? cat.items : [];
+  var isGiftCat = (catId === 'cat_set');
+  var tokened = { '분홍세트':'__분홍세트__', '은혜세트':'__은혜세트__' };
+  var giftOnly = ['코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트'];
+  Object.keys(tokened).forEach(function(name) {
+    var btn = document.getElementById('edit-setbtn-' + name);
+    if (btn) btn.style.display = (isGiftCat || items.indexOf(tokened[name]) !== -1) ? '' : 'none';
+  });
+  giftOnly.forEach(function(name) {
+    var btn = document.getElementById('edit-setbtn-' + name);
+    if (btn) btn.style.display = isGiftCat ? '' : 'none';
+  });
+}
+
+function renderEditCustomSetBtns(catItems) {
+  const box = document.getElementById('edit-customSetBtns');
+  if (!box) return;
+  if (!window.CUSTOM_SETS || !window.CUSTOM_SETS.length) { box.innerHTML = ''; return; }
+  let sets = window.CUSTOM_SETS;
+  if (catItems) {
+    sets = window.CUSTOM_SETS.filter(function(s){ return catItems.indexOf('__' + s.id + '__') !== -1; });
+  }
+  box.innerHTML = sets.map(function(s) {
+    const safeId = s.id.replace(/'/g, "\\'");
+    return '<button type="button" onclick="editChooseCustomSet(\'' + safeId + '\')" id="edit-csbtn-' + s.id + '" ' +
+      'style="flex:1;min-width:80px;padding:8px;border:1.5px solid #86efac;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#f0fdf4;color:#15803d;">📦 ' + s.name + '</button>';
+  }).join('');
+}
+
+// 검색 방식 세트를 수정 모달 검색 드롭다운에서 골랐을 때
+function editSelectCustomSetFromSearch(id) {
+  const s = window.CUSTOM_SETS.find(function(x){ return x.id === id; });
+  if (!s) return;
+  const si = document.getElementById('edit-tteokSearchInput');
+  if (si) si.value = '';
+  const dd = document.getElementById('edit-tteokDropdown');
+  if (dd) dd.style.display = 'none';
+  const compose = document.getElementById('edit-customSetCompose');
+  const eachArea = document.getElementById('edit-tarea-each');
+  if (compose && eachArea && compose.parentElement !== eachArea) {
+    eachArea.insertBefore(compose, eachArea.firstChild);
+  }
+  window._editOrderCustomSet = s;
+  document.getElementById('edit-csOrderName').textContent = '📦 ' + s.name;
+  document.getElementById('edit-csOrderCompo').textContent = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  document.getElementById('edit-csOrderQty').value = '1';
+  if (compose) compose.style.display = 'block';
+  editCsOrderUpdatePreview();
+}
+
+function editChooseCustomSet(id) {
+  const s = window.CUSTOM_SETS.find(function(x){ return x.id === id; });
+  if (!s) return;
+  window._editOrderCustomSet = s;
+  const compose = document.getElementById('edit-customSetCompose');
+  const setArea = document.getElementById('edit-tarea-set');
+  const csBtns = document.getElementById('edit-customSetBtns');
+  if (compose && setArea && csBtns && compose.parentElement !== setArea) {
+    csBtns.parentNode.insertBefore(compose, csBtns.nextSibling);
+  }
+  const setCompose = document.getElementById('edit-setCompose');
+  if (setCompose) setCompose.style.display = 'none';
+  document.getElementById('edit-customSetCompose').style.display = 'block';
+  document.getElementById('edit-csOrderName').textContent = '📦 ' + s.name;
+  document.getElementById('edit-csOrderCompo').textContent = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  document.getElementById('edit-csOrderQty').value = '1';
+  editCsOrderUpdatePreview();
+  (window.CUSTOM_SETS||[]).forEach(function(x){
+    const b = document.getElementById('edit-csbtn-' + x.id);
+    if (b) { const on = x.id === id; b.style.background = on ? '#16a34a' : '#f0fdf4'; b.style.color = on ? '#fff' : '#15803d'; }
+  });
+}
+
+function editCsOrderUpdatePreview() {
+  const s = window._editOrderCustomSet;
+  if (!s) return;
+  const qty = parseInt(document.getElementById('edit-csOrderQty').value) || 1;
+  const unit = csTotalForSet(s);
+  const total = unit * qty;
+  const prev = document.getElementById('edit-csOrderPricePreview');
+  if (prev) prev.innerHTML = '1세트 ' + unit.toLocaleString() + '원 × ' + qty + ' = <strong>' + total.toLocaleString() + '원</strong>';
+}
+
+function editAddCustomSetToOrder() {
+  const s = window._editOrderCustomSet;
+  if (!s) return;
+  const qty = parseInt(document.getElementById('edit-csOrderQty').value) || 1;
+  const unit = csTotalForSet(s);
+  const price = unit * qty;
+  const compo = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  const saveName = s.name + '(' + compo + ')';
+  editTteokItems.push({ name: saveName, qty: qty + '세트', price: price, csId: s.id });
+  renderEditTteokList(); calcEditTotal();
+  document.getElementById('edit-customSetCompose').style.display = 'none';
+  window._editOrderCustomSet = null;
+  (window.CUSTOM_SETS||[]).forEach(function(x){
+    const b = document.getElementById('edit-csbtn-' + x.id);
+    if (b) { b.style.background = '#f0fdf4'; b.style.color = '#15803d'; }
+  });
+  showToast('✅ ' + s.name + ' ' + qty + '세트 담았어요!', 'success');
+}
+
+function _editSelectCategoryOLD(catId) {
+  window._editCurrentCatId = catId;
+  const cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
+  if (!cat) return;
+  window.ORDER_CATEGORIES.forEach(function(c) {
+    const btn = document.getElementById('edit-ocbtn-' + c.id);
+    if (btn) {
+      btn.style.background = c.id === catId ? 'var(--brown-deep)' : '#fff';
+      btn.style.color = c.id === catId ? '#fff' : 'var(--brown-mid)';
+      btn.style.borderColor = c.id === catId ? 'var(--brown-deep)' : 'var(--border)';
+    }
+  });
+  const setArea = document.getElementById('edit-tarea-set');
+  const eachArea = document.getElementById('edit-tarea-each');
+  const doeArea = document.getElementById('edit-tarea-doe');
+  const ibajiArea = document.getElementById('edit-tarea-ibaji');
+  const chuseokArea = document.getElementById('edit-tarea-chuseok');
+  // 추석세트 감지 (최우선)
+  const hasChuseok = cat.items.includes('__추석세트__');
+  // 이바지 감지 (선물세트와 분리)
+  const hasIbaji = !hasChuseok && cat.items.some(function(i){ return i === '__이바지大__' || i === '__이바지小__'; });
   const hasSet = !hasChuseok && !hasIbaji && cat.items.some(function(i){ return i.startsWith('__'); });
   const hasDoe = cat.items.some(function(i){ return TTEOK_DB[i] && TTEOK_DB[i].unit === '되'; });
   const hasEach = cat.items.some(function(i){ return !i.startsWith('__') && TTEOK_DB[i] && TTEOK_DB[i].unit !== '되'; });
@@ -5557,10 +5734,38 @@ function filterEditTteok(kw) {
   if (!dropdown) return;
   const catId = window._editCurrentCatId;
   const cat = catId ? window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; }) : null;
-  const baseList = cat ? cat.items.filter(function(n){ return !n.startsWith('__'); })
+  let baseList = cat ? cat.items.filter(function(n){ return !n.startsWith('__'); })
     : Object.keys(TTEOK_DB);
-  const filtered = kw ? baseList.filter(function(n){ return n.includes(kw); }) : baseList;
+  // 검색 방식 커스텀 세트도 목록에 포함
+  if (cat) {
+    cat.items.forEach(function(n){
+      if (n.indexOf('__cs_') === 0) {
+        const csId = n.slice(2, -2);
+        const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+        if (cs && cs.orderMode === 'search') baseList.push('__' + cs.id + '__');
+      }
+    });
+  }
+  const filtered = kw ? baseList.filter(function(n){
+    if (n.indexOf('__cs_') === 0) {
+      const cs = (window.CUSTOM_SETS||[]).find(function(s){ return '__' + s.id + '__' === n; });
+      return cs && cs.name.includes(kw);
+    }
+    return n.includes(kw);
+  }) : baseList;
   dropdown.innerHTML = filtered.map(function(name) {
+    // 검색 방식 커스텀 세트 항목 (초록 배경)
+    if (name.indexOf('__cs_') === 0) {
+      const csId = name.slice(2, -2);
+      const cs = (window.CUSTOM_SETS||[]).find(function(s){ return s.id === csId; });
+      if (!cs) return '';
+      const total = (typeof csTotalForSet === 'function') ? csTotalForSet(cs) : 0;
+      const priceStr = total ? ' <span style="color:#888;font-size:10px;">' + total.toLocaleString() + '원</span>' : '';
+      return '<div onclick="editSelectCustomSetFromSearch(\'' + cs.id + '\')" ' +
+        'style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;" ' +
+        'onmouseenter="this.style.background=\'#dcfce7\'" onmouseleave="this.style.background=\'#f0fdf4\'">' +
+        '<span>📦 ' + cs.name + '</span>' + priceStr + '</div>';
+    }
     const db = TTEOK_DB[name];
     const price = db ? (db.unitPrice||0) : 0;
     const priceStr = price ? ' <span style="color:#888;font-size:10px;">' + price.toLocaleString() + '원</span>' : '';
@@ -11625,6 +11830,24 @@ function renderModalEdit(o) {
             <button type="button" onclick="editChooseSetType('쿠키상자(소)')" id="edit-setbtn-쿠키상자(소)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(소)</button>
             <button type="button" onclick="editChooseSetType('덕세트')" id="edit-setbtn-덕세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕세트</button>
             <button type="button" onclick="editChooseSetType('덕6구세트')" id="edit-setbtn-덕6구세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕6구세트</button>
+          </div>
+          <!-- 내가 만든 커스텀 세트 버튼 (수정 모달, 동적) -->
+          <div id="edit-customSetBtns" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"></div>
+          <!-- 커스텀 세트 담기 영역 (수정 모달) -->
+          <div id="edit-customSetCompose" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:8px;">
+            <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px;"><span id="edit-csOrderName"></span></div>
+            <div id="edit-csOrderCompo" style="font-size:12px;color:#666;margin-bottom:10px;"></div>
+            <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+              <div>
+                <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 수량</label>
+                <input type="number" id="edit-csOrderQty" value="1" min="1" oninput="editCsOrderUpdatePreview()" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+              </div>
+              <div style="flex:1;font-size:13px;color:#15803d;">
+                <span id="edit-csOrderPricePreview"></span>
+              </div>
+              <button type="button" onclick="editAddCustomSetToOrder()" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">담기</button>
+              <button type="button" onclick="document.getElementById('edit-customSetCompose').style.display='none'" style="padding:8px 12px;background:#eee;color:#555;border:none;border-radius:8px;font-size:13px;cursor:pointer;">취소</button>
+            </div>
           </div>
           <div id="edit-setCompose" style="display:none;">
             <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;"><span id="edit-setTypeName"></span> 구성 떡</div>
