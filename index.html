@@ -3830,7 +3830,7 @@ function loadTteokPriceSettings() {
     gasGet({ action: 'getTteokSettings' }).then(function(data) {
       if (!data.success) { window._tteokDbReady = true; return; }
       const d = data.data || {};
-      if (d.tteokPriceDB) { try {
+      if (d.tteokPriceDB && Object.keys(d.tteokPriceDB).length > 0) { try {
         Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
         Object.assign(TTEOK_DB, d.tteokPriceDB);
         localStorage.setItem('tteokPriceDB', JSON.stringify(TTEOK_DB));
@@ -3891,7 +3891,7 @@ function loadTteokPriceSettings() {
         });
       }
       if (d.koreaPresets) { try { window.KOREA_PRESETS = d.koreaPresets; } catch(e){} }
-      if (d.customSets) { try { window.CUSTOM_SETS = d.customSets; } catch(e){} }
+      if (d.customSets && Array.isArray(d.customSets) && d.customSets.length > 0) { try { window.CUSTOM_SETS = d.customSets; if (typeof renderCustomSetList === 'function') renderCustomSetList(); } catch(e){} }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
       if (d.purchaseVendorProducts) {
         try {
@@ -13081,7 +13081,9 @@ function loadOrdersFromSheet(silent, force) {
     return Promise.resolve();
   }
   if (!silent) showLoading(true);
-  return gasGet({ action: 'getOrders', days: ORDERS_RECENT_DAYS })
+  var _params = { action: 'getOrders', days: ORDERS_RECENT_DAYS };
+  if (force) _params.force = 1; // 새로고침·접수 직후엔 서버 캐시 건너뛰고 최신
+  return gasGet(_params)
     .then(data => {
       if (data.success) {
         orders = data.orders || [];
