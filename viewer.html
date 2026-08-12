@@ -259,9 +259,22 @@ function loadData() {
   document.getElementById('orderCards').innerHTML = '<div class="loading">불러오는 중...</div>';
   document.getElementById('venueSection').innerHTML = '<div class="loading">불러오는 중...</div>';
 
-  // 4개 시트를 동시에(Promise.all) 요청하면 GAS 동시실행 큐잉으로 타임아웃이 잦아지므로
-  // 순차적으로 하나씩 요청 (각 요청은 위 gasGet의 28초 타임아웃 + 자동 재시도 2회 적용됨)
-  // 뷰어앱은 최근 30일 데이터면 충분하므로 GAS에 days=30(과거30일+미래) 요청 → 서버에서부터 데이터量을 줄여 로딩 속도 개선
+  // 개인/장례/웨딩/기타 4개 시트를 GAS getAllData 한 번의 요청으로 통합 로드 (예전엔 4번 순차 호출).
+  // 구버전 GAS(아직 getAllData를 모름)면 success:false가 오므로 예전 방식(개별 4회 호출)으로 자동 대체 — 안전장치.
+  gasGet({ action: 'getAllData', days: 30 })
+    .then(function(data) {
+      if (!data.success) { return loadDataLegacyFallback(); }
+      allOrders = data.orders || [];
+      allWeddingOrders = data.weddingOrders || [];
+      allOtherOrders = data.otherOrders || [];
+      allFuneralOrders = data.funeralOrders || [];
+      render(document.getElementById('dateInput').value);
+    })
+    .catch(function() { return loadDataLegacyFallback(); });
+}
+
+// getAllData를 모르는 구버전 GAS가 배포돼 있을 때를 위한 예전 방식(개별 4회 호출) 대체 경로
+function loadDataLegacyFallback() {
   gasGet({ action: 'getOrders', days: 30 })
     .then(function(data) {
       if (!data.success) { showError(); return Promise.reject(new Error('stop')); }
