@@ -3689,7 +3689,15 @@ window.KOREA_PRESETS = {
 // 각 세트: { id, name, boxFee, items:[{name, qty, unit}] }
 //  - items의 qty·unit이 생산계획 자동합산의 근거가 됨
 //  - 가격 = (구성 떡 단가×qty 합 + boxFee) × 세트수
-window.CUSTOM_SETS = [];
+// 앱 켤 때 localStorage에 저장된 세트를 먼저 읽어둔다 → 단가설정 열자마자 바로 표시
+// (GAS 응답을 기다리지 않아 세트만 늦게 뜨는 문제 방지). GAS 최신값은 도착하면 갱신.
+window.CUSTOM_SETS = (function(){
+  try {
+    var saved = localStorage.getItem('customSets');
+    if (saved) { var arr = JSON.parse(saved); if (Array.isArray(arr)) return arr; }
+  } catch(e){}
+  return [];
+})();
 
 // 덕세트 구성 정의
 const DEOK_SET_CONFIGS = [
