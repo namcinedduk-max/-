@@ -194,13 +194,17 @@ function gasGetOnce(params, timeoutMs) {
   });
 }
 
-// 타임아웃 15초→28초로 연장, 실패 시 최대 2회까지 자동 재시도(1초 간격)
-function gasGet(params, retriesLeft) {
+// 첫 시도는 짧게(10초)만 기다려서 막히면 빨리 포기하고 재시도 — 모바일 데이터에서
+// 첫 연결이 유독 느리거나 멈추는 경우, 28초 꽉 채워 기다리지 않고 빠르게 다음 시도로 넘어감.
+// 재시도할수록 여유시간을 늘려 마지막엔 28초까지(정말 서버가 느린 경우 대비 안전장치).
+function gasGet(params, retriesLeft, timeoutMs) {
   if (retriesLeft === undefined) retriesLeft = 2;
-  return gasGetOnce(params, 28000).catch(function(err) {
+  if (timeoutMs === undefined) timeoutMs = 10000;
+  return gasGetOnce(params, timeoutMs).catch(function(err) {
     if (retriesLeft > 0) {
-      return new Promise(function(res) { setTimeout(res, 1000); })
-        .then(function() { return gasGet(params, retriesLeft - 1); });
+      var nextTimeout = Math.min(timeoutMs + 8000, 28000);
+      return new Promise(function(res) { setTimeout(res, 500); })
+        .then(function() { return gasGet(params, retriesLeft - 1, nextTimeout); });
     }
     throw err;
   });
