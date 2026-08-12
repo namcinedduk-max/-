@@ -4964,6 +4964,29 @@ function renderOrderCategoryButtons() {
 }
 
 // 주문 접수 카테고리 선택
+// 기존 하드코딩 세트 버튼(분홍/은혜/코리아/쿠키/덕세트 등 8개)은 카테고리 토큰이
+// 없어서(코리아·쿠키·덕은 카테고리 시스템에 없음) 개별 배치가 안 됨.
+// 사장님은 이것들을 모두 "선물세트" 카테고리에서 접수하므로,
+// 선물세트 카테고리일 때만 8개를 보이고 다른 세트 카테고리(상차림 등)에선 숨긴다.
+function filterHardcodedSetButtons(catId) {
+  var cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
+  var items = (cat && cat.items) ? cat.items : [];
+  var isGiftCat = (catId === 'cat_set'); // 선물세트 카테고리 id
+  // 분홍·은혜는 카테고리 토큰이 있어 개별 배치 가능 → 토큰 있으면 표시
+  var tokened = { '분홍세트':'__분홍세트__', '은혜세트':'__은혜세트__' };
+  // 코리아·쿠키·덕은 토큰 없음 → 선물세트 카테고리에서만 표시
+  var giftOnly = ['코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트'];
+
+  Object.keys(tokened).forEach(function(name) {
+    var btn = document.getElementById('setbtn-' + name);
+    if (btn) btn.style.display = (isGiftCat || items.indexOf(tokened[name]) !== -1) ? '' : 'none';
+  });
+  giftOnly.forEach(function(name) {
+    var btn = document.getElementById('setbtn-' + name);
+    if (btn) btn.style.display = isGiftCat ? '' : 'none';
+  });
+}
+
 function selectOrderCategory(catId) {
   window._currentCatId = catId;
   const cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
@@ -5017,6 +5040,7 @@ function selectOrderCategory(catId) {
     if (doeArea) doeArea.style.display = 'none';
     if (ibajiArea) ibajiArea.style.display = 'none';
     if (chuseokArea) chuseokArea.style.display = 'none';
+    filterHardcodedSetButtons(catId); // 선물세트 카테고리에서만 기존 세트 버튼 표시
     if (typeof renderOrderCustomSetBtns === 'function') renderOrderCustomSetBtns(cat.items);
     const csCompose = document.getElementById('customSetCompose');
     if (csCompose) csCompose.style.display = 'none';
