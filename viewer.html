@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://script.google.com">
+<link rel="dns-prefetch" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="dns-prefetch" href="https://script.googleusercontent.com">
 <title>🏭 생산 뷰어 - 남씨네떡집</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -258,10 +262,31 @@ function normDate(str) {
   return m ? m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0') : str;
 }
 
+const VIEWER_CACHE_KEY = 'viewerCache_v1';
+let _shownFromCache = false; // 이전 캐시로 화면을 이미 띄웠는지 (실패해도 화면을 지우지 않기 위함)
+
 function loadData() {
-  document.getElementById('summaryGrid').innerHTML = '<div class="loading">불러오는 중...</div>';
-  document.getElementById('orderCards').innerHTML = '<div class="loading">불러오는 중...</div>';
-  document.getElementById('venueSection').innerHTML = '<div class="loading">불러오는 중...</div>';
+  _shownFromCache = false;
+
+  // 마지막으로 성공했던 데이터가 있으면 즉시 그걸로 화면부터 띄우고,
+  // 뒤에서 최신 데이터를 조용히 받아와서 덮어씀 → 체감상 거의 즉시 뜨는 것처럼 느껴짐
+  try {
+    const cached = JSON.parse(localStorage.getItem(VIEWER_CACHE_KEY) || 'null');
+    if (cached) {
+      allOrders = cached.allOrders || [];
+      allWeddingOrders = cached.allWeddingOrders || [];
+      allOtherOrders = cached.allOtherOrders || [];
+      allFuneralOrders = cached.allFuneralOrders || [];
+      render(document.getElementById('dateInput').value);
+      _shownFromCache = true;
+    }
+  } catch (e) {}
+
+  if (!_shownFromCache) {
+    document.getElementById('summaryGrid').innerHTML = '<div class="loading">불러오는 중...</div>';
+    document.getElementById('orderCards').innerHTML = '<div class="loading">불러오는 중...</div>';
+    document.getElementById('venueSection').innerHTML = '<div class="loading">불러오는 중...</div>';
+  }
 
   // 개인/장례/웨딩/기타 4개 시트를 GAS getAllData 한 번의 요청으로 통합 로드 (예전엔 4번 순차 호출).
   // 구버전 GAS(아직 getAllData를 모름)면 success:false가 오므로 예전 방식(개별 4회 호출)으로 자동 대체 — 안전장치.
@@ -272,16 +297,26 @@ function loadData() {
       allWeddingOrders = data.weddingOrders || [];
       allOtherOrders = data.otherOrders || [];
       allFuneralOrders = data.funeralOrders || [];
+      saveViewerCache();
       render(document.getElementById('dateInput').value);
     })
     .catch(function() { return loadDataLegacyFallback(); });
+}
+
+function saveViewerCache() {
+  try {
+    localStorage.setItem(VIEWER_CACHE_KEY, JSON.stringify({
+      allOrders: allOrders, allWeddingOrders: allWeddingOrders,
+      allOtherOrders: allOtherOrders, allFuneralOrders: allFuneralOrders
+    }));
+  } catch (e) {}
 }
 
 // getAllData를 모르는 구버전 GAS가 배포돼 있을 때를 위한 예전 방식(개별 4회 호출) 대체 경로
 function loadDataLegacyFallback() {
   gasGet({ action: 'getOrders', days: 30 })
     .then(function(data) {
-      if (!data.success) { showError(); return Promise.reject(new Error('stop')); }
+      if (!data.success) { if (!_shownFromCache) showError(); return Promise.reject(new Error('stop')); }
       allOrders = data.orders || [];
       return gasGet({ action: 'getOrders', sheet: 'wedding', days: 30 });
     })
@@ -295,11 +330,12 @@ function loadDataLegacyFallback() {
     })
     .then(function(fData) {
       allFuneralOrders = fData.success ? (fData.orders || []) : [];
+      saveViewerCache();
       render(document.getElementById('dateInput').value);
     })
     .catch(function(err) {
-      if (err && err.message === 'stop') return; // 이미 showError() 처리됨
-      showError();
+      if (err && err.message === 'stop') return; // 이미 처리됨
+      if (!_shownFromCache) showError(); // 캐시로 이미 뭔가 보여준 상태면 화면을 지우지 않음
     });
 }
 
