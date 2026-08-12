@@ -3899,7 +3899,7 @@ function loadTteokPriceSettings() {
         });
       }
       if (d.koreaPresets) { try { window.KOREA_PRESETS = d.koreaPresets; } catch(e){} }
-      if (d.customSets && Array.isArray(d.customSets) && d.customSets.length > 0) { try { window.CUSTOM_SETS = d.customSets; if (typeof renderCustomSetList === 'function') renderCustomSetList(); } catch(e){} }
+      if (d.customSets && Array.isArray(d.customSets) && d.customSets.length > 0) { try { window.CUSTOM_SETS = d.customSets; localStorage.setItem('customSets', JSON.stringify(d.customSets)); if (typeof renderCustomSetList === 'function') renderCustomSetList(); } catch(e){} }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
       if (d.purchaseVendorProducts) {
         try {
@@ -8132,9 +8132,11 @@ function switchSettingsTab(type) {
   }
   if (type === 'quickfee') renderQuickFeeList();
   if (type === 'tteokprice') {
-    // GAS에서 최신 데이터 불러온 후 렌더링
+    // 먼저 로컬 데이터로 즉시 그린다 (GAS 30초 기다리지 않게) → 세트도 바로 표시
+    renderTteokPriceList();
+    renderOrderCatSettings();
+    // 그다음 GAS에서 최신 데이터 받아 조용히 갱신
     if (gasUrl) {
-      showToast('⏳ 최신 단가 불러오는 중...', '');
       gasGet({ action: 'getTteokSettings' }).then(function(data) {
         if (data.success && data.data && data.data.tteokPriceDB) {
           Object.keys(TTEOK_DB).forEach(function(k){ delete TTEOK_DB[k]; });
@@ -8143,7 +8145,6 @@ function switchSettingsTab(type) {
         }
         renderTteokPriceList();
         renderOrderCatSettings();
-        showToast('', '');
       }).catch(function() {
         renderTteokPriceList();
         renderOrderCatSettings();
