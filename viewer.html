@@ -261,19 +261,20 @@ function loadData() {
 
   // 4개 시트를 동시에(Promise.all) 요청하면 GAS 동시실행 큐잉으로 타임아웃이 잦아지므로
   // 순차적으로 하나씩 요청 (각 요청은 위 gasGet의 28초 타임아웃 + 자동 재시도 2회 적용됨)
-  gasGet({ action: 'getOrders' })
+  // 뷰어앱은 최근 30일 데이터면 충분하므로 GAS에 days=30(과거30일+미래) 요청 → 서버에서부터 데이터量을 줄여 로딩 속도 개선
+  gasGet({ action: 'getOrders', days: 30 })
     .then(function(data) {
       if (!data.success) { showError(); return Promise.reject(new Error('stop')); }
       allOrders = data.orders || [];
-      return gasGet({ action: 'getOrders', sheet: 'wedding' });
+      return gasGet({ action: 'getOrders', sheet: 'wedding', days: 30 });
     })
     .then(function(wData) {
       allWeddingOrders = wData.success ? (wData.orders || []) : [];
-      return gasGet({ action: 'getOrders', sheet: 'other' });
+      return gasGet({ action: 'getOrders', sheet: 'other', days: 30 });
     })
     .then(function(oData) {
       allOtherOrders = oData.success ? (oData.orders || []) : [];
-      return gasGet({ action: 'getOrders', sheet: 'funeral' });
+      return gasGet({ action: 'getOrders', sheet: 'funeral', days: 30 });
     })
     .then(function(fData) {
       allFuneralOrders = fData.success ? (fData.orders || []) : [];
