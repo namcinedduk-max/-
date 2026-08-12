@@ -8741,13 +8741,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('gasUrl').value = gasUrl;
     document.getElementById('sheetStatus').textContent = '연결됨';
     document.getElementById('sheetStatus').className = 'sheet-status connected';
-    // 앱 시작 시 요청 분산 로드 (GAS 동시 요청 큐잉 방지)
-    // ① 즉시: 일반 주문 (현재 탭, 최우선)
-    loadOrdersFromSheet(true);
-    // ② 2초 후: 장례 주문
-    setTimeout(function() { loadFuneralOrdersFromSheet(true); }, 2000);
-    // ③ 4초 후: 웨딩 주문
-    setTimeout(function() { loadWeddingOrdersFromSheet(true); }, 4000);
+    // 앱 시작 시: 개인/장례/웨딩/기타 주문을 GAS getAllData 한 번의 요청으로 통합 로드.
+    // (예전엔 GAS 동시요청 큐잉 방지를 위해 0초/2초/4초로 나눠 불렀지만,
+    //  이제 서버가 한 번의 요청 안에서 순차로 4개 시트를 읽어 보내주므로 더 빠르고 큐잉 걱정도 없음.
+    //  구버전 GAS가 배포돼 있어 getAllData를 모르는 경우엔 자동으로 예전 방식으로 대체됨)
+    loadAllDataOnStartup();
     // ④ 6초 후: 거래처
     setTimeout(function() {
       gasGet({ action: 'getPartners' }).then(function(data) {
@@ -13446,6 +13444,45 @@ function loadOrdersFromSheet(silent, force) {
     })
     .catch(() => { if (!silent) showToast('❌ 시트 연결 실패. URL을 확인해주세요.', 'error'); })
     .finally(() => { if (!silent) showLoading(false); });
+}
+
+// 앱 시작 시 개인/장례/웨딩/기타 주문을 GAS 한 번의 요청(getAllData)으로 통합 로드.
+// 구버전 GAS(아직 getAllData를 모름)나 네트워크 오류가 있으면 예전 방식(개별 시차 호출)으로 자동 대체 — 안전장치.
+function loadAllDataOnStartup() {
+  if (!gasUrl) return Promise.resolve();
+  var _fallback = function() {
+    loadOrdersFromSheet(true);
+    setTimeout(function() { loadFuneralOrdersFromSheet(true); }, 2000);
+    setTimeout(function() { loadWeddingOrdersFromSheet(true); }, 4000);
+  };
+  return gasGet({ action: 'getAllData', days: ORDERS_RECENT_DAYS })
+    .then(data => {
+      if (!data.success) { _fallback(); return; }
+
+      orders = data.orders || [];
+      _cacheTs.orders = Date.now();
+      _ordersFullLoaded = false;
+      migrateOrderSeqNos();
+      if (_prevPendingIds === null) {
+        _prevPendingIds = new Set(orders.filter(o => o.orderType === '고객신청').map(o => String(o.id)));
+      }
+      updateStats(); renderList();
+
+      funeralOrders = data.funeralOrders || [];
+      _cacheTs.funeral = Date.now();
+      updateFuneralStats(); renderFuneralList();
+
+      weddingOrders = data.weddingOrders || [];
+      _cacheTs.wedding = Date.now();
+      localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
+      updateWeddingStats(); renderWeddingList();
+
+      if (data.otherOrders) {
+        otherOrders = data.otherOrders;
+        updateOtherStats(); renderOtherList();
+      }
+    })
+    .catch(() => { _fallback(); });
 }
 
 // 전체(옛날 것 포함) 불러오기 — 전체보기·옛날 검색용. 이미 전체면 재요청 생략.
