@@ -1625,9 +1625,9 @@
           <option value="created">📋 접수일</option>
         </select>
         <div class="filter-divider"></div>
-        <input type="date" id="filterDate" onchange="loadFuneralOrdersFromSheet(true,true).then(()=>renderList())">
+        <input type="date" id="filterDate" onchange="onFilterDateChange()">
       </div>
-      <input type="text" class="search-input" id="searchInput" placeholder="🔍 이름, 전화번호, 떡 종류 검색..." oninput="renderList()">
+      <input type="text" class="search-input" id="searchInput" placeholder="🔍 이름, 전화번호, 떡 종류 검색..." oninput="onSearchInput()">
       <button class="btn-small btn-secondary" onclick="clearFilter()">전체보기</button>
       <button class="btn-small" id="refreshBtn" onclick="manualRefresh()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printOrders()">🖨️ 출력/PDF</button>
@@ -11134,7 +11134,40 @@ function clearFilter() {
   document.getElementById('searchInput').value = '';
   document.getElementById('filterDateType').value = 'delivery';
   window._filterPayStatus = null;
-  renderList();
+  // 전체보기는 옛날 주문까지 봐야 하므로 전체를 불러온 뒤 렌더
+  loadAllOrdersFromSheet().then(() => { updateStats(); renderList(); });
+}
+
+// 날짜 필터: 고른 날짜가 최근 30일보다 이전이면 전체를 불러와서 렌더
+function onFilterDateChange() {
+  const val = document.getElementById('filterDate').value;
+  if (!val) { renderList(); return; }
+  // 고른 날짜가 (오늘 - 30일)보다 과거면 전체 필요
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - ORDERS_RECENT_DAYS);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  if (val < cutoffStr && !_ordersFullLoaded) {
+    loadAllOrdersFromSheet().then(() => renderList());
+  } else {
+    renderList();
+  }
+}
+
+// 검색: 검색어가 있으면 옛날 주문까지 찾을 수 있게 전체를 불러온 뒤 렌더.
+// (평소엔 최근 30일만 메모리에 있어서, 옛날 손님은 전체를 불러와야 잡힘)
+let _searchDebounce = null;
+function onSearchInput() {
+  const val = (document.getElementById('searchInput').value || '').trim();
+  // 검색어 없으면 그냥 렌더 (최근 목록 그대로)
+  if (!val) { renderList(); return; }
+  // 이미 전체를 불러왔으면 바로 렌더
+  if (_ordersFullLoaded) { renderList(); return; }
+  // 아직 최근 것만 있으면, 잠깐 기다렸다 전체 불러와서 렌더 (타이핑 중 과도한 호출 방지)
+  renderList(); // 우선 최근 것 안에서라도 즉시 반응
+  if (_searchDebounce) clearTimeout(_searchDebounce);
+  _searchDebounce = setTimeout(() => {
+    loadAllOrdersFromSheet().then(() => renderList());
+  }, 500);
 }
 
 function filterByUnpaid() {
@@ -13035,6 +13068,12 @@ let _cacheTs = { orders: 0, funeral: 0, wedding: 0 };
 
 function requestNotifPermission() {}
 
+// 평소엔 배송일 기준 최근 N일 + 미래 예약만 불러온다 (전체를 매번 불러오면
+// 데이터가 많을 때 느리고 15초 타임아웃에 자주 걸려서). 옛날 주문 전체가
+// 필요할 때(전체보기·검색)는 loadAllOrdersFromSheet로 따로 불러온다.
+const ORDERS_RECENT_DAYS = 30;
+let _ordersFullLoaded = false; // 전체를 불러온 상태인지
+
 function loadOrdersFromSheet(silent, force) {
   if (!gasUrl) return Promise.resolve();
   // 캐시 유효 시 재요청 생략 (force=true 또는 silent=false면 항상 갱신)
@@ -13042,11 +13081,12 @@ function loadOrdersFromSheet(silent, force) {
     return Promise.resolve();
   }
   if (!silent) showLoading(true);
-  return gasGet({ action: 'getOrders' })
+  return gasGet({ action: 'getOrders', days: ORDERS_RECENT_DAYS })
     .then(data => {
       if (data.success) {
         orders = data.orders || [];
         _cacheTs.orders = Date.now();
+        _ordersFullLoaded = false; // 최근 것만 불러온 상태
         migrateOrderSeqNos();  // 서버에서 받은 데이터에도 seqNo 부여
         if (_prevPendingIds === null) {
           _prevPendingIds = new Set(orders.filter(o => o.orderType === '고객신청').map(o => String(o.id)));
@@ -13058,6 +13098,26 @@ function loadOrdersFromSheet(silent, force) {
     })
     .catch(() => { if (!silent) showToast('❌ 시트 연결 실패. URL을 확인해주세요.', 'error'); })
     .finally(() => { if (!silent) showLoading(false); });
+}
+
+// 전체(옛날 것 포함) 불러오기 — 전체보기·옛날 검색용. 이미 전체면 재요청 생략.
+function loadAllOrdersFromSheet() {
+  if (!gasUrl) return Promise.resolve();
+  if (_ordersFullLoaded) return Promise.resolve();
+  showLoading(true);
+  return gasGet({ action: 'getOrders' })  // days 없이 = 전체
+    .then(data => {
+      if (data.success) {
+        orders = data.orders || [];
+        _cacheTs.orders = Date.now();
+        _ordersFullLoaded = true;
+        migrateOrderSeqNos();
+      } else {
+        showToast('⚠️ 전체 불러오기 실패', 'error');
+      }
+    })
+    .catch(() => { showToast('❌ 시트 연결 실패. URL을 확인해주세요.', 'error'); })
+    .finally(() => { showLoading(false); });
 }
 
 // 장부 시작하자마자 즉시 초기화 폴링 (전용 대기 시트 사용)
