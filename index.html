@@ -4484,7 +4484,7 @@ function csOrderInitAdvanced(s) {
         btnsBox.innerHTML = s.presets.map(function(p) {
           const priceDisp = (s.priceMode === 'fixed') ? (p.price || 0) : csComputeUnitFromItems(s, p.items);
           return '<button type="button" onclick="applyCsOrderPreset(\'' + s.id + '\',\'' + p.id + '\')" ' +
-            'style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
+            'style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);margin:3px;">' +
             p.label + ' (' + priceDisp.toLocaleString() + '원)</button>';
         }).join('');
       }
@@ -4729,7 +4729,7 @@ function renderSetTteokList() {
         presetArea.innerHTML = '<div style="font-size:12px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">📋 저장된 구성</div>' +
           presets.map(function(p) {
             return '<button type="button" onclick="applyKoreaPreset(\'' + setType + '\',\'' + p.id + '\')" ' +
-              'style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
+              'style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);margin:3px;">' +
               p.label + '</button>';
           }).join('');
       } else {
@@ -5824,7 +5824,7 @@ function editCsOrderInitAdvanced(s) {
         btnsBox.innerHTML = s.presets.map(function(p) {
           const priceDisp = (s.priceMode === 'fixed') ? (p.price || 0) : csComputeUnitFromItems(s, p.items);
           return '<button type="button" onclick="applyEditCsOrderPreset(\'' + s.id + '\',\'' + p.id + '\')" ' +
-            'style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
+            'style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);margin:3px;">' +
             p.label + ' (' + priceDisp.toLocaleString() + '원)</button>';
         }).join('');
       }
@@ -6137,7 +6137,7 @@ function editChooseSetType(setType) {
         presetArea.innerHTML = '<div style="font-size:11px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">📋 저장된 구성</div>' +
           presets.map(function(p) {
             return '<button type="button" onclick="applyEditKoreaPreset(\'' + setType + '\',\'' + p.id + '\')" ' +
-              'style="padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
+              'style="padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);margin:3px;">' +
               p.label + '</button>';
           }).join('');
       } else { presetArea.style.display = 'none'; }
@@ -8081,6 +8081,7 @@ function saveCustomSet() {
 
   toggleCustomSetForm(false);
   renderCustomSetList();
+  renderOrderCatSettings(); // 카테고리 관리 화면(미배정 풀)에도 새로고침 없이 바로 반영
   showToast('✅ ' + name + ' 세트 저장됐어요!', 'success');
 }
 
@@ -8124,6 +8125,7 @@ function deleteCustomSet(id) {
   localStorage.setItem('customSets', JSON.stringify(window.CUSTOM_SETS));
   if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { customSets: window.CUSTOM_SETS } }).catch(function(){});
   renderCustomSetList();
+  renderOrderCatSettings(); // 카테고리 관리 화면에서도 삭제된 세트가 바로 빠지도록
   showToast('🗑 세트 삭제됐어요.', 'error');
 }
 
