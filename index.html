@@ -1148,23 +1148,25 @@ function forceRefreshApp() {
                   <div id="customSetCompose" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:10px;">
                     <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px;"><span id="csOrderName"></span></div>
                     <div id="csOrderCompo" style="font-size:12px;color:#666;margin-bottom:10px;"></div>
+                    <div id="csOrderQtyWrap" style="margin-bottom:8px;">
+                      <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 수량</label>
+                      <input type="number" id="csOrderQty" value="1" min="1" oninput="csOrderUpdatePreview()" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                    </div>
                     <div id="csOrderAdvancedArea" style="display:none;">
-                      <div style="display:flex;gap:6px;margin-bottom:8px;">
+                      <div id="csOrderSearchRow" style="display:flex;gap:6px;margin-bottom:8px;">
                         <input type="text" id="csOrderTteokSearch" list="cs-tteok-datalist" placeholder="🔍 떡 이름 검색해서 담기" style="flex:2;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                         <input type="number" id="csOrderTteokQty" placeholder="수량" style="width:70px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                         <button type="button" onclick="csOrderAddTteok()" style="padding:7px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">담기</button>
                       </div>
-                      <div id="csOrderItemList" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;"></div>
                       <div id="csOrderPresetArea" style="display:none;margin-bottom:8px;">
                         <div style="font-size:12px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">📋 저장된 구성</div>
                         <div id="csOrderPresetBtns"></div>
                       </div>
+                      <div id="csOrderItemListWrap" style="margin-bottom:8px;">
+                        <div id="csOrderItemList" style="display:flex;flex-direction:column;gap:4px;"></div>
+                      </div>
                     </div>
                     <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
-                      <div>
-                        <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 수량</label>
-                        <input type="number" id="csOrderQty" value="1" min="1" oninput="csOrderUpdatePreview()" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-                      </div>
                       <div style="flex:1;font-size:13px;color:#15803d;">
                         <span id="csOrderPricePreview"></span>
                       </div>
@@ -2792,24 +2794,13 @@ function forceRefreshApp() {
             <!-- 세트 만들기 폼 -->
             <div id="customSetForm" style="display:none;background:#fff;border:1.5px solid #bbf7d0;border-radius:10px;padding:12px;margin-bottom:12px;">
               <input type="hidden" id="cs-edit-id" value="">
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-                <div style="flex:2;min-width:140px;">
-                  <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 이름</label>
-                  <input type="text" id="cs-name" placeholder="예: 상차림세트" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-                </div>
-                <div style="flex:1;min-width:150px;">
-                  <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">가격 방식</label>
-                  <select id="cs-price-mode" onchange="csApplyPriceMode()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
-                    <option value="fixed">고정가격 (딱 정한 금액)</option>
-                    <option value="sum">떡단가 합 + 케이스값</option>
-                    <option value="custom">떡별 전용단가</option>
-                    <option value="base">기준가 + 차액</option>
-                  </select>
-                </div>
+              <div style="margin-bottom:10px;">
+                <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 이름 <span style="color:#94a3b8;font-weight:400;">— 덕6구세트처럼, 이 세트를 부르는 이름 (예: 코리아대)</span></label>
+                <input type="text" id="cs-name" placeholder="예: 코리아대" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
               </div>
 
               <div style="margin-bottom:10px;">
-                <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">접수 방식 — 주문받을 때 어떻게 담나</label>
+                <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">접수 방식 — 주문받을 때 이 세트를 어떻게 찾나 (프리셋 전체 공통)</label>
                 <select id="cs-order-mode" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
                   <option value="button">버튼 방식 (선물세트처럼 클릭해서 담기)</option>
                   <option value="search">검색 방식 (일반떡처럼 검색해서 담기)</option>
@@ -2817,56 +2808,72 @@ function forceRefreshApp() {
                 <div style="font-size:11px;color:#94a3b8;margin-top:3px;">모찌1박스처럼 일반떡 카테고리에 넣을 세트는 '검색 방식'을 고르세요.</div>
               </div>
 
-              <!-- 방식별 추가 입력칸 -->
-              <div id="cs-mode-fields" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-                <div id="cs-fixed-wrap" style="width:160px;">
-                  <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 가격 (고정)</label>
-                  <input type="number" id="cs-fixedprice" placeholder="예: 50000" oninput="csUpdatePreview()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-                </div>
+              <div style="margin-bottom:10px;">
+                <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">가격 방식 — 이 세트의 모든 프리셋이 공통으로 쓰는 계산 방식</label>
+                <select id="cs-price-mode" onchange="csApplyPriceMode()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
+                  <option value="fixed">고정가격 (프리셋마다 직접 가격 입력)</option>
+                  <option value="sum">떡단가 합 + 케이스값</option>
+                  <option value="custom">떡별 전용단가</option>
+                  <option value="base">기준가 + 차액</option>
+                </select>
+              </div>
+
+              <!-- 방식별 추가 입력칸 (고정가격 이외 방식일 때만 보임, 프리셋 전체 공통) -->
+              <div id="cs-mode-fields" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
                 <div id="cs-boxfee-wrap" style="width:140px;">
                   <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">케이스값 (세트당)</label>
-                  <input type="number" id="cs-boxfee" placeholder="0" oninput="csUpdatePreview()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                  <input type="number" id="cs-boxfee" placeholder="0" oninput="csRefreshAllPresetPrices()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                 </div>
                 <div id="cs-basefields" style="display:none;gap:8px;flex-wrap:wrap;">
                   <div style="width:120px;">
                     <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 기본가</label>
-                    <input type="number" id="cs-baseprice" placeholder="0" oninput="csUpdatePreview()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                    <input type="number" id="cs-baseprice" placeholder="0" oninput="csRefreshAllPresetPrices()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                   </div>
                   <div style="width:120px;">
                     <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">기준단가 (개당)</label>
-                    <input type="number" id="cs-basestd" placeholder="1000" oninput="csUpdatePreview()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                    <input type="number" id="cs-basestd" placeholder="1000" oninput="csRefreshAllPresetPrices()" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                   </div>
                 </div>
               </div>
 
-              <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">구성 떡 — 1세트에 뭐가 몇 개(kg) 들어가나</div>
-              <div id="cs-items-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+              <div id="cs-simple-section" style="display:none;">
+                <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">구성 떡 — 1세트에 뭐가 몇 개(kg) 들어가나</div>
+                <div id="cs-items-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
 
-              <div style="display:flex;gap:6px;margin-bottom:10px;">
-                <input type="text" id="cs-search" list="cs-tteok-datalist" placeholder="떡 이름 검색 후 선택" style="flex:2;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-                <datalist id="cs-tteok-datalist"></datalist>
-                <input type="number" id="cs-qty" placeholder="수량" style="width:70px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-                <select id="cs-unit" style="width:64px;padding:7px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
-                  <option value="개">개</option>
-                  <option value="kg">kg</option>
-                </select>
-                <button onclick="csAddItem()" style="padding:7px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">담기</button>
+                <div style="display:flex;gap:6px;margin-bottom:10px;">
+                  <input type="text" id="cs-search" list="cs-tteok-datalist" placeholder="떡 이름 검색 후 선택" style="flex:2;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                  <datalist id="cs-tteok-datalist"></datalist>
+                  <input type="number" id="cs-qty" placeholder="수량" style="width:70px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                  <select id="cs-unit" style="width:64px;padding:7px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
+                    <option value="개">개</option>
+                    <option value="kg">kg</option>
+                  </select>
+                  <button onclick="csAddItem()" style="padding:7px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">담기</button>
+                </div>
+
+                <div id="cs-price-preview" style="font-size:12px;color:#15803d;background:#f0fdf4;border-radius:8px;padding:8px 10px;margin-bottom:10px;">구성 떡을 담으면 세트 단가가 계산돼요.</div>
+                <input type="hidden" id="cs-fixedprice" value="">
               </div>
 
-              <div id="cs-price-preview" style="font-size:12px;color:#15803d;background:#f0fdf4;border-radius:8px;padding:8px 10px;margin-bottom:10px;">구성 떡을 담으면 세트 단가가 계산돼요.</div>
-
-              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--brown-mid);font-weight:700;margin-bottom:8px;cursor:pointer;">
-                <input type="checkbox" id="cs-advanced-mode" onchange="csToggleAdvancedMode()"> 여러 구성(프리셋) 쓰기 — 접수 때 떡6구세트처럼 여러 구성 중 골라 담기
-              </label>
-
-              <div id="cs-preset-section" style="display:none;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:10px;">
-                <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">📋 저장된 구성(프리셋) 목록</div>
+              <div id="cs-preset-section" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:10px;">
+                <div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">📋 구성(프리셋) 목록 — 덕6구세트의 "찹쌀떡25구 3종 52,000원~"처럼, 이름+가격+떡목록을 하나씩 등록</div>
                 <div id="cs-preset-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
                   <input type="text" id="cs-preset-label" placeholder="구성 이름 (예: 기본상차림)" style="flex:1;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                   <input type="number" id="cs-preset-price" placeholder="가격 (예: 50000)" style="width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                 </div>
-                <input type="text" id="cs-preset-items" placeholder="떡이름:수량, 떡이름:수량 (예: 흰설기:20, 수수:1)" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:6px;">
+                <div id="cs-preset-price-auto" style="display:none;font-size:12px;color:#15803d;background:#f0fdf4;border-radius:8px;padding:6px 10px;margin-bottom:6px;">구성 떡을 담으면 가격이 자동 계산돼요.</div>
+                <div style="font-size:11px;color:var(--brown-light);margin-bottom:4px;">이 구성에 들어갈 떡 — 단가에 등록된 떡만 검색해서 담을 수 있어요 (오타 방지)</div>
+                <div id="cs-preset-build-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+                <div style="display:flex;gap:6px;margin-bottom:8px;">
+                  <input type="text" id="cs-preset-search" list="cs-tteok-datalist" placeholder="떡 이름 검색 후 선택" style="flex:2;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                  <input type="number" id="cs-preset-qty" placeholder="수량" style="width:70px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                  <select id="cs-preset-unit" style="width:64px;padding:7px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:#fff;">
+                    <option value="개">개</option>
+                    <option value="kg">kg</option>
+                  </select>
+                  <button type="button" onclick="csAddPresetBuildItem()" style="padding:7px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">담기</button>
+                </div>
                 <button type="button" onclick="addSetPreset()" style="width:100%;padding:7px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">+ 프리셋 추가</button>
                 <div style="font-size:11px;color:#94a3b8;margin-top:6px;">접수 화면엔 '검색해서 직접 담기'도 항상 같이 뜨니, 프리셋은 자주 나가는 구성만 등록해두면 돼요.</div>
               </div>
@@ -4445,7 +4452,7 @@ function renderOrderCustomSetBtns(catItems) {
   box.innerHTML = sets.map(function(s) {
     const safeId = s.id.replace(/'/g, "\\'");
     return '<button type="button" onclick="chooseCustomSet(\'' + safeId + '\')" id="csbtn-' + s.id + '" ' +
-      'style="flex:1;min-width:80px;padding:8px;border:1.5px solid #86efac;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#f0fdf4;color:#15803d;">📦 ' + s.name + '</button>';
+      'style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 ' + s.name + '</button>';
   }).join('');
 }
 
@@ -4453,13 +4460,20 @@ function renderOrderCustomSetBtns(catItems) {
 function csOrderInitAdvanced(s) {
   const area = document.getElementById('csOrderAdvancedArea');
   const presetArea = document.getElementById('csOrderPresetArea');
+  const qtyWrap = document.getElementById('csOrderQtyWrap');
+  const compo = document.getElementById('csOrderCompo');
+  const searchRow = document.getElementById('csOrderSearchRow');
   if (!s.advancedMode) {
     if (area) area.style.display = 'none';
+    // 세트 수량을 기본 위치(구성 설명 바로 밑)로 되돌림
+    if (qtyWrap && compo) compo.insertAdjacentElement('afterend', qtyWrap);
     return;
   }
   if (area) area.style.display = 'block';
+  // 세트 수량을 검색행 바로 밑으로 옮김
+  if (qtyWrap && searchRow) searchRow.insertAdjacentElement('afterend', qtyWrap);
   csRefreshDatalist();
-  window._csOrderItems = (s.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
+  window._csOrderItems = []; // 덕6구세트처럼 빈 상태로 시작 (직접 검색해서 담거나 프리셋 선택)
   window._csOrderPresetPrice = null;
   renderCsOrderItemList();
   if (presetArea) {
@@ -4468,9 +4482,10 @@ function csOrderInitAdvanced(s) {
       const btnsBox = document.getElementById('csOrderPresetBtns');
       if (btnsBox) {
         btnsBox.innerHTML = s.presets.map(function(p) {
+          const priceDisp = (s.priceMode === 'fixed') ? (p.price || 0) : csComputeUnitFromItems(s, p.items);
           return '<button type="button" onclick="applyCsOrderPreset(\'' + s.id + '\',\'' + p.id + '\')" ' +
             'style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
-            p.label + ' (' + p.price.toLocaleString() + '원)</button>';
+            p.label + ' (' + priceDisp.toLocaleString() + '원)</button>';
         }).join('');
       }
     } else {
@@ -4488,6 +4503,13 @@ function renderCsOrderItemList() {
       '<button type="button" onclick="csOrderRemoveTteok(' + i + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:4px;padding:2px 6px;cursor:pointer;">✕</button>' +
       '</div>';
   }).join('');
+}
+
+// 담긴구성 표시 위치를 방금 사용한 입력 방식 바로 밑으로 옮김 (검색해서 담기 vs 프리셋 선택)
+function csOrderMoveItemListAfter(anchorId, wrapId) {
+  const anchor = document.getElementById(anchorId);
+  const wrap = document.getElementById(wrapId);
+  if (anchor && wrap) anchor.insertAdjacentElement('afterend', wrap);
 }
 
 function csOrderAddTteok() {
@@ -4515,7 +4537,8 @@ function applyCsOrderPreset(setId, presetId) {
   const preset = (s.presets||[]).find(function(p){ return p.id === presetId; });
   if (!preset) return;
   window._csOrderItems = (preset.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
-  window._csOrderPresetPrice = preset.price;
+  // 고정가격 세트만 프리셋에 저장된 가격을 그대로 씀. 그 외 방식은 항상 현재 단가로 다시 계산(떡 단가 바뀌면 자동 반영).
+  window._csOrderPresetPrice = (s.priceMode === 'fixed') ? preset.price : null;
   renderCsOrderItemList();
   csOrderUpdatePreview();
   showToast('✅ ' + preset.label + ' 구성 적용!', 'success');
@@ -4539,7 +4562,7 @@ function selectCustomSetFromSearch(id) {
   }
   window._orderCustomSet = s;
   document.getElementById('csOrderName').textContent = '📦 ' + s.name;
-  document.getElementById('csOrderCompo').textContent = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  document.getElementById('csOrderCompo').textContent = s.advancedMode ? '' : (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
   document.getElementById('csOrderQty').value = '1';
   if (compose) compose.style.display = 'block';
   csOrderInitAdvanced(s);
@@ -4563,7 +4586,7 @@ function chooseCustomSet(id) {
   // 커스텀 세트 담기 영역 열기
   document.getElementById('customSetCompose').style.display = 'block';
   document.getElementById('csOrderName').textContent = '📦 ' + s.name;
-  document.getElementById('csOrderCompo').textContent = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  document.getElementById('csOrderCompo').textContent = s.advancedMode ? '' : (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
   document.getElementById('csOrderQty').value = '1';
   csOrderInitAdvanced(s);
   csOrderUpdatePreview();
@@ -4572,8 +4595,8 @@ function chooseCustomSet(id) {
     const b = document.getElementById('csbtn-' + x.id);
     if (b) {
       const on = x.id === id;
-      b.style.background = on ? '#16a34a' : '#f0fdf4';
-      b.style.color = on ? '#fff' : '#15803d';
+      b.style.background = on ? 'var(--brown-deep)' : '#fff';
+      b.style.color = on ? '#fff' : 'var(--brown-mid)';
     }
   });
 }
@@ -4601,7 +4624,10 @@ function addCustomSetToOrder() {
   // csId를 함께 저장 → 생산계획 분해 시 이름 파싱 대신 id로 정확히 조회(세트명에 괄호 있어도 안전)
   const compo = items.map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
   const saveName = s.name + '(' + compo + ')';
-  tteokItems.push({ name: saveName, qty: qty + '세트', price: price, csId: s.id });
+  // advancedMode 세트는 실제 담긴 구성(items)을 그대로 저장 → 생산계획이 항상 실제 담긴 대로 집계됨
+  const orderRecord = { name: saveName, qty: qty + '세트', price: price, csId: s.id };
+  if (s.advancedMode) orderRecord.items = items.map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
+  tteokItems.push(orderRecord);
   renderTteokList();
   const pp = document.getElementById('priceProduct');
   if (pp) { pp.value = (parseInt(pp.value)||0) + price; calcTotal(); }
@@ -4612,7 +4638,7 @@ function addCustomSetToOrder() {
   window._csOrderPresetPrice = null;
   (window.CUSTOM_SETS||[]).forEach(function(x){
     const b = document.getElementById('csbtn-' + x.id);
-    if (b) { b.style.background = '#f0fdf4'; b.style.color = '#15803d'; }
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
   });
   showToast('✅ ' + s.name + ' ' + qty + '세트 담았어요!', 'success');
 }
@@ -4627,6 +4653,14 @@ function chooseSetType(setType) {
       b.style.color = s === setType ? '#fff' : 'var(--brown-mid)';
       b.style.borderColor = s === setType ? 'var(--brown-deep)' : 'var(--border)';
     }
+  });
+  // 내가 만든 세트(코리아대 등) 담기 화면이 열려있으면 닫기
+  const csCompose = document.getElementById('customSetCompose');
+  if (csCompose) csCompose.style.display = 'none';
+  window._orderCustomSet = null;
+  (window.CUSTOM_SETS||[]).forEach(function(x){
+    const b = document.getElementById('csbtn-' + x.id);
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
   });
   document.getElementById('setCompose').style.display = 'block';
   document.getElementById('setTypeName').textContent = '🎁 ' + setType;
@@ -5179,6 +5213,17 @@ function selectOrderCategory(catId) {
   const cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
   if (!cat) return;
 
+  // 다른 카테고리로 넘어가면 열려있던 세트 담기 화면들 닫기
+  const setComposeEl = document.getElementById('setCompose');
+  if (setComposeEl) setComposeEl.style.display = 'none';
+  const csComposeEl = document.getElementById('customSetCompose');
+  if (csComposeEl) csComposeEl.style.display = 'none';
+  window._orderCustomSet = null;
+  (window.CUSTOM_SETS||[]).forEach(function(x){
+    const b = document.getElementById('csbtn-' + x.id);
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
+  });
+
   // 버튼 활성화
   window.ORDER_CATEGORIES.forEach(function(c) {
     const btn = document.getElementById('ocbtn-' + c.id);
@@ -5640,6 +5685,16 @@ function selectEditCategory(catId) {
   window._editCurrentCatId = catId;
   const cat = window.ORDER_CATEGORIES.find(function(c){ return c.id === catId; });
   if (!cat) return;
+  // 다른 카테고리로 넘어가면 열려있던 세트 담기 화면들 닫기
+  const editSetComposeEl = document.getElementById('edit-setCompose');
+  if (editSetComposeEl) editSetComposeEl.style.display = 'none';
+  const editCsComposeEl = document.getElementById('edit-customSetCompose');
+  if (editCsComposeEl) editCsComposeEl.style.display = 'none';
+  window._editOrderCustomSet = null;
+  (window.CUSTOM_SETS||[]).forEach(function(x){
+    const b = document.getElementById('edit-csbtn-' + x.id);
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
+  });
   window.ORDER_CATEGORIES.forEach(function(c) {
     const btn = document.getElementById('edit-ocbtn-' + c.id);
     if (btn) {
@@ -5736,7 +5791,7 @@ function renderEditCustomSetBtns(catItems) {
   box.innerHTML = sets.map(function(s) {
     const safeId = s.id.replace(/'/g, "\\'");
     return '<button type="button" onclick="editChooseCustomSet(\'' + safeId + '\')" id="edit-csbtn-' + s.id + '" ' +
-      'style="flex:1;min-width:80px;padding:8px;border:1.5px solid #86efac;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#f0fdf4;color:#15803d;">📦 ' + s.name + '</button>';
+      'style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 ' + s.name + '</button>';
   }).join('');
 }
 
@@ -5747,13 +5802,18 @@ window._editCsOrderPresetPrice = null;
 function editCsOrderInitAdvanced(s) {
   const area = document.getElementById('edit-csOrderAdvancedArea');
   const presetArea = document.getElementById('edit-csOrderPresetArea');
+  const qtyWrap = document.getElementById('edit-csOrderQtyWrap');
+  const compo = document.getElementById('edit-csOrderCompo');
+  const searchRow = document.getElementById('edit-csOrderSearchRow');
   if (!s.advancedMode) {
     if (area) area.style.display = 'none';
+    if (qtyWrap && compo) compo.insertAdjacentElement('afterend', qtyWrap);
     return;
   }
   if (area) area.style.display = 'block';
+  if (qtyWrap && searchRow) searchRow.insertAdjacentElement('afterend', qtyWrap);
   csRefreshDatalist();
-  window._editCsOrderItems = (s.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
+  window._editCsOrderItems = []; // 덕6구세트처럼 빈 상태로 시작
   window._editCsOrderPresetPrice = null;
   renderEditCsOrderItemList();
   if (presetArea) {
@@ -5762,9 +5822,10 @@ function editCsOrderInitAdvanced(s) {
       const btnsBox = document.getElementById('edit-csOrderPresetBtns');
       if (btnsBox) {
         btnsBox.innerHTML = s.presets.map(function(p) {
+          const priceDisp = (s.priceMode === 'fixed') ? (p.price || 0) : csComputeUnitFromItems(s, p.items);
           return '<button type="button" onclick="applyEditCsOrderPreset(\'' + s.id + '\',\'' + p.id + '\')" ' +
             'style="padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--brown-mid);margin:2px;">' +
-            p.label + ' (' + p.price.toLocaleString() + '원)</button>';
+            p.label + ' (' + priceDisp.toLocaleString() + '원)</button>';
         }).join('');
       }
     } else {
@@ -5809,7 +5870,7 @@ function applyEditCsOrderPreset(setId, presetId) {
   const preset = (s.presets||[]).find(function(p){ return p.id === presetId; });
   if (!preset) return;
   window._editCsOrderItems = (preset.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
-  window._editCsOrderPresetPrice = preset.price;
+  window._editCsOrderPresetPrice = (s.priceMode === 'fixed') ? preset.price : null;
   renderEditCsOrderItemList();
   editCsOrderUpdatePreview();
   showToast('✅ ' + preset.label + ' 구성 적용!', 'success');
@@ -5830,7 +5891,7 @@ function editSelectCustomSetFromSearch(id) {
   }
   window._editOrderCustomSet = s;
   document.getElementById('edit-csOrderName').textContent = '📦 ' + s.name;
-  document.getElementById('edit-csOrderCompo').textContent = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  document.getElementById('edit-csOrderCompo').textContent = s.advancedMode ? '' : (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
   document.getElementById('edit-csOrderQty').value = '1';
   if (compose) compose.style.display = 'block';
   editCsOrderInitAdvanced(s);
@@ -5851,13 +5912,13 @@ function editChooseCustomSet(id) {
   if (setCompose) setCompose.style.display = 'none';
   document.getElementById('edit-customSetCompose').style.display = 'block';
   document.getElementById('edit-csOrderName').textContent = '📦 ' + s.name;
-  document.getElementById('edit-csOrderCompo').textContent = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+  document.getElementById('edit-csOrderCompo').textContent = s.advancedMode ? '' : (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
   document.getElementById('edit-csOrderQty').value = '1';
   editCsOrderInitAdvanced(s);
   editCsOrderUpdatePreview();
   (window.CUSTOM_SETS||[]).forEach(function(x){
     const b = document.getElementById('edit-csbtn-' + x.id);
-    if (b) { const on = x.id === id; b.style.background = on ? '#16a34a' : '#f0fdf4'; b.style.color = on ? '#fff' : '#15803d'; }
+    if (b) { const on = x.id === id; b.style.background = on ? 'var(--brown-deep)' : '#fff'; b.style.color = on ? '#fff' : 'var(--brown-mid)'; }
   });
 }
 
@@ -5880,7 +5941,9 @@ function editAddCustomSetToOrder() {
   const price = unit * qty;
   const compo = items.map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
   const saveName = s.name + '(' + compo + ')';
-  editTteokItems.push({ name: saveName, qty: qty + '세트', price: price, csId: s.id });
+  const orderRecord = { name: saveName, qty: qty + '세트', price: price, csId: s.id };
+  if (s.advancedMode) orderRecord.items = items.map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
+  editTteokItems.push(orderRecord);
   renderEditTteokList(); calcEditTotal();
   document.getElementById('edit-customSetCompose').style.display = 'none';
   window._editOrderCustomSet = null;
@@ -5888,7 +5951,7 @@ function editAddCustomSetToOrder() {
   window._editCsOrderPresetPrice = null;
   (window.CUSTOM_SETS||[]).forEach(function(x){
     const b = document.getElementById('edit-csbtn-' + x.id);
-    if (b) { b.style.background = '#f0fdf4'; b.style.color = '#15803d'; }
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
   });
   showToast('✅ ' + s.name + ' ' + qty + '세트 담았어요!', 'success');
 }
@@ -6026,6 +6089,14 @@ function editChooseSetType(setType) {
   ['분홍세트','은혜세트','코리아(대)','코리아(소)','쿠키상자(대)','쿠키상자(소)','덕세트','덕6구세트','추석세트'].forEach(function(s) {
     const b = document.getElementById('edit-setbtn-' + s);
     if (b) { b.style.background = s===setType?'var(--brown-deep)':'#fff'; b.style.color = s===setType?'#fff':'var(--brown-mid)'; b.style.borderColor = s===setType?'var(--brown-deep)':'var(--border)'; }
+  });
+  // 내가 만든 세트 담기 화면이 열려있으면 닫기
+  const csComposeEl = document.getElementById('edit-customSetCompose');
+  if (csComposeEl) csComposeEl.style.display = 'none';
+  window._editOrderCustomSet = null;
+  (window.CUSTOM_SETS||[]).forEach(function(x){
+    const b = document.getElementById('edit-csbtn-' + x.id);
+    if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
   });
   document.getElementById('edit-setCompose').style.display = 'block';
   document.getElementById('edit-setTypeName').textContent = '🎁 ' + setType;
@@ -7677,6 +7748,7 @@ function deleteDeokConfig(id) {
 // ============ 내 선물세트 만들기 (커스텀 세트) ============
 window._csItems = []; // 현재 편집 중인 세트의 구성 떡 [{name, qty, unit}]
 window._csPresets = []; // 현재 편집 중인 세트의 프리셋 목록 [{id, label, items, price}]
+window._csPresetBuildItems = []; // 지금 만들고 있는 프리셋의 구성 떡 (임시)
 
 function toggleCustomSetForm(show) {
   const form = document.getElementById('customSetForm');
@@ -7688,6 +7760,7 @@ function toggleCustomSetForm(show) {
     if (!document.getElementById('cs-edit-id').value) {
       window._csItems = [];
       window._csPresets = [];
+      window._csPresetBuildItems = [];
       document.getElementById('cs-name').value = '';
       document.getElementById('cs-boxfee').value = '';
       document.getElementById('cs-fixedprice').value = '';
@@ -7695,48 +7768,79 @@ function toggleCustomSetForm(show) {
       document.getElementById('cs-basestd').value = '';
       document.getElementById('cs-price-mode').value = 'fixed';
       if (document.getElementById('cs-order-mode')) document.getElementById('cs-order-mode').value = 'button';
-      const advCb = document.getElementById('cs-advanced-mode');
-      if (advCb) advCb.checked = false;
       csApplyPriceMode();
-      csToggleAdvancedMode();
     }
     csRefreshDatalist();
     csRenderItems();
     renderSetPresetList();
+    renderCsPresetBuildItems();
   } else {
     document.getElementById('cs-edit-id').value = '';
     window._csItems = [];
     window._csPresets = [];
+    window._csPresetBuildItems = [];
   }
 }
 
-// 프리셋 섹션 표시/숨김 전환
-function csToggleAdvancedMode() {
-  const cb = document.getElementById('cs-advanced-mode');
-  const section = document.getElementById('cs-preset-section');
-  if (section) section.style.display = (cb && cb.checked) ? 'block' : 'none';
+// ── 프리셋 구성 떡 빌더 (단가표에 등록된 떡만 검색해서 담기, 오타 방지) ──
+window._csPresetBuildItems = []; // 지금 만들고 있는 프리셋의 구성 떡
+
+function csAddPresetBuildItem() {
+  const searchEl = document.getElementById('cs-preset-search');
+  const qtyEl = document.getElementById('cs-preset-qty');
+  const unitEl = document.getElementById('cs-preset-unit');
+  const name = (searchEl.value || '').trim();
+  const qty = parseFloat(qtyEl.value) || 0;
+  const unit = unitEl.value || '개';
+  if (!name) { showToast('떡을 검색해서 선택해주세요.', 'error'); return; }
+  if (!TTEOK_DB[name]) { showToast('단가에 없는 떡이에요. 먼저 떡 단가에 등록해주세요.', 'error'); return; }
+  if (!qty) { showToast('수량을 입력해주세요.', 'error'); return; }
+  const existing = window._csPresetBuildItems.find(function(i){ return i.name === name && i.unit === unit; });
+  if (existing) existing.qty = qty;
+  else window._csPresetBuildItems.push({ name: name, qty: qty, unit: unit });
+  searchEl.value = ''; qtyEl.value = '';
+  renderCsPresetBuildItems();
+  csUpdatePresetBuildPreview();
 }
 
-// "떡이름:수량, 떡이름:수량" 텍스트를 items 배열로 파싱
-function parsePresetItemsText(str) {
-  return (str || '').split(',').map(function(s) {
-    const parts = s.trim().split(':');
-    return { name: parts[0] ? parts[0].trim() : '', qty: parseInt(parts[1]) || 1, unit: '개' };
-  }).filter(function(i){ return i.name; });
+function csRemovePresetBuildItem(idx) {
+  window._csPresetBuildItems.splice(idx, 1);
+  renderCsPresetBuildItems();
+  csUpdatePresetBuildPreview();
+}
+
+function renderCsPresetBuildItems() {
+  const box = document.getElementById('cs-preset-build-rows');
+  if (!box) return;
+  if (!window._csPresetBuildItems.length) {
+    box.innerHTML = '<div style="font-size:11px;color:#94a3b8;">아직 담은 떡이 없어요.</div>';
+    return;
+  }
+  box.innerHTML = window._csPresetBuildItems.map(function(item, i) {
+    return '<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 8px;">' +
+      '<span style="flex:1;font-size:13px;">🍡 ' + item.name + ' ' + item.qty + (item.unit||'개') + '</span>' +
+      '<button type="button" onclick="csRemovePresetBuildItem(' + i + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:4px;padding:2px 6px;cursor:pointer;">✕</button>' +
+      '</div>';
+  }).join('');
 }
 
 function addSetPreset() {
   const label = (document.getElementById('cs-preset-label').value || '').trim();
-  const price = parseInt(document.getElementById('cs-preset-price').value) || 0;
-  const itemsStr = document.getElementById('cs-preset-items').value || '';
+  const mode = document.getElementById('cs-price-mode').value;
   if (!label) { showToast('구성 이름을 입력해주세요.', 'error'); return; }
-  if (!price) { showToast('가격을 입력해주세요.', 'error'); return; }
-  const items = parsePresetItemsText(itemsStr);
-  window._csPresets.push({ id: 'preset_' + Date.now(), label: label, price: price, items: items });
+  if (!window._csPresetBuildItems.length) { showToast('구성 떡을 1개 이상 담아주세요.', 'error'); return; }
+  let price = null;
+  if (mode === 'fixed') {
+    price = parseInt(document.getElementById('cs-preset-price').value) || 0;
+    if (!price) { showToast('가격을 입력해주세요.', 'error'); return; }
+  }
+  window._csPresets.push({ id: 'preset_' + Date.now(), label: label, price: price, items: window._csPresetBuildItems.slice() });
   document.getElementById('cs-preset-label').value = '';
   document.getElementById('cs-preset-price').value = '';
-  document.getElementById('cs-preset-items').value = '';
+  window._csPresetBuildItems = [];
+  renderCsPresetBuildItems();
   renderSetPresetList();
+  csUpdatePresetBuildPreview();
   showToast('✅ 프리셋 추가됐어요!', 'success');
 }
 
@@ -7751,18 +7855,21 @@ function deleteSetPreset(id) {
 function renderSetPresetList() {
   const box = document.getElementById('cs-preset-list');
   if (!box) return;
+  const mode = document.getElementById('cs-price-mode') ? document.getElementById('cs-price-mode').value : 'fixed';
+  const cfg = csGetDraftModeConfig();
   if (!window._csPresets.length) {
     box.innerHTML = '<div style="font-size:11px;color:#94a3b8;">아직 추가한 프리셋이 없어요.</div>';
     return;
   }
   box.innerHTML = window._csPresets.map(function(p) {
     const compo = (p.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+    const displayPrice = mode === 'fixed' ? (p.price || 0) : csComputeUnitFromItems(cfg, p.items);
     return '<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;">' +
       '<div style="flex:1;min-width:0;">' +
         '<div style="font-size:12px;font-weight:700;">' + p.label + '</div>' +
         (compo ? '<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + compo + '</div>' : '') +
       '</div>' +
-      '<div style="font-size:12px;font-weight:700;white-space:nowrap;">' + p.price.toLocaleString() + '원</div>' +
+      '<div style="font-size:12px;font-weight:700;white-space:nowrap;">' + displayPrice.toLocaleString() + '원' + (mode !== 'fixed' ? ' <span style="font-weight:400;color:#94a3b8;">(자동)</span>' : '') + '</div>' +
       '<button type="button" onclick="deleteSetPreset(\'' + p.id + '\')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:11px;">삭제</button>' +
     '</div>';
   }).join('');
@@ -7771,21 +7878,60 @@ function renderSetPresetList() {
 // 가격 방식에 따라 입력칸 표시 전환
 function csApplyPriceMode() {
   const mode = document.getElementById('cs-price-mode').value;
-  const fixedWrap = document.getElementById('cs-fixed-wrap');
+  const modeFields = document.getElementById('cs-mode-fields');
   const boxfeeWrap = document.getElementById('cs-boxfee-wrap');
   const baseFields = document.getElementById('cs-basefields');
-  fixedWrap.style.display = 'none';
+  const presetPriceInput = document.getElementById('cs-preset-price');
+  const presetPriceAuto = document.getElementById('cs-preset-price-auto');
   boxfeeWrap.style.display = 'none';
   baseFields.style.display = 'none';
   if (mode === 'fixed') {
-    fixedWrap.style.display = 'block';
-  } else if (mode === 'base') {
-    baseFields.style.display = 'flex';
+    modeFields.style.display = 'none';
+    presetPriceInput.style.display = '';
+    presetPriceAuto.style.display = 'none';
   } else {
-    // sum, custom
-    boxfeeWrap.style.display = 'block';
+    modeFields.style.display = 'flex';
+    presetPriceInput.style.display = 'none';
+    presetPriceAuto.style.display = 'block';
+    if (mode === 'base') {
+      baseFields.style.display = 'flex';
+    } else {
+      // sum, custom
+      boxfeeWrap.style.display = 'block';
+    }
   }
   csRenderItems();
+  renderSetPresetList();
+  csUpdatePresetBuildPreview();
+}
+
+// 가격방식/케이스값/기준가 등이 바뀌면 이미 담긴 프리셋들의 자동계산 가격 표시도 갱신
+function csRefreshAllPresetPrices() {
+  renderSetPresetList();
+  csUpdatePresetBuildPreview();
+}
+
+// 현재 담고 있는 프리셋의 자동계산 가격 미리보기 (고정가격 모드가 아닐 때)
+function csGetDraftModeConfig() {
+  return {
+    priceMode: document.getElementById('cs-price-mode').value,
+    boxFee: parseInt(document.getElementById('cs-boxfee').value) || 0,
+    basePrice: parseInt(document.getElementById('cs-baseprice').value) || 0,
+    baseStd: parseInt(document.getElementById('cs-basestd').value) || 0
+  };
+}
+
+function csUpdatePresetBuildPreview() {
+  const box = document.getElementById('cs-preset-price-auto');
+  if (!box) return;
+  const mode = document.getElementById('cs-price-mode').value;
+  if (mode === 'fixed') return;
+  if (!window._csPresetBuildItems.length) {
+    box.textContent = '구성 떡을 담으면 가격이 자동 계산돼요.';
+    return;
+  }
+  const total = csComputeUnitFromItems(csGetDraftModeConfig(), window._csPresetBuildItems);
+  box.innerHTML = '이 구성 가격: <strong>' + total.toLocaleString() + '원</strong> (자동계산 — 단가 바뀌면 같이 바뀌어요)';
 }
 
 function csRefreshDatalist() {
@@ -7907,7 +8053,7 @@ function saveCustomSet() {
   const mode = document.getElementById('cs-price-mode').value;
   const editId = document.getElementById('cs-edit-id').value;
   if (!name) { showToast('세트 이름을 입력해주세요.', 'error'); return; }
-  if (!window._csItems.length) { showToast('구성 떡을 담아주세요.', 'error'); return; }
+  if (!window._csPresets.length) { showToast('구성(프리셋)을 1개 이상 추가해주세요.', 'error'); return; }
   const dup = window.CUSTOM_SETS.find(function(s){ return s.name === name && s.id !== editId; });
   if (dup) { showToast('같은 이름의 세트가 이미 있어요.', 'error'); return; }
 
@@ -7920,8 +8066,7 @@ function saveCustomSet() {
   });
 
   const orderMode = document.getElementById('cs-order-mode') ? document.getElementById('cs-order-mode').value : 'button';
-  const advancedMode = document.getElementById('cs-advanced-mode') ? document.getElementById('cs-advanced-mode').checked : false;
-  const setData = { name: name, priceMode: mode, orderMode: orderMode, fixedPrice: fixedPrice, boxFee: boxFee, basePrice: basePrice, baseStd: baseStd, items: items, advancedMode: advancedMode, presets: advancedMode ? window._csPresets.slice() : [] };
+  const setData = { name: name, priceMode: mode, orderMode: orderMode, fixedPrice: fixedPrice, boxFee: boxFee, basePrice: basePrice, baseStd: baseStd, items: items, advancedMode: true, presets: window._csPresets.slice() };
 
   if (editId) {
     const s = window.CUSTOM_SETS.find(function(x){ return x.id === editId; });
@@ -7951,16 +8096,24 @@ function editCustomSet(id) {
   document.getElementById('cs-baseprice').value = s.basePrice || '';
   document.getElementById('cs-basestd').value = s.baseStd || '';
   window._csItems = (s.items || []).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개', customPrice: (i.customPrice != null ? i.customPrice : null) }; });
-  window._csPresets = (s.presets || []).map(function(p){ return { id: p.id, label: p.label, price: p.price, items: (p.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; }) }; });
-  const advCb = document.getElementById('cs-advanced-mode');
-  if (advCb) advCb.checked = !!s.advancedMode;
-  csToggleAdvancedMode();
+
+  if (s.advancedMode && s.presets && s.presets.length) {
+    // 이미 프리셋 방식인 세트 → 그대로 불러오기
+    window._csPresets = s.presets.map(function(p){ return { id: p.id, label: p.label, price: p.price, items: (p.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; }) }; });
+  } else {
+    // 예전 방식(단일 구성) 세트를 처음 수정하는 경우 → 프리셋 1개로 자동 변환해서 보여줌
+    const migratedPrice = csTotalForSet(s);
+    window._csPresets = [{ id: 'preset_' + Date.now(), label: s.name, price: migratedPrice, items: (s.items || []).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; }) }];
+  }
+  window._csPresetBuildItems = [];
+
   const form = document.getElementById('customSetForm');
   if (form) form.style.display = 'block';
   csApplyPriceMode();
   csRefreshDatalist();
   csRenderItems();
   renderSetPresetList();
+  renderCsPresetBuildItems();
 }
 
 function deleteCustomSet(id) {
@@ -8037,16 +8190,23 @@ function renderCustomSetList() {
   }
   const modeLabel = { fixed: '고정가격', sum: '떡단가+케이스', custom: '전용단가', base: '기준가+차액' };
   box.innerHTML = window.CUSTOM_SETS.map(function(s) {
-    const total = csTotalForSet(s);
-    const compo = (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
+    const isPresetSet = s.advancedMode && s.presets && s.presets.length;
+    const priceDisplay = isPresetSet
+      ? (s.presets.length === 1
+          ? (s.priceMode === 'fixed' ? (s.presets[0].price||0) : csComputeUnitFromItems(s, s.presets[0].items)).toLocaleString() + '원'
+          : '프리셋 ' + s.presets.length + '개')
+      : csTotalForSet(s).toLocaleString() + '원';
+    const compo = isPresetSet
+      ? s.presets.map(function(p){ return p.label; }).join(', ')
+      : (s.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
     return '<div style="background:#fff;border:1px solid #bbf7d0;border-radius:9px;padding:10px 12px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">' +
         '<span style="font-size:13px;font-weight:700;color:#15803d;">📦 ' + s.name +
           ' <span style="font-size:10px;font-weight:400;color:#64748b;background:#f1f5f9;padding:1px 6px;border-radius:4px;">' + (modeLabel[s.priceMode]||'떡단가+케이스') + '</span>' +
-          (s.advancedMode ? ' <span style="font-size:10px;font-weight:400;color:#0369a1;background:#e0f2fe;padding:1px 6px;border-radius:4px;">📋 프리셋 ' + ((s.presets||[]).length) + '개</span>' : '') +
+          (isPresetSet ? ' <span style="font-size:10px;font-weight:400;color:#0369a1;background:#e0f2fe;padding:1px 6px;border-radius:4px;">📋 프리셋 ' + s.presets.length + '개</span>' : '') +
           '</span>' +
         '<div style="display:flex;gap:5px;align-items:center;">' +
-          '<span style="font-size:13px;font-weight:700;color:var(--brown-deep);">' + total.toLocaleString() + '원</span>' +
+          '<span style="font-size:13px;font-weight:700;color:var(--brown-deep);">' + priceDisplay + '</span>' +
           '<button onclick="editCustomSet(\'' + s.id + '\')" style="background:#e0f2fe;color:#0369a1;border:none;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:11px;">수정</button>' +
           '<button onclick="deleteCustomSet(\'' + s.id + '\')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:11px;">삭제</button>' +
         '</div>' +
@@ -10035,8 +10195,19 @@ function loadProductionPlan() {
   // ── 세트 → 개별 떡 분해 헬퍼 ──────────────────────────────────────────
   // itemName: tteokItems[].name 값, itemQty: tteokItems[].qty 값
   // 반환값: [{ name, qty }] (qty는 "20개", "3kg", "1말 5되" 같은 문자열)
-  function decomposeSetItem(itemName, itemQty, csId) {
+  function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
     const name = (itemName || '').trim();
+
+    // ── -1. 실제 주문 시점에 담긴 구성이 저장돼있으면(프리셋/직접담기 등) 그걸 최우선으로 사용
+    //    (세트의 "기본 구성"이 바뀌었거나, 프리셋/커스텀 조합을 골랐어도 항상 실제 담긴 대로 집계됨)
+    if (itemsOverride && itemsOverride.length) {
+      const setQtyOv = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
+      return itemsOverride.map(function(it) {
+        const num = (parseFloat(it.qty) || 0) * setQtyOv;
+        const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+        return { name: it.name, qty: displayNum + (it.unit || '개') };
+      });
+    }
 
     // ── 0. 내가 만든 커스텀 세트 (CUSTOM_SETS)
     //    csId가 있으면 id로 정확히 조회(세트명에 괄호 있어도 안전),
@@ -10160,7 +10331,7 @@ function loadProductionPlan() {
           const m = String(item.name).match(/^(.+?)\(/);
           setLabel = m ? m[1].trim() : String(item.name).trim();
         }
-        const decomposed = decomposeSetItem(item.name, item.qty, item.csId);
+        const decomposed = decomposeSetItem(item.name, item.qty, item.csId, item.items);
         decomposed.forEach(({ name: tName, qty: tQty }) => {
           if (!tName) return;
           if (!personalSummary[tName]) personalSummary[tName] = { qtys: [], count: 0, sources: {} };
@@ -12144,23 +12315,25 @@ function renderModalEdit(o) {
           <div id="edit-customSetCompose" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:8px;">
             <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px;"><span id="edit-csOrderName"></span></div>
             <div id="edit-csOrderCompo" style="font-size:12px;color:#666;margin-bottom:10px;"></div>
+            <div id="edit-csOrderQtyWrap" style="margin-bottom:8px;">
+              <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 수량</label>
+              <input type="number" id="edit-csOrderQty" value="1" min="1" oninput="editCsOrderUpdatePreview()" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+            </div>
             <div id="edit-csOrderAdvancedArea" style="display:none;">
-              <div style="display:flex;gap:6px;margin-bottom:8px;">
+              <div id="edit-csOrderSearchRow" style="display:flex;gap:6px;margin-bottom:8px;">
                 <input type="text" id="edit-csOrderTteokSearch" list="cs-tteok-datalist" placeholder="🔍 떡 이름 검색해서 담기" style="flex:2;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                 <input type="number" id="edit-csOrderTteokQty" placeholder="수량" style="width:70px;padding:7px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                 <button type="button" onclick="editCsOrderAddTteok()" style="padding:7px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">담기</button>
               </div>
-              <div id="edit-csOrderItemList" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;"></div>
               <div id="edit-csOrderPresetArea" style="display:none;margin-bottom:8px;">
                 <div style="font-size:12px;color:var(--brown-mid);font-weight:700;margin-bottom:4px;">📋 저장된 구성</div>
                 <div id="edit-csOrderPresetBtns"></div>
               </div>
+              <div id="edit-csOrderItemListWrap" style="margin-bottom:8px;">
+                <div id="edit-csOrderItemList" style="display:flex;flex-direction:column;gap:4px;"></div>
+              </div>
             </div>
             <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
-              <div>
-                <label style="font-size:11px;color:var(--brown-light);display:block;margin-bottom:3px;">세트 수량</label>
-                <input type="number" id="edit-csOrderQty" value="1" min="1" oninput="editCsOrderUpdatePreview()" style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
-              </div>
               <div style="flex:1;font-size:13px;color:#15803d;">
                 <span id="edit-csOrderPricePreview"></span>
               </div>
