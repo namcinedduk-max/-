@@ -95,6 +95,7 @@ textarea{resize:vertical;min-height:80px}
 .ot-dc.active{border:1.5px solid #378ADD}
 .ot-dc.has-data{background:#fafaf7}
 .ot-dc.hol-day{background:#fff5f5}
+.ot-dc.emp-off{background:#f5f5f4}
 .ot-dc.week-ov{border-color:#ef4444!important}
 .ot-dn{font-size:11px;font-weight:600;color:#888;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
 .ot-dn.sun{color:#A32D2D}.ot-dn.sat{color:#185FA5}
@@ -324,6 +325,7 @@ function addMonths(d,m){ var dt=new Date(d); dt.setMonth(dt.getMonth()+m); retur
 function addDays(d,n){ var dt=new Date(d); dt.setDate(dt.getDate()+n); return dt.toISOString().split("T")[0]; }
 function ini(n){ return n.slice(0,2); }
 function comma(n){ return Math.round(n).toLocaleString(); }
+function signAmt(n){ return (n>=0?"+":"")+comma(n); } // 야간가산처럼 음수(차감)가 될 수 있는 금액용
 function p2(n){ return ("0"+n).slice(-2); }
 var _toastTimer = null;
 function toast(msg,dur){
@@ -781,6 +783,32 @@ var LUNAR_HOLIDAYS={
         "2030-09-11","2030-09-12","2030-09-13",
         "2030-05-09"]
 };
+// 대체공휴일 적용 대상 고정 공휴일 (3·1절/어린이날/광복절/개천절/한글날 — 관공서의 공휴일에 관한 규정 제3조)
+var SUBSTITUTE_ELIGIBLE=["03-01","05-05","08-15","10-03","10-09"];
+// 해당 연도의 대체공휴일을 자동 계산 (토·일요일 또는 다른 공휴일과 겹치면 다음 첫 평일로 이동)
+function computeSubstituteHolidays(yr){
+  var fixedSet={}; Object.keys(FIXED_HOLIDAYS).forEach(function(k){fixedSet[yr+"-"+k]=1;});
+  var lunarSet={}; (LUNAR_HOLIDAYS[yr]||[]).forEach(function(d){lunarSet[d]=1;});
+  var result=[];
+  function isKnown(dstr){ return !!fixedSet[dstr]||!!lunarSet[dstr]||result.indexOf(dstr)>=0; }
+  for(var i=0;i<SUBSTITUTE_ELIGIBLE.length;i++){
+    var mmdd=SUBSTITUTE_ELIGIBLE[i];
+    var mm=parseInt(mmdd.slice(0,2)), dd=parseInt(mmdd.slice(3,5));
+    var dt=new Date(yr,mm-1,dd);
+    var dow=dt.getDay();
+    if(dow===0||dow===6){
+      var nd=new Date(dt);
+      var guard=0;
+      do{
+        nd.setDate(nd.getDate()+1); guard++;
+        var ndow=nd.getDay();
+        var nstr=nd.getFullYear()+"-"+p2(nd.getMonth()+1)+"-"+p2(nd.getDate());
+      } while((ndow===0||ndow===6||isKnown(nstr)) && guard<10);
+      result.push(nstr);
+    }
+  }
+  return result;
+}
 function fetchHolidays(yr){
   if(!S.holidays[yr]) S.holidays[yr]={};
   // 고정 공휴일 적용 (항상 덮어쓰기)
@@ -789,6 +817,9 @@ function fetchHolidays(yr){
   // 음력 공휴일 적용 (항상 덮어쓰기)
   var lh=LUNAR_HOLIDAYS[yr]||[];
   for(var j=0;j<lh.length;j++) S.holidays[yr][lh[j]]=1;
+  // 대체공휴일 자동계산 적용
+  var subs=computeSubstituteHolidays(yr);
+  for(var k=0;k<subs.length;k++) S.holidays[yr][subs[k]]=1;
   saveCache();
   // 공공데이터 API 호출 (인증키가 있을 때만)
   if(HOLIDAY_KEY==="YOUR_API_KEY"){ render(); return; }
@@ -818,9 +849,12 @@ function isHoliday(dateStr){
   // dateStr: "2026-03-01"
   var yr=parseInt(dateStr.slice(0,4));
   if(S.holidays[yr] && S.holidays[yr][dateStr]) return true;
-  // fallback 고정 공휴일 체크
+  // fallback: 고정/음력/대체공휴일 직접 계산 (fetchHolidays 호출 전이어도 항상 정확히 판단)
   var mmdd=dateStr.slice(5); // "03-01"
-  return !!FIXED_HOLIDAYS[mmdd];
+  if(FIXED_HOLIDAYS[mmdd]) return true;
+  if((LUNAR_HOLIDAYS[yr]||[]).indexOf(dateStr)>=0) return true;
+  if(computeSubstituteHolidays(yr).indexOf(dateStr)>=0) return true;
+  return false;
 }
 
 // ── 급여 이력 자동 저장 ──
@@ -839,7 +873,7 @@ function autoSavePayHistory(){
     }
     if(exists) continue;
     var p=calcPay(e,prevMo);
-    S.payHistory[e.id].push({month:prevMo,base:e.base,meal:e.meal||0,ext:p.ext,night:p.night,hol:p.hol,absDeduct:p.absDeduct,gross:p.gross,totalDed:p.totalDed,net:p.net,absDays:p.absDays,totExt:p.tot.ext,totNight:p.tot.night,totHol:p.tot.holiday,incomeTax:p.incomeTax||0,localTax:p.localTax||0,savedAt:new Date().toISOString()});
+    S.payHistory[e.id].push({month:prevMo,base:e.base,meal:e.meal||0,ext:p.ext,night:p.night,hol:p.hol,holExcess:p.holExcess||0,holNight:p.holNight||0,absDeduct:p.absDeduct,gross:p.gross,totalDed:p.totalDed,net:p.net,absDays:p.absDays,totExt:p.tot.ext,totNight:p.tot.night,totHol:p.tot.holiday,totHolExcess:p.tot.holExcess||0,totHolNight:p.tot.holNight||0,incomeTax:p.incomeTax||0,localTax:p.localTax||0,savedAt:new Date().toISOString()});
   }
   saveCache();
   apiPost({type:"savePayHistory",payHistory:S.payHistory}).catch(function(){});
@@ -1018,12 +1052,16 @@ function handleAction(action, id, val, el, ev){
 }
 
 // ── OT / Absence ──
-function getOT(eid,mo,day){ return ((S.ot[eid]||{})[mo]||{})[p2(day)]||{ext:0,night:0,nightOnly:0,holiday:0,early:0}; }
+function getOT(eid,mo,day){ return ((S.ot[eid]||{})[mo]||{})[p2(day)]||{ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false}; }
 function getMonthOT(eid,mo){
-  var days=(S.ot[eid]||{})[mo]||{}, ext=0,night=0,nightOnly=0,hol=0,early=0;
+  var days=(S.ot[eid]||{})[mo]||{}, ext=0,night=0,nightOnly=0,hol=0,holExcess=0,holNight=0,early=0;
   var ks=Object.keys(days);
-  for(var i=0;i<ks.length;i++){ext+=days[ks[i]].ext||0;night+=days[ks[i]].night||0;nightOnly+=days[ks[i]].nightOnly||0;hol+=days[ks[i]].holiday||0;early+=days[ks[i]].early||0;}
-  return {ext:ext,night:night,nightOnly:nightOnly,holiday:hol,early:early};
+  for(var i=0;i<ks.length;i++){
+    var d=days[ks[i]];
+    ext+=d.ext||0;night+=d.night||0;nightOnly+=d.nightOnly||0;hol+=d.holiday||0;
+    holExcess+=d.holExcess||0;holNight+=d.holNight||0;early+=d.early||0;
+  }
+  return {ext:ext,night:night,nightOnly:nightOnly,holiday:hol,holExcess:holExcess,holNight:holNight,early:early};
 }
 function getMonthLeaveDays(eid,mo){
   // 해당 월(YYYY-MM)에 사용된 연차일수 합산 → 식대 차감에 반영
@@ -1100,7 +1138,7 @@ function otChange(el){
     S.absence[eid][mo][key]=val; apiSaveAbsence(eid,mo,key,val);
   } else {
     if(!S.ot[eid]) S.ot[eid]={}; if(!S.ot[eid][mo]) S.ot[eid][mo]={};
-    if(!S.ot[eid][mo][key]) S.ot[eid][mo][key]={ext:0,night:0,nightOnly:0,holiday:0,early:0};
+    if(!S.ot[eid][mo][key]) S.ot[eid][mo][key]={ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false};
     S.ot[eid][mo][key][f]=val; apiSaveOT(eid,mo,key,S.ot[eid][mo][key]);
   }
   saveCache();
@@ -1118,7 +1156,7 @@ function otDropChange(eid,mo,key,field,val){
     S.absence[eid][mo][key]=val; apiSaveAbsence(eid,mo,key,val);
   } else {
     if(!S.ot[eid]) S.ot[eid]={}; if(!S.ot[eid][mo]) S.ot[eid][mo]={};
-    if(!S.ot[eid][mo][key]) S.ot[eid][mo][key]={ext:0,night:0,nightOnly:0,holiday:0,early:0};
+    if(!S.ot[eid][mo][key]) S.ot[eid][mo][key]={ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false};
     S.ot[eid][mo][key][field]=val; apiSaveOT(eid,mo,key,S.ot[eid][mo][key]);
   }
   saveCache(); updateOTSum();
@@ -1126,11 +1164,19 @@ function otDropChange(eid,mo,key,field,val){
 }
 function otDayChips(ot,ab){
   var c=[];
+  if(ot.lateH>0)   c.push("<span class='ot-chip chip-early'>지각 "+ot.lateH+"시간</span>");
+  if(ot.earlyH>0)  c.push("<span class='ot-chip chip-early'>조퇴 "+ot.earlyH+"시간</span>");
   if(ot.ext>0)     c.push("<span class='ot-chip chip-ext'>연장수당 "+ot.ext+"시간</span>");
-  if(ot.night>0)   c.push("<span class='ot-chip chip-night'>야근수당 "+ot.night+"시간</span>");
-  if(ot.nightOnly>0) c.push("<span class='ot-chip chip-nightonly'>야간가산 "+ot.nightOnly+"시간</span>");
-  if(ot.holiday>0) c.push("<span class='ot-chip chip-hol'>휴일수당 "+ot.holiday+"시간</span>");
-  if(ot.early>0)   c.push("<span class='ot-chip chip-early'>조기퇴근 "+ot.early+"시간</span>");
+  if(ot.night>0)   c.push("<span class='ot-chip chip-night'>야간연장 "+ot.night+"시간</span>");
+  if(ot.nightOnly>0) c.push("<span class='ot-chip chip-nightonly'>야간가산 +"+ot.nightOnly+"시간</span>");
+  if(ot.nightOnly<0) c.push("<span class='ot-chip chip-early'>야간가산 차감 "+ot.nightOnly+"시간</span>");
+  if(ot.holiday>0) c.push("<span class='ot-chip chip-hol'>휴일(1.5·현금) "+ot.holiday+"시간</span>");
+  if(ot.holExcess>0) c.push("<span class='ot-chip chip-hol'>휴일초과(2.0·현금) "+ot.holExcess+"시간</span>");
+  if(ot.compAccrueH>0) c.push("<span class='ot-chip chip-hol'>휴일근무 "+ot.compAccrueH+"시간 → 대체휴무 적립</span>");
+  if(ot.holNight>0) c.push("<span class='ot-chip chip-nightonly'>휴일야간(+0.5·현금) "+ot.holNight+"시간</span>");
+  if(ot.holidayWork) c.push("<span class='ot-chip chip-hol'>"+(ot.holidayMode==='comp'?"대체휴무 적립":"수당정산")+"</span>");
+  if(ot.early>0)   c.push("<span class='ot-chip chip-early'>차감 "+ot.early+"시간</span>");
+  if(ot.compUse)   c.push("<span class='ot-chip chip-abs'>대체휴무 사용</span>");
   if(ab>0)         c.push("<span class='ot-chip chip-abs'>결근 "+ab+"일</span>");
   return c;
 }
@@ -1160,6 +1206,7 @@ function toggleOTDay(eid,mo,key,alignRight){
   var DOWK=["일","월","화","수","목","금","토"];
   var ymd=mo.split("-"); var dow=new Date(parseInt(ymd[0]),parseInt(ymd[1])-1,parseInt(key)).getDay();
   var schedDay=emp&&emp.schedule?emp.schedule[DOWK[dow]]:null;
+  var compBalNow=calcCompBalance(eid) - (ot.compUse?1:0); // 이 날짜 사용분 제외한 "사용 전" 잔여
   var drop=document.createElement("div");
   drop.className="ot-drop"+(alignRight?" right":"");
   function timeSelHTML(field,defVal){
@@ -1180,50 +1227,95 @@ function toggleOTDay(eid,mo,key,alignRight){
     var hEl=drop.querySelector("[data-tf='"+field+"'][data-part='h']"), mEl=drop.querySelector("[data-tf='"+field+"'][data-part='m']");
     return (hEl?hEl.value:"09")+":"+(mEl?mEl.value:"00");
   }
-  var html="<div class='ot-dtitle'>"+parseInt(key)+"일 — 근무시간 / 차감 입력</div>";
-  if(schedDay){
-    var defS=ot.actualStart||(String(schedDay.s).indexOf(":")>=0?schedDay.s:p2(parseInt(schedDay.s))+":00");
-    var defE=ot.actualEnd||(String(schedDay.e).indexOf(":")>=0?schedDay.e:p2(parseInt(schedDay.e))+":00");
-    html+="<div style='font-size:10.5px;color:#999;margin-bottom:6px'>소정근무 "+schedDay.s+":00~"+schedDay.e+":00</div>"
-      +"<div class='ot-field'><span class='ot-badge' style='background:#f0efeb;color:#555'>실제출근</span>"+timeSelHTML('actualStart',defS)+"</div>"
-      +"<div class='ot-field'><span class='ot-badge' style='background:#f0efeb;color:#555'>실제퇴근</span>"+timeSelHTML('actualEnd',defE)+"</div>"
-      +"<div class='ot-dhint' id='ot-preview-"+key+"' style='margin:2px 0 8px'></div>";
-  } else {
-    html+="<div class='ot-field'><span class='ot-badge chip-ext'>연장수당</span><input class='ot-inp' type='number' min='0' max='12' step='0.5' placeholder='0' value='"+(ot.ext||"")+"' data-f='ext'></div>"
-      +"<div class='ot-field'><span class='ot-badge chip-night'>야근수당</span><input class='ot-inp' type='number' min='0' max='8' step='0.5' placeholder='0' value='"+(ot.night||"")+"' data-f='night'></div>";
+  function getVal(f){
+    var el=drop.querySelector("[data-f='"+f+"']");
+    if(!el) return null;
+    if(el.type==="checkbox") return el.checked;
+    return el.value;
   }
-  html+="<div class='ot-field'><span class='ot-badge chip-hol'>휴일수당</span><input class='ot-inp' type='number' min='0' max='8' step='0.5' placeholder='0' value='"+(ot.holiday||"")+"' data-f='holiday'></div>"
-    +"<div class='ot-field'><span class='ot-badge chip-early'>조기퇴근</span><input class='ot-inp' type='number' min='0' max='8' step='0.5' placeholder='0' value='"+(ot.early||"")+"' data-f='early'></div>"
-    +"<div class='ot-field' style='margin-bottom:0'><span class='ot-badge chip-abs'>결근</span><input class='ot-inp' type='number' min='0' max='1' step='1' placeholder='0' value='"+(ab||"")+"' data-f='abs'"+absDisabled+"></div>"
-    +"<div class='ot-dhint'>0 입력 시 자동으로 숨겨집니다</div>";
+  var html="<div class='ot-dtitle'>"+parseInt(key)+"일 — 근무시간 / 차감 입력</div>";
+  var schedSstr=schedDay?(String(schedDay.s).indexOf(":")>=0?schedDay.s:p2(parseInt(schedDay.s))+":00"):null;
+  var schedEstr=schedDay?(String(schedDay.e).indexOf(":")>=0?schedDay.e:p2(parseInt(schedDay.e))+":00"):null;
+  var defS=ot.actualStart||schedSstr||"09:00";
+  var defE=ot.actualEnd||schedEstr||"18:00";
+  html+="<div style='font-size:10.5px;color:#999;margin-bottom:6px'>"+(schedDay?"소정근무 "+schedDay.s+":00~"+schedDay.e+":00 (기본값=정상출근)":"이 요일은 소정근무 없음(개인 휴무일) — 실제 근무한 시간을 입력")+"</div>"
+    +"<div class='ot-field'><span class='ot-badge' style='background:#f0efeb;color:#555'>실제출근</span>"+timeSelHTML('actualStart',defS)+"</div>"
+    +"<div class='ot-field'><span class='ot-badge' style='background:#f0efeb;color:#555'>실제퇴근</span>"+timeSelHTML('actualEnd',defE)+"</div>"
+    +"<div class='ot-dhint' id='ot-preview-"+key+"' style='margin:2px 0 8px'></div>";
+  var isRestDay=isPubHol || !schedDay; // 공휴일이거나, 이 직원 스케줄상 원래 쉬는 요일
+  var defBreak=ot.breakH!=null?ot.breakH:(schedDay&&schedDay.b!=null?schedDay.b:1);
+  html+="<div class='ot-field'><span class='ot-badge chip-hol'>휴일근무</span><input type='checkbox' class='ot-inp' data-f='holidayWork'"+(ot.holidayWork?" checked":"")+"></div>"
+    +"<div class='ot-dhint' id='ot-holwarn-"+key+"' style='display:"+(ot.holidayWork&&!isRestDay?"":"none")+";color:#dc2626;margin:-4px 0 6px'>⚠ 공휴일도 아니고 이 직원 개인 휴무일도 아닌 날짜예요. 휴일근무 처리가 맞는지 확인해주세요.</div>"
+    +"<div class='ot-field' id='ot-holmode-"+key+"' style='"+(ot.holidayWork?"":"display:none")+"'><span class='ot-badge chip-hol'>정산방식</span>"
+    +"<select class='ot-inp' data-f='holidayMode' style='width:120px'>"
+    +"<option value='pay'"+(ot.holidayMode!=='comp'?" selected":"")+">수당정산</option>"
+    +"<option value='comp'"+(ot.holidayMode==='comp'?" selected":"")+">대체휴무 적립(1일)</option>"
+    +"</select></div>"
+    +"<div class='ot-field' id='ot-holbreak-"+key+"' style='"+(ot.holidayWork?"":"display:none")+"'><span class='ot-badge chip-hol'>휴게(h)</span><input class='ot-inp' type='number' min='0' max='4' step='0.5' value='"+defBreak+"' data-f='breakH'></div>";
+  html+="<div class='ot-field'><span class='ot-badge chip-abs'>대체휴무 사용</span><input type='checkbox' class='ot-inp' data-f='compUse'"+(ot.compUse?" checked":"")+(compBalNow<=0&&!ot.compUse?" disabled title='잔여 없음'":"")+"></div>"
+    +"<div class='ot-dhint' style='margin-bottom:6px'>현재 잔여 대체휴무: "+compBalNow+"일</div>";
+  html+="<div class='ot-field' style='margin-bottom:0'><span class='ot-badge chip-abs'>결근</span><input class='ot-inp' type='number' min='0' max='1' step='1' placeholder='0' value='"+(ab||"")+"' data-f='abs'"+absDisabled+"></div>"
+    +"<div class='ot-dhint'>0 입력 시 자동으로 숨겨집니다</div>"
+    +"<button type='button' class='btn' style='margin-top:8px;width:100%;font-size:11.5px;padding:6px;color:#a32d2d;border-color:#f0997b' id='ot-del-"+key+"'>이 날짜 입력 삭제</button>";
   drop.innerHTML=html;
   cellEl.appendChild(drop);
   cellEl.classList.add("active");
   _otDropOpen=key;
+  var delBtn=drop.querySelector("#ot-del-"+key);
+  if(delBtn) delBtn.addEventListener("click",function(e){
+    e.stopPropagation();
+    if(!confirm(parseInt(key)+"일 입력을 전부 삭제할까요? (지각/조퇴/연장/휴일근무/대체휴무/결근 전부 초기화)")) return;
+    resetOTDay(eid,mo,key,cellEl);
+  });
   function updatePreview(){
-    if(!schedDay) return;
-    var sp=splitExtNight(schedDay.s,schedDay.e,getTimeVal('actualStart'),getTimeVal('actualEnd'));
+    var holidayWork=getVal('holidayWork')||false;
+    var holidayMode=getVal('holidayMode')||'pay';
+    var breakH=parseFloat(getVal('breakH'))||0;
+    var comp=computeDayFields(schedDay,isPubHol,getTimeVal('actualStart'),getTimeVal('actualEnd'),holidayWork,holidayMode,breakH);
     var pv=drop.querySelector("#ot-preview-"+key);
     if(pv){
       var parts=[];
-      if(sp.ext>0) parts.push("연장 "+sp.ext+"h");
-      if(sp.night>0) parts.push("야간연장 "+sp.night+"h");
-      if(sp.nightOnly>0) parts.push("야간가산 "+sp.nightOnly+"h");
-      pv.textContent=parts.length?parts.join(" · "):"소정근무와 동일 (연장 없음)";
+      if(comp.lateH>0) parts.push("지각 "+comp.lateH+"h");
+      if(comp.earlyH>0) parts.push("조퇴 "+comp.earlyH+"h");
+      if(comp.ext>0) parts.push("연장 "+comp.ext+"h(1.5)");
+      if(comp.night>0) parts.push("야간연장 "+comp.night+"h(2.0)");
+      if(comp.nightOnly>0) parts.push("야간가산 +"+comp.nightOnly+"h(0.5, 스케줄보다 야간근무 증가)");
+      if(comp.nightOnly<0) parts.push("야간가산 차감 "+comp.nightOnly+"h(0.5, 스케줄보다 야간근무 감소)");
+      if(comp.holiday>0) parts.push("휴일 "+comp.holiday+"h(1.5, 현금, 휴게 "+breakH+"h 제외)");
+      if(comp.holExcess>0) parts.push("휴일초과 "+comp.holExcess+"h(2.0, 현금)");
+      if(comp.compAccrueH>0) parts.push("휴일근무 "+comp.compAccrueH+"h(휴게 제외) → 대체휴무 1일 적립(현금 미지급)");
+      if(comp.holNight>0) parts.push("휴일야간 +"+comp.holNight+"h(0.5, 항상 현금)");
+      pv.textContent=parts.length?parts.join(" · "):"소정근무와 동일 (변동 없음)";
     }
-    return sp;
+    return comp;
   }
-  if(schedDay) updatePreview();
+  updatePreview();
   drop.querySelectorAll(".ot-inp").forEach(function(inp){
     inp.addEventListener("click",function(e){ e.stopPropagation(); });
     inp.addEventListener("change",function(e){
       e.stopPropagation();
       var tf=inp.getAttribute("data-tf");
-      if(tf){
-        var sp=updatePreview();
-        otTimeChange(eid,mo,key,getTimeVal('actualStart'),getTimeVal('actualEnd'),sp);
+      var f=inp.getAttribute("data-f");
+      if(f==='holidayWork'){
+        var mEl=drop.querySelector("#ot-holmode-"+key);
+        if(mEl) mEl.style.display=inp.checked?"":"none";
+        var bEl=drop.querySelector("#ot-holbreak-"+key);
+        if(bEl) bEl.style.display=inp.checked?"":"none";
+        var wEl=drop.querySelector("#ot-holwarn-"+key);
+        if(wEl) wEl.style.display=(inp.checked&&!isRestDay)?"":"none";
+      }
+      if(tf||f==='holidayWork'||f==='holidayMode'||f==='breakH'){
+        var comp=updatePreview();
+        otDayStatusChange(eid,mo,key,{
+          actualStart:getTimeVal('actualStart'),
+          actualEnd:getTimeVal('actualEnd'),
+          holidayWork:getVal('holidayWork')||false,
+          holidayMode:getVal('holidayMode')||'pay',
+          breakH:parseFloat(getVal('breakH'))||0
+        },comp);
+      } else if(f==='compUse'){
+        otDropChange(eid,mo,key,'compUse',inp.checked);
       } else {
-        var f=inp.getAttribute("data-f");
         var val=parseFloat(inp.value)||0;
         otDropChange(eid,mo,key,f,val);
       }
@@ -1231,16 +1323,38 @@ function toggleOTDay(eid,mo,key,alignRight){
     });
   });
 }
-function otTimeChange(eid,mo,key,actualStart,actualEnd,sp){
+function otDayStatusChange(eid,mo,key,inputs,comp){
   if(!S.dirty) S.dirty={};
   S.dirty[eid+"|"+mo+"|"+key]=1;
   if(!S.ot[eid]) S.ot[eid]={}; if(!S.ot[eid][mo]) S.ot[eid][mo]={};
-  var cur=S.ot[eid][mo][key]||{ext:0,night:0,nightOnly:0,holiday:0,early:0};
-  cur.actualStart=actualStart; cur.actualEnd=actualEnd; cur.ext=sp.ext; cur.night=sp.night; cur.nightOnly=sp.nightOnly||0;
+  var cur=S.ot[eid][mo][key]||{ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false,breakH:0};
+  cur.actualStart=inputs.actualStart; cur.actualEnd=inputs.actualEnd;
+  cur.holidayWork=inputs.holidayWork; cur.holidayMode=inputs.holidayMode;
+  cur.breakH=inputs.breakH||0;
+  cur.ext=comp.ext; cur.night=comp.night; cur.nightOnly=comp.nightOnly;
+  cur.holiday=comp.holiday; cur.holExcess=comp.holExcess; cur.holNight=comp.holNight; cur.early=comp.early;
+  cur.compAccrueH=comp.compAccrueH||0;
+  cur.lateH=comp.lateH; cur.earlyH=comp.earlyH;
   S.ot[eid][mo][key]=cur;
   apiSaveOT(eid,mo,key,cur);
   saveCache(); updateOTSum();
   setTimeout(function(){ var s=document.getElementById("sta"); if(s) s.innerHTML=renderStats(); },0);
+}
+// ── 특정 날짜의 연장/휴일/차감 입력을 전부 초기화(삭제) ──
+function resetOTDay(eid,mo,key,cellEl){
+  if(!S.dirty) S.dirty={};
+  S.dirty[eid+"|"+mo+"|"+key]=1;
+  var empty={ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false,breakH:0};
+  if(S.ot[eid] && S.ot[eid][mo]) delete S.ot[eid][mo][key];
+  if(S.absence[eid] && S.absence[eid][mo]) delete S.absence[eid][mo][key];
+  apiSaveOT(eid,mo,key,empty);
+  apiSaveAbsence(eid,mo,key,0);
+  saveCache(); updateOTSum();
+  var existing=cellEl.querySelector(".ot-drop");
+  if(existing){ existing.remove(); cellEl.classList.remove("active"); _otDropOpen=null; }
+  refreshOTDayCell(eid,mo,key,cellEl);
+  setTimeout(function(){ var s=document.getElementById("sta"); if(s) s.innerHTML=renderStats(); },0);
+  toast(parseInt(key)+"일 입력이 삭제됐습니다");
 }
 
 // ── 연차 ──
@@ -1410,6 +1524,73 @@ function splitExtNight(schedS,schedE,actS,actE){
     night:Math.round(nightOTMin/60*10)/10,
     nightOnly:Math.round(nightOnlyMin/60*10)/10
   };
+}
+// ── 실제출퇴근 시각(actualStart~actualEnd) → 급여반영 필드 자동계산 ──
+// 기본값은 소정근무 시각 그대로(=정상출근). 지각/조퇴/연장은 이 시각을 직접 바꿔서 반영한다.
+// 평소: 소정근로 대비 실제출퇴근이 짧아진 만큼(지각+조퇴) 그 구간의 야간가산만 축소되고, 소정근로 끝을 넘긴 시간만 진짜 연장(1.5/2.0)으로 계산
+// 휴일근무: 실제출퇴근 전체를 8시간 기준 1.5배/2.0배로 나누고, 그 중 야간(22~06시)은 +0.5배 별도 가산(대체휴무 대상 아님, 항상 현금)
+function computeDayFields(schedDay,isPubHol,actualStart,actualEnd,holidayWork,holidayMode,breakH){
+  var empty={ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,compAccrueH:0};
+  var aS=hm2min(actualStart), aE=hm2min(actualEnd);
+  if(aS==null||aE==null) return empty;
+  if(aE<=aS) aE+=1440;
+  var sS=null,sE=null;
+  if(schedDay){
+    var schedS=String(schedDay.s).indexOf(":")>=0?schedDay.s:p2(parseInt(schedDay.s))+":00";
+    var schedE=String(schedDay.e).indexOf(":")>=0?schedDay.e:p2(parseInt(schedDay.e))+":00";
+    sS=hm2min(schedS); sE=hm2min(schedE);
+    if(sE<=sS) sE+=1440;
+  }
+  var lateH=sS!=null?Math.round(Math.max(0,aS-sS)/60*10)/10:0;
+  var earlyH=sE!=null?Math.round(Math.max(0,sE-aE)/60*10)/10:0;
+  if(holidayWork){
+    var totalMin=Math.max(0,(aE-aS)-Math.round((breakH||0)*60));
+    var baseMin=Math.min(totalMin,480);
+    var excessMin=Math.max(0,totalMin-480);
+    var nightMin=nightMinutesIn(aS,aE); // 야간시간 판정은 휴게시간과 무관하게 실제 출퇴근 구간 기준
+    var isComp=holidayMode==='comp';
+    return {
+      ext:0,night:0,nightOnly:0,
+      // 대체휴무 적립을 선택하면 기본(1.5)·초과(2.0)분은 현금 지급 대신 대체휴무 1일로 적립되므로 급여에는 0으로 반영
+      holiday:isComp?0:Math.round(baseMin/60*10)/10,
+      holExcess:isComp?0:Math.round(excessMin/60*10)/10,
+      holNight:Math.round(nightMin/60*10)/10, // 야간가산은 적립 대상이 아니라 항상 현금 지급
+      compAccrueH:isComp?Math.round((baseMin+excessMin)/60*10)/10:0,
+      early:0,lateH:lateH,earlyH:earlyH
+    };
+  }
+  var regEnd=sE!=null?Math.min(sE,aE):aS; // 소정근무가 없는 날(개인휴무일 등)은 전체가 연장으로 계산됨
+  var actualRegularNightMin=nightMinutesIn(aS,regEnd);
+  // 월급(포괄임금)에는 "원래 스케줄대로 매일 일한다"는 전제로 스케줄상 야간시간이 이미 고정 반영돼 있음.
+  // 그래서 야간가산은 절대값이 아니라 "원래 스케줄상 야간시간 대비 실제로 일한 야간시간의 순증감"으로 계산해야
+  // 지각/조퇴로 야간근무가 줄었을 때 이미 지급된 몫과 중복되지 않는다. (스케줄 없는 날은 기준(0)이 없으므로 실제값 그대로)
+  var scheduledNightMin=sS!=null?nightMinutesIn(sS,sE):0;
+  var netNightMin=actualRegularNightMin-scheduledNightMin;
+  var otMin=Math.max(0,aE-regEnd);
+  var nightOTMin=otMin>0?nightMinutesIn(regEnd,aE):0;
+  var extMin=otMin-nightOTMin;
+  return {
+    ext:Math.round(extMin/60*10)/10,
+    night:Math.round(nightOTMin/60*10)/10,
+    nightOnly:Math.round(netNightMin/60*10)/10,
+    holiday:0,holExcess:0,holNight:0,compAccrueH:0,
+    early:Math.round((lateH+earlyH)*10)/10,
+    lateH:lateH,earlyH:earlyH
+  };
+}
+// ── 대체휴무 잔여일수 (휴일근무·대체휴무선택 누적 - 대체휴무사용 누적) ──
+function calcCompBalance(eid){
+  var accrued=0, used=0;
+  var months=S.ot[eid]||{};
+  Object.keys(months).forEach(function(mo){
+    var days=months[mo];
+    Object.keys(days).forEach(function(k){
+      var d=days[k]||{};
+      if(d.holidayWork && d.holidayMode==='comp') accrued++;
+      if(d.compUse) used++;
+    });
+  });
+  return accrued-used;
 }
 function calcMonthlyPayHours(e){
   if(e.schedule && Object.keys(e.schedule).length>0){
@@ -1630,7 +1811,7 @@ function calcPay(e,mo){
       gross:grossF,pension:insF.pension,health:insF.health,empIns:insF.empIns,care:insF.care,
       incomeTax:insF.incomeTax,localTax:insF.localTax,
       totalDed:insF.total,net:grossF-insF.total,insuranceBase:b4f,
-      tot:{ext:0,night:0,nightOnly:0,holiday:0,early:0},
+      tot:{ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false},
       monthH:totalHf,weekH:0,actualDays:actualDaysF,dailyH:0,isProb:probRate<1,flexPT:true,ptWeeks:ptWeeks,
       payRatio:payRatio,isPartialMonth:!_pFull,svcDays:_pSvcDays,totalDaysInMonth:_pDim};
   }
@@ -1672,18 +1853,20 @@ function calcPay(e,mo){
     jInfo3.lostJuhyuAmt=Math.round(jInfo3.lostJuhyuAmt*payRatio);
     var basePay3=Math.round(hr2*monthH3);
     var extP3=Math.round(hr2*1.5*tot2.ext), nightP3=Math.round(hr2*2.0*tot2.night), nightOnlyP3=Math.round(hr2*0.5*(tot2.nightOnly||0));
-    var holP3=Math.round(hr2*1.5*tot2.holiday), earlyD3=Math.round(hr2*tot2.early);
+    var holP3=Math.round(hr2*1.5*tot2.holiday), holExcP3=Math.round(hr2*2.0*(tot2.holExcess||0)), holNightP3=Math.round(hr2*0.5*(tot2.holNight||0));
+    var earlyD3=Math.round(hr2*tot2.early);
     var absD3=Math.round(absDays2*hr2*(weekH2/Math.max(wkD3,1)));
     var lvDays2=getMonthLeaveDays(e.id,mo);
+    var compBal3=calcCompBalance(e.id);
     var extras3=getEmpExtras(e.id,mo), extraTotal3=0;
     for(var ei3=0;ei3<extras3.length;ei3++) extraTotal3+=extras3[ei3].amount||0;
-    var gross3=basePay3+jInfo3.juhyuAmt-jInfo3.lostJuhyuAmt+extP3+nightP3+nightOnlyP3+holP3-earlyD3-absD3+mealActual2+carActual2+extraTotal3;
-    var b4_3=Math.max(0,basePay3+jInfo3.juhyuAmt-jInfo3.lostJuhyuAmt+extP3+nightP3+nightOnlyP3+holP3-earlyD3-absD3+extraTotal3);
+    var gross3=basePay3+jInfo3.juhyuAmt-jInfo3.lostJuhyuAmt+extP3+nightP3+nightOnlyP3+holP3+holExcP3+holNightP3-earlyD3-absD3+mealActual2+carActual2+extraTotal3;
+    var b4_3=Math.max(0,basePay3+jInfo3.juhyuAmt-jInfo3.lostJuhyuAmt+extP3+nightP3+nightOnlyP3+holP3+holExcP3+holNightP3-earlyD3-absD3+extraTotal3);
     var insR4=calcEmpIns(b4_3,e.ins4,Math.max(0,gross3-mealActual2-carActual2),e.dependents||1);
     return {mode:'parttime',h:hr2,base:basePay3,baseOnly:basePay3,
       juhyuAmt:jInfo3.juhyuAmt,juhyuH:jInfo3.juhyuH,hasJuhyu:hasJuhyu3,
       jInfo:jInfo3,lostJuhyu:jInfo3.lostJuhyuAmt,
-      ext:extP3,night:nightP3,nightOnly:nightOnlyP3,hol:holP3,earlyDed:earlyD3,
+      ext:extP3,night:nightP3,nightOnly:nightOnlyP3,hol:holP3,holExcess:holExcP3,holNight:holNightP3,earlyDed:earlyD3,compBalance:compBal3,
       mealAmt:mealAmt2,mealActual:mealActual2,mealDed:mealDed2,
       carAmt:carAmt2,carActual:carActual2,carDed:carDed2,
       offDays:absDays2,absDays:absDays2,lvDays:lvDays2,absDeduct:absD3,
@@ -1737,11 +1920,14 @@ function calcPay(e,mo){
     var nightPay2 =Math.round(hr*2.0*tot.night);
     var nightOnlyPay=Math.round(hr*0.5*(tot.nightOnly||0));
     var holPay    =Math.round(hr*1.5*tot.holiday);
+    var holExcPay =Math.round(hr*2.0*(tot.holExcess||0));
+    var holNightPay=Math.round(hr*0.5*(tot.holNight||0));
     var earlyDed  =Math.round(hr*tot.early);
     var absDeduct =Math.round(absDays*(hr*dailyH));
     var lostJuhyu=jInfo.lostJuhyuAmt;
-    var gross=effTotalPay+extPay+nightPay2+nightOnlyPay+holPay+mealActual+carActual+extraTotal-absDeduct-lostJuhyu-earlyDed;
-    var b4=Math.max(0,effTotalPay+extPay+nightPay2+nightOnlyPay+holPay+extraTotal-absDeduct-lostJuhyu-earlyDed);
+    var compBal=calcCompBalance(e.id);
+    var gross=effTotalPay+extPay+nightPay2+nightOnlyPay+holPay+holExcPay+holNightPay+mealActual+carActual+extraTotal-absDeduct-lostJuhyu-earlyDed;
+    var b4=Math.max(0,effTotalPay+extPay+nightPay2+nightOnlyPay+holPay+holExcPay+holNightPay+extraTotal-absDeduct-lostJuhyu-earlyDed);
     var insR1=calcEmpIns(b4,e.ins4,Math.max(0,gross-mealActual-carActual),e.dependents||1);
     var pension=insR1.pension,health=insR1.health,empIns=insR1.empIns,care=insR1.care;
     var totalDed=insR1.total;
@@ -1751,7 +1937,7 @@ function calcPay(e,mo){
     return {mode:"over5",h:hr,base:effCbBase,baseOnly:baseOnly,juhyuAmt:juhyuAmt,juhyuH:juhyuH,hasJuhyu:hasJuhyu,
       jInfo:jInfo,lostJuhyu:lostJuhyu,
       nightPayFixed:Math.round(cb.nightPay*probRate*payRatio),nightH:cb.nightH,
-      ext:extPay,night:nightPay2,nightOnly:nightOnlyPay,hol:holPay,earlyDed:earlyDed,
+      ext:extPay,night:nightPay2,nightOnly:nightOnlyPay,hol:holPay,holExcess:holExcPay,holNight:holNightPay,earlyDed:earlyDed,compBalance:compBal,
       mealAmt:mealAmt,mealActual:mealActual,mealDed:mealDed,carAmt:carAmt,carActual:carActual,carDed:carDed,offDays:offDays,absDays:absDays,lvDays:lvDays,
       extras:extras,extraTotal:extraTotal,
       gross:gross,pension:pension,health:health,empIns:empIns,care:care,
@@ -1772,16 +1958,19 @@ function calcPay(e,mo){
     var night=Math.round(h*2.0*tot.night);
     var nightOnly=Math.round(h*0.5*(tot.nightOnly||0));
     var hol=Math.round(h*1.5*tot.holiday);
+    var holExc=Math.round(h*2.0*(tot.holExcess||0));
+    var holNightP=Math.round(h*0.5*(tot.holNight||0));
     var earlyDed=Math.round(h*tot.early);
     var absDeduct=Math.round(absDays*(h*dailyH));
-    var gross=effBase+ext+night+nightOnly+hol+mealActual+carActual+extraTotal-absDeduct-lostJuhyu2-earlyDed;
-    var b4=Math.max(0,effBase+ext+night+nightOnly+hol+extraTotal-absDeduct-lostJuhyu2-earlyDed);
+    var compBal2=calcCompBalance(e.id);
+    var gross=effBase+ext+night+nightOnly+hol+holExc+holNightP+mealActual+carActual+extraTotal-absDeduct-lostJuhyu2-earlyDed;
+    var b4=Math.max(0,effBase+ext+night+nightOnly+hol+holExc+holNightP+extraTotal-absDeduct-lostJuhyu2-earlyDed);
     var insR2=calcEmpIns(b4,e.ins4,Math.max(0,gross-mealActual-carActual),e.dependents||1);
     var pension=insR2.pension,health=insR2.health,empIns=insR2.empIns,care=insR2.care;
     var totalDed=insR2.total;
     return {mode:"under5",h:h,base:effBase,baseOnly:baseOnly2,juhyuAmt:juhyuAmt2,juhyuH:juhyuH,hasJuhyu:hasJuhyu,
       jInfo:jInfo,lostJuhyu:lostJuhyu2,
-      ext:ext,night:night,nightOnly:nightOnly,hol:hol,earlyDed:earlyDed,
+      ext:ext,night:night,nightOnly:nightOnly,hol:hol,holExcess:holExc,holNight:holNightP,earlyDed:earlyDed,compBalance:compBal2,
       mealAmt:mealAmt,mealActual:mealActual,mealDed:mealDed,carAmt:carAmt,carActual:carActual,carDed:carDed,offDays:offDays,absDays:absDays,lvDays:lvDays,
       extras:extras,extraTotal:extraTotal,
       gross:gross,pension:pension,health:health,empIns:empIns,care:care,
@@ -1842,6 +2031,47 @@ function chkBox(isDone, action, id, val){
     +"</div>";
 }
 
+// ── 대체휴무 적립/사용 이력 (직원 전체 기간) ──
+function calcCompHistory(eid){
+  var events=[];
+  var months=S.ot[eid]||{};
+  Object.keys(months).forEach(function(mo){
+    var days=months[mo];
+    Object.keys(days).forEach(function(k){
+      var d=days[k]||{};
+      var dateStr=mo+"-"+k;
+      if(d.holidayWork && d.holidayMode==='comp') events.push({date:dateStr,type:'accrue',h:d.compAccrueH||0});
+      if(d.compUse) events.push({date:dateStr,type:'use'});
+    });
+  });
+  events.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
+  return events;
+}
+function renderCompHistoryCard(eid){
+  var events=calcCompHistory(eid);
+  var balance=calcCompBalance(eid);
+  var html="<div style='background:#fff;border:0.5px solid #e0ddd6;border-radius:10px;padding:.7rem .9rem;margin-top:6px'>";
+  html+="<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px'>"
+    +"<span style='font-size:12.5px;font-weight:600;color:#444'>대체휴무 현황</span>"
+    +"<span style='font-size:13px;font-weight:700;color:"+(balance>0?"#0f6e56":"#888")+"'>잔여 "+balance+"일</span>"
+    +"</div>";
+  if(!events.length){
+    html+="<div style='font-size:11.5px;color:#aaa'>적립·사용 이력 없음</div>";
+  } else {
+    html+="<div style='display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto'>";
+    for(var i=events.length-1;i>=0;i--){
+      var ev=events[i];
+      var isAccrue=ev.type==='accrue';
+      html+="<div style='display:flex;justify-content:space-between;font-size:11.5px;padding:3px 6px;border-radius:6px;background:"+(isAccrue?"#eaf3de":"#fbeaf0")+"'>"
+        +"<span style='color:"+(isAccrue?"#3b6d11":"#993556")+"'>"+fmtDate(ev.date)+"</span>"
+        +"<span style='color:"+(isAccrue?"#27500a":"#72243e")+";font-weight:600'>"+(isAccrue?"적립 +1일"+(ev.h?" ("+ev.h+"h 근무)":""):"사용 -1일")+"</span>"
+        +"</div>";
+    }
+    html+="</div>";
+  }
+  html+="</div>";
+  return html;
+}
 function renderStats(){
   var v=S.view;
   function si(l,v,c){ return "<div class='st'><div class='st-l'>"+l+"</div><div class='st-v "+(c||"")+"'>"+v+"</div></div>"; }
@@ -1853,8 +2083,8 @@ function renderStats(){
     return s4(si("전체 직원",t+"명",""),si("정상",(t-dn-wn)+"명","c-ok"),si("주의",wn+"명","c-warn"),si("기한초과",dn+"명","c-danger"));
   }
   if(v===1){
-    var emp=getEmp(S.otEmp); p=emp?calcPay(emp,S.cm):{ext:0,night:0,hol:0,gross:0,tot:{ext:0,night:0,nightOnly:0,holiday:0,early:0},absDays:0,absDeduct:0,lostJuhyu:0,earlyDed:0,mealDed:0};
-    var addPay=p.ext+p.night+(p.nightOnly||0)+p.hol;
+    var emp=getEmp(S.otEmp); p=emp?calcPay(emp,S.cm):{ext:0,night:0,hol:0,gross:0,tot:{ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false},absDays:0,absDeduct:0,lostJuhyu:0,earlyDed:0,mealDed:0};
+    var addPay=p.ext+p.night+(p.nightOnly||0)+p.hol+(p.holExcess||0)+(p.holNight||0);
     var totalDed=(p.absDeduct||0)+(p.lostJuhyu||0)+(p.earlyDed||0)+(p.mealDed||0);
     var maxW=0;
     if(emp){
@@ -1864,11 +2094,15 @@ function renderStats(){
       for(var dw=1;dw<=dim1;dw++){var wid=Math.floor((first1+dw-1)/7);var otw=getOT(S.otEmp,S.cm,dw);wmap[wid]=(wmap[wid]||0)+(otw.ext||0);}
       var wmk=Object.keys(wmap);for(var wi=0;wi<wmk.length;wi++){if(wmap[wmk[wi]]>maxW)maxW=wmap[wmk[wi]];}
     }
-    return "<div class='stats' style='grid-template-columns:repeat(4,minmax(0,1fr))'>"
+    return "<div class='stats' style='grid-template-columns:repeat(3,minmax(0,1fr))'>"
       +si("연장",p.tot.ext.toFixed(1)+"h","c-warn")
       +si("야간연장",p.tot.night.toFixed(1)+"h","")
       +si("야간가산",(p.tot.nightOnly||0).toFixed(1)+"h","")
+      +"</div>"
+      +"<div class='stats' style='grid-template-columns:repeat(3,minmax(0,1fr));margin-top:6px'>"
       +si("휴일",p.tot.holiday.toFixed(1)+"h","c-danger")
+      +si("휴일초과",(p.tot.holExcess||0).toFixed(1)+"h","c-danger")
+      +si("휴일야간",(p.tot.holNight||0).toFixed(1)+"h","c-danger")
       +"</div>"
       +"<div class='stats' style='grid-template-columns:repeat(3,minmax(0,1fr));margin-top:6px'>"
       +si("추가수당",(addPay>0?"+":"")+comma(addPay)+"원","c-ok")
@@ -1878,7 +2112,8 @@ function renderStats(){
       +"<div class='stats' style='grid-template-columns:repeat(2,minmax(0,1fr));margin-top:6px'>"
       +si("예상 총급여",comma(p.gross)+"원","c-ok")
       +si("최대 주간 연장",maxW.toFixed(1)+"h"+(maxW>12?" ⚠":""),maxW>12?"c-danger":maxW>8?"c-warn":"")
-      +"</div>";
+      +"</div>"
+      +renderCompHistoryCard(S.otEmp);
   }
   if(v===2){
     var tot=0,ins=0,histMo=0; for(i=0;i<S.emps.length;i++){p=calcPay(S.emps[i],S.cm);tot+=p.gross;ins+=p.totalDed;histMo+=((S.payHistory[S.emps[i].id]||[]).length);}
@@ -2299,8 +2534,8 @@ function renderOT(){
   var sumBar="";
   if(t.ext>0)     sumBar+="<span class='ot-chip chip-ext' style='font-size:11px;padding:3px 9px'>연장수당 "+t.ext.toFixed(1)+"시간</span>";
   if(t.night>0)   sumBar+="<span class='ot-chip chip-night' style='font-size:11px;padding:3px 9px'>야근수당 "+t.night.toFixed(1)+"시간</span>";
-  if(t.nightOnly>0) sumBar+="<span class='ot-chip chip-nightonly' style='font-size:11px;padding:3px 9px'>야간가산 "+t.nightOnly.toFixed(1)+"시간</span>";
-  if(t.holiday>0) sumBar+="<span class='ot-chip chip-hol' style='font-size:11px;padding:3px 9px'>휴일수당 "+t.holiday.toFixed(1)+"시간</span>";
+  if(t.nightOnly!==0) sumBar+="<span class='ot-chip chip-nightonly' style='font-size:11px;padding:3px 9px'>야간가산 "+(t.nightOnly>0?"+":"")+t.nightOnly.toFixed(1)+"시간</span>";
+  if(t.holiday>0) sumBar+="<span class='ot-chip chip-hol' style='font-size:11px;padding:3px 9px'>휴일수당 "+t.holiday.toFixed(1)+"시간</span>"; if(t.holExcess>0) sumBar+="<span class='ot-chip chip-hol' style='font-size:11px;padding:3px 9px'>휴일초과 "+t.holExcess.toFixed(1)+"시간</span>"; if(t.holNight>0) sumBar+="<span class='ot-chip chip-nightonly' style='font-size:11px;padding:3px 9px'>휴일야간 "+t.holNight.toFixed(1)+"시간</span>";
   if(t.early>0)   sumBar+="<span class='ot-chip chip-early' style='font-size:11px;padding:3px 9px'>조기퇴근 "+t.early.toFixed(1)+"시간</span>";
   if(p.absDays>0) sumBar+="<span class='ot-chip chip-abs' style='font-size:11px;padding:3px 9px'>결근 "+p.absDays+"일</span>";
   if(sumBar) h+="<div class='ot-sum-bar'>"+sumBar+"</div>";
@@ -2308,6 +2543,7 @@ function renderOT(){
   // ── 드롭다운 달력 그리드 ──
   h+="<div class='ot-day-grid'>";
   var days7=["일","월","화","수","목","금","토"];
+  var DN3=["일","월","화","수","목","금","토"];
   for(i=0;i<7;i++) h+="<div class='ot-dh"+(i===0?" sun":i===6?" sat":"")+"'>"+days7[i]+"</div>";
   for(i=0;i<first;i++) h+="<div class='ot-dc empty-day'></div>";
   for(var d2=1;d2<=daysInMo;d2++){
@@ -2316,14 +2552,16 @@ function renderOT(){
     var ot=getOT(eid,S.cm,d2), ab=getAbsence(eid,S.cm,d2);
     var chips=otDayChips(ot,ab), hasData=chips.length>0;
     var isPubHol=isHoliday(dateStr);
+    var isEmpOff=empSched && !empSched[DN3[dow]]; // 이 직원의 스케줄상 근무 없는 요일(개인 휴무일)
     var weekIdxDay=Math.floor((first+d2-1)/7);
     var isWeekOver=(weekExt[weekIdxDay]||0)>12;
     var alignRight=(dow>=5)?1:0;
-    var cellCls="ot-dc"+(dow===0||isPubHol?" hol-day":"")+(hasData?" has-data":"")+(isWeekOver?" week-ov":"");
+    var cellCls="ot-dc"+(dow===0||isPubHol?" hol-day":"")+(isEmpOff&&!isPubHol?" emp-off":"")+(hasData?" has-data":"")+(isWeekOver?" week-ov":"");
     var dnCls="ot-dn"+(dow===0||isPubHol?" sun":dow===6?" sat":"");
     var pubDot=isPubHol&&dow!==0?"<span style='font-size:8px;color:#ef4444;margin-left:1px'>●</span>":"";
+    var offDot=isEmpOff&&!isPubHol?"<span style='font-size:8px;color:#999;margin-left:1px'>휴무</span>":"";
     h+="<div class='"+cellCls+"' id='otd-"+key+"' onclick='toggleOTDay(\""+eid+"\",\""+S.cm+"\",\""+key+"\","+alignRight+")'>";
-    h+="<div class='"+dnCls+"'>"+d2+pubDot+"<span class='ot-toggle' style='color:"+(hasData?"#888":"#ccc")+"'>"+(hasData?"▾":"+")+"</span></div>";
+    h+="<div class='"+dnCls+"'>"+d2+pubDot+offDot+"<span class='ot-toggle' style='color:"+(hasData?"#888":"#ccc")+"'>"+(hasData?"▾":"+")+"</span></div>";
     if(hasData) h+="<div class='ot-chips'>"+chips.join("")+"</div>";
     h+="</div>";
   }
@@ -2359,24 +2597,25 @@ function getAttendanceDayInfo(emp,mo,d){
   var schedE=ds?(String(ds.e).indexOf(":")>=0?ds.e:p2(parseInt(ds.e))+":00"):null;
   var startT="-", endT="-", note="";
   if(isOnLeave(eid,dateStr)){ note="연차"; }
+  else if(ot.compUse){ note="대체휴무 사용"; }
   else if(ab>0){ note="결근"; }
-  else if(ot.actualStart&&ot.actualEnd){
-    startT=ot.actualStart; endT=ot.actualEnd;
-    var tags=[]; if(ot.ext>0) tags.push("연장 "+ot.ext+"h"); if(ot.night>0) tags.push("야간연장 "+ot.night+"h"); if(ot.nightOnly>0) tags.push("야간가산 "+ot.nightOnly+"h"); if(ot.holiday>0) tags.push("휴일 "+ot.holiday+"h");
-    note=tags.join(" · ")||"연장입력";
+  else if(ot.actualStart&&ot.actualEnd || ot.holidayWork){
+    startT=ot.actualStart||schedS||"-"; endT=ot.actualEnd||schedE||"-";
+    var tags=[];
+    if(ot.lateH>0) tags.push("지각 "+ot.lateH+"h");
+    if(ot.earlyH>0) tags.push("조퇴 "+ot.earlyH+"h");
+    if(ot.ext>0) tags.push("연장 "+ot.ext+"h");
+    if(ot.night>0) tags.push("야간연장 "+ot.night+"h");
+    if(ot.nightOnly!==0) tags.push("야간가산 "+(ot.nightOnly>0?"+":"")+ot.nightOnly+"h");
+    if(ot.holiday>0) tags.push("휴일 "+ot.holiday+"h");
+    if(ot.holExcess>0) tags.push("휴일초과 "+ot.holExcess+"h");
+    if(ot.holNight>0) tags.push("휴일야간 +"+ot.holNight+"h");
+    if(ot.holidayWork) tags.push(ot.holidayMode==='comp'?"대체휴무 적립":"수당정산");
+    note=tags.join(" · ")||"정상출근";
   } else if(ds){
     startT=schedS; endT=schedE; note="정규(소정근무)";
-    var extraH=(ot.ext||0)+(ot.night||0);
-    if(extraH>0){
-      endT=min2hm(hm2min(schedE)+extraH*60);
-      var tags2=[]; if(ot.ext>0) tags2.push("연장 "+ot.ext+"h"); if(ot.night>0) tags2.push("야간연장 "+ot.night+"h");
-      note="정규+연장(추정) · "+tags2.join(" · ");
-    }
-    if(ot.nightOnly>0) note+=(note!=="정규(소정근무)"?" · ":" · ")+"야간가산 "+ot.nightOnly+"h";
-    if(ot.holiday>0) note+=" · 휴일 "+ot.holiday+"h";
   } else {
-    var extraH2=(ot.ext||0)+(ot.night||0);
-    note=(extraH2>0||ot.nightOnly>0)?("연장입력됨(소정근무 없음) · 연장 "+(ot.ext||0)+"h · 야간연장 "+(ot.night||0)+"h · 야간가산 "+(ot.nightOnly||0)+"h"):"휴무";
+    note="휴무";
   }
   return {dowName:dowName,dow:dow,startT:startT,endT:endT,note:note,isPubHol:isPubHol};
 }
@@ -2442,7 +2681,7 @@ function renderPay(){
                +(_ei.empIns?Math.round(_eb*1.15/100):0)
                +((_ei.care&&_ei.health)?Math.round(_eh*S.ins.care/100):0);
     totGross+=_ep.gross||0; totNet+=_ep.net||0; totDed+=_ep.totalDed||0;
-    totEmpIns+=_empIns; totMeal+=_ep.mealActual||0; totCar+=_ep.carActual||0; totExt+=(_ep.ext||0)+(_ep.night||0)+(_ep.hol||0);
+    totEmpIns+=_empIns; totMeal+=_ep.mealActual||0; totCar+=_ep.carActual||0; totExt+=(_ep.ext||0)+(_ep.night||0)+(_ep.hol||0)+(_ep.holExcess||0)+(_ep.holNight||0);
   }
   h+="<div class='card' style='margin-top:.5rem;background:#f9f8f5'>";
   h+="<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem'>";
@@ -3067,7 +3306,7 @@ async function doPayrollExcel(mo){
     var ee2=ins4.empIns?Math.round(b2*1.15/100):0;
     var ec2=(ins4.care&&ins4.health)?Math.round(eh2*S.ins.care/100):0;
     var cType=e.contractType==='시간제'?'시간제':(e.totalPay?'포괄임금':'기본급');
-    var ot=(p.ext||0)+(p.night||0)+(p.hol||0);
+    var ot=(p.ext||0)+(p.night||0)+(p.hol||0)+(p.holExcess||0)+(p.holNight||0);
     var r=DS+i;
     var bg=i%2===1?C.ST:C.WT;
     ws.getRow(r).height=21;
@@ -3415,7 +3654,7 @@ function renderMod(){
     // ── 시간제 모드 ──
     if(p.mode==="parttime"){
       h+="<div style='background:#f9f8f5;border-radius:6px;padding:.5rem .8rem;font-size:11px;color:#555;margin-bottom:.6rem;line-height:1.9'>";
-      h+="<b>계산 기준 (시간제)</b><br>월 소정 "+p.monthH+"h ("+(p.actualDays>0?p.actualDays+"일 × "+p.dailyH.toFixed(1)+"h/일 (실근무일수)":"주 "+p.weekH+"h × 4.345주")+")</div>";
+      h+="<b>계산 기준 (시간제)</b><br>월 소정 "+p.monthH+"h ("+(p.actualDays>0?p.actualDays+"일 × "+p.dailyH.toFixed(1)+"h/일 (실근무일수)":"주 "+p.weekH+"h × 4.345주")+")"+(p.compBalance?"<br>대체휴무 잔여 "+p.compBalance+"일":"")+"</div>";
       h+="<div class='sl-sec'>▸ 지급 항목</div>";
       h+=frow("소정근로 임금",p.monthH+"h",comma(p.base)+"원");
       var totalWksP=p.jInfo.juhyuWeeks+p.jInfo.noJuhyuWeeks;
@@ -3427,8 +3666,10 @@ function renderMod(){
       }
       if(p.tot.ext>0)    h+=frow("연장수당 ("+p.tot.ext.toFixed(1)+"h)",p.tot.ext.toFixed(1)+"h × 1.5","+"+comma(p.ext)+"원");
       if(p.tot.night>0)  h+=frow("야간연장수당 ("+p.tot.night.toFixed(1)+"h)",p.tot.night.toFixed(1)+"h × 2.0","+"+comma(p.night)+"원");
-      if(p.tot.nightOnly>0) h+=frow("야간가산 ("+p.tot.nightOnly.toFixed(1)+"h)",p.tot.nightOnly.toFixed(1)+"h × 0.5 (근무시간대만 이동, 총량 동일)","+"+comma(p.nightOnly)+"원");
+      if(p.tot.nightOnly!==0) h+=frow("야간가산 ("+p.tot.nightOnly.toFixed(1)+"h)","스케줄 대비 야간근무 순증감 × 0.5",signAmt(p.nightOnly)+"원",p.nightOnly<0?"ded":"");
       if(p.tot.holiday>0) h+=frow("휴일수당 ("+p.tot.holiday.toFixed(1)+"h)",p.tot.holiday.toFixed(1)+"h × 1.5","+"+comma(p.hol)+"원");
+      if(p.tot.holExcess>0) h+=frow("휴일초과수당 ("+p.tot.holExcess.toFixed(1)+"h)",p.tot.holExcess.toFixed(1)+"h × 2.0","+"+comma(p.holExcess)+"원");
+      if(p.tot.holNight>0) h+=frow("휴일야간가산 ("+p.tot.holNight.toFixed(1)+"h)",p.tot.holNight.toFixed(1)+"h × 0.5 (현금정산)","+"+comma(p.holNight)+"원");
       if(p.tot.early>0)  h+=frow("조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)",p.tot.early.toFixed(1)+"h","-"+comma(p.earlyDed)+"원","ded");
       if(p.absDays>0)    h+=frow("결근 차감 ("+p.absDays+"일)","일근로시간 × "+p.absDays+"일","-"+comma(p.absDeduct)+"원","ded");
       if(p.mealAmt>0)    h+=frow("식대"+(p.absDays>0?" (결근차감)":""),"",comma(p.mealActual)+"원");
@@ -3444,6 +3685,7 @@ function renderMod(){
     }
     h+="월 소정근로시간 "+mPayH2+"h (주 "+(e.weeklyHours||40)+"h + 주휴 "+(p.hasJuhyu?((e.weeklyHours||40)/wkDays2).toFixed(1):"0")+"h/일 × 4.345주)<br>";
     h+="일 소정근로시간 "+((e.weeklyHours||40)/wkDays2).toFixed(1)+"h (주 "+(e.weeklyHours||40)+"h ÷ "+wkDays2+"일)";
+    if(p.compBalance) h+="<br>대체휴무 잔여 "+p.compBalance+"일";
     h+="</div>";
     if(p.mode==="over5"){
       h+="<div class='sl-sec'>▸ 포괄임금 (고정)</div>";
@@ -3472,12 +3714,14 @@ function renderMod(){
           h+=frow("자가운전보조금"+(p.absDays>0?" (결근 "+p.absDays+"일 차감)":""),cf3,comma(p.carActual)+"원");
         }
       }
-      if(p.tot.ext>0||p.tot.night>0||p.tot.nightOnly>0||p.tot.holiday>0||p.tot.early>0||p.absDays>0||p.lostJuhyu>0){
+      if(p.tot.ext>0||p.tot.night>0||p.tot.nightOnly!==0||p.tot.holiday>0||p.tot.early>0||p.absDays>0||p.lostJuhyu>0){
         h+="<div class='sl-sec'>▸ 이달 추가수당 / 차감</div>";
         if(p.tot.ext>0)    h+=frow("연장수당 ("+p.tot.ext.toFixed(1)+"h)",p.tot.ext.toFixed(1)+"h × 1.5배","+"+comma(p.ext)+"원");
         if(p.tot.night>0)  h+=frow("야간연장수당 ("+p.tot.night.toFixed(1)+"h)",p.tot.night.toFixed(1)+"h × 2.0배 (연장0.5+야간0.5+기본1)","+"+comma(p.night)+"원");
-        if(p.tot.nightOnly>0) h+=frow("야간가산 ("+p.tot.nightOnly.toFixed(1)+"h)",p.tot.nightOnly.toFixed(1)+"h × 0.5배 (근무시간대 이동, 총량 동일)","+"+comma(p.nightOnly)+"원");
+        if(p.tot.nightOnly!==0) h+=frow("야간가산 ("+p.tot.nightOnly.toFixed(1)+"h)","스케줄 대비 야간근무 순증감 × 0.5배",signAmt(p.nightOnly)+"원",p.nightOnly<0?"ded":"");
         if(p.tot.holiday>0) h+=frow("휴일수당 ("+p.tot.holiday.toFixed(1)+"h)",p.tot.holiday.toFixed(1)+"h × 1.5배","+"+comma(p.hol)+"원");
+        if(p.tot.holExcess>0) h+=frow("휴일초과수당 ("+p.tot.holExcess.toFixed(1)+"h)",p.tot.holExcess.toFixed(1)+"h × 2.0배","+"+comma(p.holExcess)+"원");
+        if(p.tot.holNight>0) h+=frow("휴일야간가산 ("+p.tot.holNight.toFixed(1)+"h)",p.tot.holNight.toFixed(1)+"h × 0.5배 (현금정산)","+"+comma(p.holNight)+"원");
         if(p.lostJuhyu>0)  h+=frow("주휴박탈 (결근 "+p.jInfo.noJuhyuWeeks+"주)",dailyJuhyu2.toFixed(1)+"h × "+p.jInfo.noJuhyuWeeks+"주 (결근 있는 주)","-"+comma(p.lostJuhyu)+"원","ded");
         if(p.tot.early>0)  h+=frow("조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)",p.tot.early.toFixed(1)+"h","-"+comma(p.earlyDed)+"원","ded");
         if(p.absDays>0)    h+=frow("결근 차감 ("+p.absDays+"일)",((e.weeklyHours||40)/wkDays2).toFixed(1)+"h × "+p.absDays+"일","-"+comma(p.absDeduct)+"원","ded");
@@ -3495,8 +3739,10 @@ function renderMod(){
       }
       if(p.tot.ext>0)    h+=frow("연장수당 ("+p.tot.ext.toFixed(1)+"h)",p.tot.ext.toFixed(1)+"h × 1.5배","+"+comma(p.ext)+"원");
       if(p.tot.night>0)  h+=frow("야간연장수당 ("+p.tot.night.toFixed(1)+"h)",p.tot.night.toFixed(1)+"h × 2.0배 (연장+야간 가산)","+"+comma(p.night)+"원");
-      if(p.tot.nightOnly>0) h+=frow("야간가산 ("+p.tot.nightOnly.toFixed(1)+"h)",p.tot.nightOnly.toFixed(1)+"h × 0.5배 (근무시간대 이동, 총량 동일)","+"+comma(p.nightOnly)+"원");
+      if(p.tot.nightOnly!==0) h+=frow("야간가산 ("+p.tot.nightOnly.toFixed(1)+"h)","스케줄 대비 야간근무 순증감 × 0.5배",signAmt(p.nightOnly)+"원",p.nightOnly<0?"ded":"");
       if(p.tot.holiday>0) h+=frow("휴일수당 ("+p.tot.holiday.toFixed(1)+"h)",p.tot.holiday.toFixed(1)+"h × 1.5배","+"+comma(p.hol)+"원");
+      if(p.tot.holExcess>0) h+=frow("휴일초과수당 ("+p.tot.holExcess.toFixed(1)+"h)",p.tot.holExcess.toFixed(1)+"h × 2.0배","+"+comma(p.holExcess)+"원");
+      if(p.tot.holNight>0) h+=frow("휴일야간가산 ("+p.tot.holNight.toFixed(1)+"h)",p.tot.holNight.toFixed(1)+"h × 0.5배 (현금정산)","+"+comma(p.holNight)+"원");
       if(p.tot.early>0)  h+=frow("조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)",p.tot.early.toFixed(1)+"h","-"+comma(p.earlyDed)+"원","ded");
       if(p.absDays>0)    h+=frow("결근 차감 ("+p.absDays+"일)",((e.weeklyHours||40)/wkDays2).toFixed(1)+"h × "+p.absDays+"일","-"+comma(p.absDeduct)+"원","ded");
       if(p.mealAmt>0||p.carAmt>0){
@@ -3570,12 +3816,14 @@ function printSlip(eid){
     s+="<tr><td style='padding:4px 6px'>야간근로수당 포괄 ("+p.nightH+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.nightPayFixed)+"원</td></tr>";
     s+="<tr style='font-weight:700;border-top:1px solid #ddd'><td style='padding:4px 6px'>포괄임금 합계</td><td style='text-align:right;padding:4px 6px'>"+comma(p.totalPay)+"원</td></tr>";
     if(p.mealAmt>0||p.carAmt>0){ s+="<tr style='background:#f0f9ff'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#0369a1'>▸ 비과세 항목</td></tr>"; if(p.mealAmt>0) s+="<tr><td style='padding:3px 6px'>식대"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.mealActual)+"원</td></tr>"; if(p.carAmt>0) s+="<tr><td style='padding:3px 6px'>자가운전보조금"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.carActual)+"원</td></tr>"; }
-    if(p.tot.ext>0||p.tot.night>0||p.tot.nightOnly>0||p.tot.holiday>0||p.tot.early>0||p.lostJuhyu>0){
+    if(p.tot.ext>0||p.tot.night>0||p.tot.nightOnly!==0||p.tot.holiday>0||p.tot.early>0||p.lostJuhyu>0){
       s+="<tr style='background:#fff7ed'><td colspan='2' style='padding:4px 6px;font-weight:700;font-size:10px;color:#92400e'>▸ 추가 수당 / 차감</td></tr>";
       if(p.tot.ext>0) s+="<tr><td style='padding:4px 6px'>추가 연장 ("+p.tot.ext.toFixed(1)+"h × 1.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.ext)+"원</td></tr>";
       if(p.tot.night>0) s+="<tr><td style='padding:4px 6px'>추가 야간연장 ("+p.tot.night.toFixed(1)+"h × 2.0)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.night)+"원</td></tr>";
-      if(p.tot.nightOnly>0) s+="<tr><td style='padding:4px 6px'>야간가산 ("+p.tot.nightOnly.toFixed(1)+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.nightOnly)+"원</td></tr>";
+      if(p.tot.nightOnly!==0) s+="<tr><td style='padding:4px 6px'>야간가산 ("+p.tot.nightOnly.toFixed(1)+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+signAmt(p.nightOnly)+"원</td></tr>";
       if(p.tot.holiday>0) s+="<tr><td style='padding:4px 6px'>추가 휴일 ("+p.tot.holiday.toFixed(1)+"h × 1.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.hol)+"원</td></tr>";
+    if(p.tot.holExcess>0) s+="<tr><td style='padding:4px 6px'>휴일초과 ("+p.tot.holExcess.toFixed(1)+"h × 2.0)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.holExcess)+"원</td></tr>";
+    if(p.tot.holNight>0) s+="<tr><td style='padding:4px 6px'>휴일야간가산 ("+p.tot.holNight.toFixed(1)+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.holNight)+"원</td></tr>";
       if(p.lostJuhyu>0) s+="<tr style='color:#dc2626'><td style='padding:4px 6px'>주휴박탈 (결근 "+p.jInfo.noJuhyuWeeks+"주)</td><td style='text-align:right;padding:4px 6px'>-"+comma(p.lostJuhyu)+"원</td></tr>";
       if(p.tot.early>0) s+="<tr style='color:#2563eb'><td style='padding:4px 6px'>조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)</td><td style='text-align:right;padding:4px 6px'>-"+comma(p.earlyDed)+"원</td></tr>";
     }
@@ -3587,8 +3835,10 @@ function printSlip(eid){
     if(p.hasJuhyu&&p.jInfo.noJuhyuWeeks>0) s+="<tr style='color:#dc2626;font-size:10.5px'><td style='padding:2px 6px 2px 14px'>└ 주휴박탈 (결근 "+p.jInfo.noJuhyuWeeks+"주)</td><td style='text-align:right;padding:2px 6px'>-"+comma(p.lostJuhyu)+"원</td></tr>";
     if(p.tot.ext>0) s+="<tr><td style='padding:4px 6px'>연장수당 ("+p.tot.ext.toFixed(1)+"h × 1.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.ext)+"원</td></tr>";
     if(p.tot.night>0) s+="<tr><td style='padding:4px 6px'>야간연장수당 ("+p.tot.night.toFixed(1)+"h × 2.0)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.night)+"원</td></tr>";
-    if(p.tot.nightOnly>0) s+="<tr><td style='padding:4px 6px'>야간가산 ("+p.tot.nightOnly.toFixed(1)+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.nightOnly)+"원</td></tr>";
+    if(p.tot.nightOnly!==0) s+="<tr><td style='padding:4px 6px'>야간가산 ("+p.tot.nightOnly.toFixed(1)+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+signAmt(p.nightOnly)+"원</td></tr>";
     if(p.tot.holiday>0) s+="<tr><td style='padding:4px 6px'>휴일수당 ("+p.tot.holiday.toFixed(1)+"h × 1.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.hol)+"원</td></tr>";
+    if(p.tot.holExcess>0) s+="<tr><td style='padding:4px 6px'>휴일초과 ("+p.tot.holExcess.toFixed(1)+"h × 2.0)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.holExcess)+"원</td></tr>";
+    if(p.tot.holNight>0) s+="<tr><td style='padding:4px 6px'>휴일야간가산 ("+p.tot.holNight.toFixed(1)+"h × 0.5)</td><td style='text-align:right;padding:4px 6px'>"+comma(p.holNight)+"원</td></tr>";
     if(p.tot.early>0) s+="<tr style='color:#2563eb'><td style='padding:4px 6px'>조기퇴근 차감 ("+p.tot.early.toFixed(1)+"h)</td><td style='text-align:right;padding:4px 6px'>-"+comma(p.earlyDed)+"원</td></tr>";
     if(p.mealAmt>0||p.carAmt>0){ s+="<tr style='background:#f0f9ff'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#0369a1'>▸ 비과세 항목</td></tr>"; if(p.mealAmt>0) s+="<tr><td style='padding:3px 6px'>식대"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.mealActual)+"원</td></tr>"; if(p.carAmt>0) s+="<tr><td style='padding:3px 6px'>자가운전보조금"+(p.absDays>0?" (결근차감)":"")+"</td><td style='text-align:right;padding:3px 6px'>"+comma(p.carActual)+"원</td></tr>"; }
   }
@@ -3633,8 +3883,10 @@ function printSlip(eid){
   }
   if(p.tot.ext>0) s2+="<tr><td style='padding:4px 6px'>연장수당<div style='font-size:10px;color:#888'>"+p.tot.ext.toFixed(1)+"h × 1.5배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.ext)+"원</td></tr>";
   if(p.tot.night>0) s2+="<tr><td style='padding:4px 6px'>야간연장수당<div style='font-size:10px;color:#888'>"+p.tot.night.toFixed(1)+"h × 2.0배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.night)+"원</td></tr>";
-  if(p.tot.nightOnly>0) s2+="<tr><td style='padding:4px 6px'>야간가산<div style='font-size:10px;color:#888'>"+p.tot.nightOnly.toFixed(1)+"h × 0.5배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.nightOnly)+"원</td></tr>";
+  if(p.tot.nightOnly!==0) s2+="<tr><td style='padding:4px 6px'>야간가산<div style='font-size:10px;color:#888'>"+p.tot.nightOnly.toFixed(1)+"h × 0.5배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>"+signAmt(p.nightOnly)+"원</td></tr>";
   if(p.tot.holiday>0) s2+="<tr><td style='padding:4px 6px'>휴일수당<div style='font-size:10px;color:#888'>"+p.tot.holiday.toFixed(1)+"h × 1.5배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.hol)+"원</td></tr>";
+  if(p.tot.holExcess>0) s2+="<tr><td style='padding:4px 6px'>휴일초과<div style='font-size:10px;color:#888'>"+p.tot.holExcess.toFixed(1)+"h × 2.0배</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.holExcess)+"원</td></tr>";
+  if(p.tot.holNight>0) s2+="<tr><td style='padding:4px 6px'>휴일야간가산<div style='font-size:10px;color:#888'>"+p.tot.holNight.toFixed(1)+"h × 0.5배 (현금정산)</div></td><td style='text-align:right;padding:4px 6px;vertical-align:top'>+"+comma(p.holNight)+"원</td></tr>";
   if(p.mealAmt>0) s2+="<tr style='background:#f0f9ff'><td style='padding:4px 6px'>식대 (비과세)"+(p.absDays>0?"<div style='font-size:10px;color:#888'>결근 "+p.absDays+"일 차감</div>":"")+"</td><td style='text-align:right;padding:4px 6px;vertical-align:top'>"+comma(p.mealActual)+"원</td></tr>";
   if(p.carAmt>0)  s2+="<tr style='background:#f0f9ff'><td style='padding:4px 6px'>자가운전보조금 (비과세)"+(p.absDays>0?"<div style='font-size:10px;color:#888'>결근 "+p.absDays+"일 차감</div>":"")+"</td><td style='text-align:right;padding:4px 6px;vertical-align:top'>"+comma(p.carActual)+"원</td></tr>";
   if(p.extras&&p.extras.length){ s2+="<tr style='background:#f0fdf4'><td colspan='2' style='padding:3px 6px;font-weight:700;font-size:10px;color:#166534'>▸ 추가 지급</td></tr>"; for(var xi2=0;xi2<p.extras.length;xi2++) s2+="<tr><td style='padding:4px 6px'>"+p.extras[xi2].label+"</td><td style='text-align:right;padding:4px 6px'>"+comma(p.extras[xi2].amount)+"원</td></tr>"; }
