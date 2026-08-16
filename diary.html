@@ -223,7 +223,10 @@
 
   <header class="top">
     <h1 class="brush">사업일기</h1>
-    <div class="today mono" id="todayLabel"></div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="today mono" id="todayLabel"></div>
+      <button id="settingsBtn" title="설정" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--ink-faint);">⚙</button>
+    </div>
   </header>
 
   <div class="card composer">
@@ -260,16 +263,20 @@
 
 <div class="modal-backdrop" id="setupModal" style="display:none;">
   <div class="modal">
-    <h2 class="brush">처음 설정</h2>
-    <p>구글 앱스 스크립트(Code.gs)를 배포한 뒤 나오는 <b>웹 앱 URL</b>을 붙여넣어주세요. 이 브라우저에만 저장되고, 다음부터는 자동으로 불러옵니다.</p>
+    <h2 class="brush">웹 앱 URL 설정</h2>
+    <p>구글 앱스 스크립트 배포 URL을 입력하세요. 이 브라우저에만 저장됩니다.</p>
     <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/xxxx/exec">
-    <button class="btn-stamp" id="saveUrlBtn">저장하고 시작</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn-cancel" id="closeSetupBtn" style="display:inline-block; flex:0 0 auto; padding:9px 14px;">닫기</button>
+      <button class="btn-stamp" id="saveUrlBtn" style="flex:1;">저장하고 시작</button>
+    </div>
   </div>
 </div>
 
 <script>
 const CONFIG_KEY = 'diary_gas_url';
-let GAS_URL = localStorage.getItem(CONFIG_KEY) || '';
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwAGDtpERnWrWGzkyDRRxLlkJknlvRy2d5Ks9r_uhalOPMPbH_3rKShpQbRwNGJnutE/exec';
+let GAS_URL = localStorage.getItem(CONFIG_KEY) || DEFAULT_GAS_URL;
 let entries = [];
 let currentTags = [];
 let editingId = null;
@@ -304,6 +311,13 @@ function ensureConfig(){
     loadEntries();
   }
 }
+$('settingsBtn').addEventListener('click', ()=>{
+  $('gasUrlInput').value = GAS_URL;
+  $('setupModal').style.display = 'flex';
+});
+$('closeSetupBtn').addEventListener('click', ()=>{
+  $('setupModal').style.display = 'none';
+});
 $('saveUrlBtn').addEventListener('click', ()=>{
   const v = $('gasUrlInput').value.trim();
   if(!v.startsWith('https://')){ showToast('올바른 URL을 입력해주세요'); return; }
