@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사업일기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --paper:#FAF7F0;
+    --paper-alt:#F3EDE1;
+    --ink:#221F1B;
+    --ink-soft:#5B5348;
+    --ink-faint:#8B8377;
+    --seal:#A23A2E;
+    --seal-dark:#7E2C22;
+    --jade:#4C6B58;
+    --gold:#B9975B;
+    --line:rgba(34,31,27,0.12);
+    --shadow:rgba(34,31,27,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 500px at 100% -10%, rgba(169,58,46,0.05), transparent 60%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Pretendard', -apple-system, sans-serif;
+    line-height:1.6;
+    min-height:100vh;
+    padding-bottom:80px;
+  }
+  .mono{font-family:'JetBrains Mono', monospace;}
+  .brush{font-family:'Gowun Batang', serif;}
+
+  /* 좌측 제본선 느낌 */
+  .binding{
+    position:fixed; top:0; left:0; bottom:0; width:14px;
+    background:repeating-linear-gradient(180deg, var(--seal-dark) 0 2px, transparent 2px 18px);
+    opacity:0.55;
+  }
+
+  .wrap{max-width:720px; margin:0 auto; padding:36px 20px 20px 34px;}
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:14px; margin-bottom:22px;
+  }
+  header.top h1{
+    font-family:'Gowun Batang', serif; font-weight:700;
+    font-size:28px; margin:0; letter-spacing:1px;
+  }
+  header.top .today{
+    font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--ink-soft);
+  }
+
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:2px;
+    box-shadow:0 2px 10px var(--shadow);
+    padding:20px; margin-bottom:24px; position:relative;
+  }
+
+  .composer .row1{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;}
+  .composer input[type=date]{
+    font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--ink);
+    border:1px solid var(--line); border-radius:2px; padding:6px 8px; background:var(--paper);
+  }
+  .composer .edit-badge{
+    font-size:12px; color:var(--seal); border:1px solid var(--seal); border-radius:20px;
+    padding:2px 10px; display:none;
+  }
+  .composer textarea{
+    width:100%; min-height:110px; resize:vertical;
+    border:1px solid var(--line); border-radius:2px; padding:12px;
+    font-family:'Pretendard', sans-serif; font-size:15px; color:var(--ink);
+    background:transparent;
+  }
+  .composer textarea:focus{outline:none; border-color:var(--gold);}
+
+  .voice-row{display:flex; align-items:center; gap:10px; margin-top:10px;}
+  .btn-mic{
+    display:inline-flex; align-items:center; gap:6px;
+    border:1px solid var(--line); background:#fff; color:var(--ink-soft);
+    border-radius:20px; padding:6px 14px; font-size:13px; cursor:pointer;
+    transition:all .15s ease; font-family:'Pretendard';
+  }
+  .btn-mic:hover{border-color:var(--seal); color:var(--seal);}
+  .btn-mic.recording{
+    background:var(--seal); color:#fff; border-color:var(--seal);
+    animation:micPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes micPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(162,58,46,0.35);}
+    50%{box-shadow:0 0 0 9px rgba(162,58,46,0);}
+  }
+  .voice-hint{font-size:12px; color:var(--ink-faint);}
+
+  .tag-input-row{display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .tag-chip{
+    font-size:12.5px; padding:3px 10px; border-radius:20px;
+    background:var(--paper-alt); color:var(--ink-soft); border:1px solid var(--line);
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .tag-chip button{border:none; background:none; cursor:pointer; color:var(--ink-faint); font-size:13px; line-height:1;}
+  #tagInput{
+    border:none; border-bottom:1px dashed var(--line); background:transparent;
+    font-size:13px; padding:4px 2px; min-width:100px; font-family:'Pretendard';
+  }
+  #tagInput:focus{outline:none; border-color:var(--gold);}
+
+  .composer-footer{display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:14px;}
+  .btn-cancel{
+    border:none; background:none; color:var(--ink-faint); font-size:13px; cursor:pointer; display:none;
+  }
+  .btn-stamp{
+    border:2px solid var(--seal); color:var(--seal); background:#fff;
+    font-family:'Gowun Batang', serif; font-size:15px; font-weight:700;
+    padding:9px 22px; border-radius:2px; cursor:pointer;
+    transition:transform .12s ease, background .15s ease, color .15s ease;
+    position:relative;
+  }
+  .btn-stamp:hover{background:var(--seal); color:#fff;}
+  .btn-stamp:active{transform:scale(0.94);}
+  .btn-stamp.stamped{animation:stampPop .5s ease;}
+  @keyframes stampPop{
+    0%{transform:scale(1);}
+    30%{transform:scale(1.35) rotate(-8deg); background:var(--seal); color:#fff;}
+    55%{transform:scale(0.9) rotate(3deg);}
+    100%{transform:scale(1);}
+  }
+
+  .toolbar{display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap;}
+  .toolbar input[type=search]{
+    flex:1; min-width:160px; border:1px solid var(--line); border-radius:20px;
+    padding:8px 14px; font-size:14px; font-family:'Pretendard'; background:#fff;
+  }
+  .toolbar input[type=search]:focus{outline:none; border-color:var(--gold);}
+  .toolbar .refresh{
+    border:1px solid var(--line); background:#fff; border-radius:20px; padding:8px 12px;
+    font-size:13px; color:var(--ink-soft); cursor:pointer;
+  }
+  .tag-filter{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;}
+  .tag-filter .tag-chip{cursor:pointer;}
+  .tag-filter .tag-chip.active{background:var(--jade); color:#fff; border-color:var(--jade);}
+
+  .month-head{
+    font-family:'Gowun Batang', serif; font-size:15px; color:var(--ink-soft);
+    margin:26px 0 8px; padding-bottom:6px; border-bottom:1px dotted var(--line);
+  }
+
+  .entry{
+    display:flex; gap:14px; padding:14px 4px; border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .entry:hover{background:rgba(169,58,46,0.03);}
+  .seal-dot{
+    width:34px; height:34px; min-width:34px; border-radius:50%;
+    background:var(--seal); color:#fff; font-family:'JetBrains Mono';
+    font-size:10.5px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    line-height:1.05; margin-top:2px;
+  }
+  .seal-dot b{font-size:13px; font-family:'Gowun Batang', serif;}
+  .entry-body{flex:1; min-width:0;}
+  .entry-meta{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
+  .entry-date{font-family:'JetBrains Mono'; font-size:12.5px; color:var(--ink-faint);}
+  .entry-actions{display:flex; gap:10px;}
+  .entry-actions button{
+    border:none; background:none; cursor:pointer; font-size:12px; color:var(--ink-faint);
+  }
+  .entry-actions button:hover{color:var(--seal);}
+  .entry-content{
+    margin:6px 0; white-space:pre-wrap; font-size:14.5px; color:var(--ink);
+    max-height:4.8em; overflow:hidden; cursor:pointer;
+  }
+  .entry-content.expanded{max-height:none;}
+  .entry-tags{display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;}
+  .entry-tags .tag-chip{padding:1px 9px; font-size:11.5px;}
+
+  .empty-state{
+    text-align:center; padding:50px 20px; color:var(--ink-faint);
+  }
+  .empty-state .brush{font-size:17px; color:var(--ink-soft); display:block; margin-bottom:6px;}
+
+  /* 설정 모달 */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(34,31,27,0.55);
+    display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal{
+    background:var(--paper); border:1px solid var(--line); border-radius:2px;
+    max-width:460px; width:100%; padding:26px; box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  }
+  .modal h2{font-family:'Gowun Batang', serif; margin:0 0 10px; font-size:19px;}
+  .modal p{font-size:13.5px; color:var(--ink-soft); margin:0 0 14px;}
+  .modal input{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:2px;
+    font-family:'JetBrains Mono'; font-size:13px; margin-bottom:12px;
+  }
+  .modal .btn-stamp{width:100%; padding:11px;}
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:20px;
+    font-size:13px; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+    z-index:60;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+  @media (max-width:520px){
+    .wrap{padding:26px 14px 14px 26px;}
+    header.top h1{font-size:22px;}
+    .composer .row1{gap:8px;}
+  }
+</style>
+</head>
+<body>
+<div class="binding"></div>
+<div class="wrap">
+
+  <header class="top">
+    <h1 class="brush">사업일기</h1>
+    <div class="today mono" id="todayLabel"></div>
+  </header>
+
+  <div class="card composer">
+    <div class="row1">
+      <input type="date" id="entryDate">
+      <span class="edit-badge" id="editBadge">✎ 수정 중</span>
+    </div>
+    <textarea id="entryContent" placeholder="오늘 있었던 일, 외부활동, 고민, 결정한 것들을 편하게 적어보세요."></textarea>
+    <div class="voice-row">
+      <button type="button" id="micBtn" class="btn-mic" title="음성으로 입력">
+        <span class="mic-icon">🎤</span><span class="mic-label">음성 입력</span>
+      </button>
+      <span class="voice-hint" id="voiceHint"></span>
+    </div>
+    <div class="tag-input-row" id="tagRow">
+      <input type="text" id="tagInput" placeholder="태그 입력 후 Enter (예: 외부활동)">
+    </div>
+    <div class="composer-footer">
+      <button class="btn-cancel" id="cancelEditBtn">수정 취소</button>
+      <button class="btn-stamp" id="saveBtn">도장 찍기</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="search" id="searchInput" placeholder="내용·태그로 검색">
+    <button class="refresh" id="refreshBtn">↻ 새로고침</button>
+  </div>
+  <div class="tag-filter" id="tagFilterRow"></div>
+
+  <div id="timeline"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="setupModal" style="display:none;">
+  <div class="modal">
+    <h2 class="brush">처음 설정</h2>
+    <p>구글 앱스 스크립트(Code.gs)를 배포한 뒤 나오는 <b>웹 앱 URL</b>을 붙여넣어주세요. 이 브라우저에만 저장되고, 다음부터는 자동으로 불러옵니다.</p>
+    <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/xxxx/exec">
+    <button class="btn-stamp" id="saveUrlBtn">저장하고 시작</button>
+  </div>
+</div>
+
+<script>
+const CONFIG_KEY = 'diary_gas_url';
+let GAS_URL = localStorage.getItem(CONFIG_KEY) || '';
+let entries = [];
+let currentTags = [];
+let editingId = null;
+let activeTagFilter = null;
+
+const $ = (id) => document.getElementById(id);
+
+function todayStr(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+function initHeaderDate(){
+  const d = new Date();
+  const wd = ['일','월','화','수','목','금','토'][d.getDay()];
+  $('todayLabel').textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} (${wd})`;
+}
+
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------- 설정 모달 ---------- */
+function ensureConfig(){
+  if(!GAS_URL){
+    $('setupModal').style.display = 'flex';
+  } else {
+    loadEntries();
+  }
+}
+$('saveUrlBtn').addEventListener('click', ()=>{
+  const v = $('gasUrlInput').value.trim();
+  if(!v.startsWith('https://')){ showToast('올바른 URL을 입력해주세요'); return; }
+  GAS_URL = v;
+  localStorage.setItem(CONFIG_KEY, v);
+  $('setupModal').style.display = 'none';
+  loadEntries();
+});
+
+/* ---------- GAS 통신 ---------- */
+function jsonp(params){
+  return new Promise((resolve, reject)=>{
+    const cbName = 'diary_cb_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const script = document.createElement('script');
+    const timeout = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 15000);
+    function cleanup(){
+      clearTimeout(timeout);
+      delete window[cbName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[cbName] = (data)=>{ cleanup(); resolve(data); };
+    const qs = new URLSearchParams({...params, callback: cbName}).toString();
+    script.src = GAS_URL + '?' + qs;
+    script.onerror = ()=>{ cleanup(); reject(new Error('network error')); };
+    document.body.appendChild(script);
+  });
+}
+
+async function postJSON(body){
+  const res = await fetch(GAS_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+async function loadEntries(){
+  $('timeline').innerHTML = `<div class="empty-state mono">불러오는 중…</div>`;
+  try{
+    const res = await jsonp({action:'list'});
+    if(!res.ok) throw new Error(res.error || 'load failed');
+    entries = res.data || [];
+    renderTagFilters();
+    renderTimeline();
+  }catch(err){
+    $('timeline').innerHTML = `<div class="empty-state">불러오지 못했습니다.<br><span class="mono" style="font-size:12px;">${err.message}</span><br><br>웹 앱 URL이 맞는지, 배포 권한이 "전체 허용"인지 확인해주세요.</div>`;
+  }
+}
+
+/* ---------- 태그 입력 ---------- */
+$('tagInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    const v = $('tagInput').value.trim();
+    if(v && !currentTags.includes(v)){
+      currentTags.push(v);
+      renderTagInputChips();
+    }
+    $('tagInput').value = '';
+  }
+});
+function renderTagInputChips(){
+  const row = $('tagRow');
+  row.querySelectorAll('.tag-chip').forEach(el=>el.remove());
+  currentTags.forEach(tag=>{
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.innerHTML = `#${tag} <button data-tag="${tag}">×</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      currentTags = currentTags.filter(t=>t!==tag);
+      renderTagInputChips();
+    });
+    row.insertBefore(chip, $('tagInput'));
+  });
+}
+
+/* ---------- 저장 / 수정 ---------- */
+$('entryDate').value = todayStr();
+
+$('saveBtn').addEventListener('click', async ()=>{
+  if (isRecording) stopRecording();
+  const date = $('entryDate').value || todayStr();
+  const content = $('entryContent').value.trim();
+  if(!content){ showToast('내용을 적어주세요'); return; }
+
+  const body = { action:'save', date, content, tags: currentTags };
+  if(editingId) body.id = editingId;
+
+  $('saveBtn').disabled = true;
+  try{
+    const res = await postJSON(body);
+    if(!res.ok) throw new Error(res.error || 'save failed');
+    $('saveBtn').classList.add('stamped');
+    setTimeout(()=>$('saveBtn').classList.remove('stamped'), 500);
+    showToast(editingId ? '수정했습니다' : '기록했습니다');
+    resetComposer();
+    await loadEntries();
+  }catch(err){
+    showToast('저장 실패: ' + err.message);
+  }finally{
+    $('saveBtn').disabled = false;
+  }
+});
+
+$('cancelEditBtn').addEventListener('click', resetComposer);
+
+function resetComposer(){
+  if (isRecording) stopRecording();
+  editingId = null;
+  $('entryDate').value = todayStr();
+  $('entryContent').value = '';
+  currentTags = [];
+  renderTagInputChips();
+  $('editBadge').style.display = 'none';
+  $('cancelEditBtn').style.display = 'none';
+  $('saveBtn').textContent = '도장 찍기';
+}
+
+function startEdit(entry){
+  editingId = entry.id;
+  $('entryDate').value = entry.date;
+  $('entryContent').value = entry.content;
+  currentTags = [...entry.tags];
+  renderTagInputChips();
+  $('editBadge').style.display = 'inline-block';
+  $('cancelEditBtn').style.display = 'inline-block';
+  $('saveBtn').textContent = '수정 도장';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function removeEntry(id){
+  if(!confirm('이 기록을 삭제할까요?')) return;
+  try{
+    const res = await postJSON({action:'delete', id});
+    if(!res.ok) throw new Error(res.error || 'delete failed');
+    showToast('삭제했습니다');
+    await loadEntries();
+  }catch(err){
+    showToast('삭제 실패: ' + err.message);
+  }
+}
+
+/* ---------- 검색 / 태그 필터 ---------- */
+$('searchInput').addEventListener('input', renderTimeline);
+$('refreshBtn').addEventListener('click', loadEntries);
+
+function renderTagFilters(){
+  const allTags = new Set();
+  entries.forEach(en => en.tags.forEach(t=>allTags.add(t)));
+  const row = $('tagFilterRow');
+  row.innerHTML = '';
+  [...allTags].sort().forEach(tag=>{
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip' + (activeTagFilter===tag ? ' active' : '');
+    chip.textContent = '#' + tag;
+    chip.addEventListener('click', ()=>{
+      activeTagFilter = activeTagFilter === tag ? null : tag;
+      renderTagFilters();
+      renderTimeline();
+    });
+    row.appendChild(chip);
+  });
+}
+
+/* ---------- 타임라인 렌더 ---------- */
+function renderTimeline(){
+  const kw = $('searchInput').value.trim().toLowerCase();
+  let list = entries;
+  if(activeTagFilter) list = list.filter(en => en.tags.includes(activeTagFilter));
+  if(kw) list = list.filter(en =>
+    en.content.toLowerCase().includes(kw) || en.tags.join(' ').toLowerCase().includes(kw)
+  );
+
+  const box = $('timeline');
+  box.innerHTML = '';
+  if(list.length === 0){
+    box.innerHTML = `<div class="empty-state"><span class="brush">아직 쓴 기록이 없어요</span>오늘 있었던 일을 위에 적고 도장을 찍어보세요.</div>`;
+    return;
+  }
+
+  let lastMonth = '';
+  list.forEach(en=>{
+    const month = en.date.slice(0,7);
+    if(month !== lastMonth){
+      const head = document.createElement('div');
+      head.className = 'month-head';
+      const [y,m] = month.split('-');
+      head.textContent = `${y}년 ${parseInt(m)}월`;
+      box.appendChild(head);
+      lastMonth = month;
+    }
+
+    const d = new Date(en.date + 'T00:00:00');
+    const wd = ['일','월','화','수','목','금','토'][d.getDay()];
+    const [,mm,dd] = en.date.split('-');
+
+    const row = document.createElement('div');
+    row.className = 'entry';
+    row.innerHTML = `
+      <div class="seal-dot"><b>${dd}</b>${mm}월</div>
+      <div class="entry-body">
+        <div class="entry-meta">
+          <span class="entry-date">${en.date} (${wd})</span>
+          <span class="entry-actions">
+            <button data-act="edit">수정</button>
+            <button data-act="del">삭제</button>
+          </span>
+        </div>
+        <div class="entry-content">${escapeHtml(en.content)}</div>
+        <div class="entry-tags">${en.tags.map(t=>`<span class="tag-chip">#${t}</span>`).join('')}</div>
+      </div>
+    `;
+    row.querySelector('.entry-content').addEventListener('click', (e)=>{
+      e.target.classList.toggle('expanded');
+    });
+    row.querySelector('[data-act="edit"]').addEventListener('click', ()=>startEdit(en));
+    row.querySelector('[data-act="del"]').addEventListener('click', ()=>removeEntry(en.id));
+    box.appendChild(row);
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ---------- 음성 입력 ---------- */
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+let voiceBaseText = '';
+
+if (SpeechRecognitionCtor && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  recognition = new SpeechRecognitionCtor();
+  recognition.lang = 'ko-KR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (e) => {
+    let finalText = '';
+    let interimText = '';
+    for (let i = 0; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalText += t;
+      else interimText += t;
+    }
+    $('entryContent').value = (voiceBaseText + finalText + interimText).trim();
+  };
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      showToast('마이크 권한을 허용해주세요');
+    } else if (e.error !== 'no-speech') {
+      showToast('음성 인식 오류: ' + e.error);
+    }
+    stopRecording();
+  };
+  recognition.onend = () => {
+    if (isRecording) {
+      // 모바일에서 continuous 모드가 자체적으로 끊기는 경우가 있어 재시작
+      try { recognition.start(); } catch (_) {}
+    }
+  };
+} else {
+  $('micBtn').style.display = 'none';
+  $('voiceHint').textContent = '이 브라우저는 음성 입력 미지원 — 키보드의 마이크 아이콘을 이용하세요';
+}
+
+function startRecording(){
+  if (!recognition) return;
+  const cur = $('entryContent').value;
+  voiceBaseText = cur ? cur + ' ' : '';
+  isRecording = true;
+  $('micBtn').classList.add('recording');
+  $('voiceHint').textContent = '듣고 있어요…';
+  try { recognition.start(); } catch (_) {}
+}
+function stopRecording(){
+  isRecording = false;
+  $('micBtn').classList.remove('recording');
+  $('voiceHint').textContent = '';
+  if (recognition) { try { recognition.stop(); } catch (_) {} }
+}
+if ($('micBtn')) {
+  $('micBtn').addEventListener('click', () => {
+    if (isRecording) stopRecording(); else startRecording();
+  });
+}
+
+/* ---------- 시작 ---------- */
+initHeaderDate();
+renderTagInputChips();
+ensureConfig();
+</script>
+</body>
+</html>
