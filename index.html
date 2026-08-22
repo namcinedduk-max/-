@@ -5944,7 +5944,10 @@ function editAddCustomSetToOrder() {
   const orderRecord = { name: saveName, qty: qty + '세트', price: price, csId: s.id };
   if (s.advancedMode) orderRecord.items = items.map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
   editTteokItems.push(orderRecord);
-  renderEditTteokList(); calcEditTotal();
+  renderEditTteokList();
+  const ppCs = document.getElementById('e_priceProduct');
+  if (ppCs) ppCs.value = (parseInt(ppCs.value)||0) + price;
+  calcEditTotal();
   document.getElementById('edit-customSetCompose').style.display = 'none';
   window._editOrderCustomSet = null;
   window._editCsOrderItems = [];
@@ -6257,7 +6260,10 @@ function addEditDeokItem() {
   const displayName = (cfg.customName||cfg.setType) + '(' + useLabel + ' / ' + allDesc.join(', ') + ')';
   const saveName = (cfg.customName||cfg.setType) + '(' + allDesc.join(', ') + ')';
   editTteokItems.push({ name: saveName, displayName: displayName, qty: String(qty)+'세트', price: price });
-  renderEditTteokList(); calcEditTotal();
+  renderEditTteokList();
+  const ppDeok = document.getElementById('e_priceProduct');
+  if (ppDeok) ppDeok.value = (parseInt(ppDeok.value)||0) + price;
+  calcEditTotal();
   window._editDeokConfigId = null; window._editDeokChalSels = {};
   document.getElementById('edit-deokConfigArea').style.display = 'none';
   document.getElementById('edit-deokChalArea').style.display = 'none';
@@ -6429,7 +6435,10 @@ function addEditChuseokItem() {
     saveName = displayName;
   }
   editTteokItems.push({ name: saveName, displayName: displayName, qty: String(qty)+'세트', price: price });
-  renderEditTteokList(); calcEditTotal();
+  renderEditTteokList();
+  const ppChu = document.getElementById('e_priceProduct');
+  if (ppChu) ppChu.value = (parseInt(ppChu.value)||0) + price;
+  calcEditTotal();
   const ho = window._editChuseokHo;
   window._editChuseokConfigId = null; window._editChuseokChalSels = {};
   document.getElementById('edit-chuseokChalArea').style.display = 'none';
@@ -6516,6 +6525,8 @@ function addEditTteokFromSet() {
   const price = Math.round(unitSum*qty) + boxFee;
   editTteokItems.push({ name: setName, qty: String(qty)+'개', price: price });
   renderEditTteokList();
+  const ppSet = document.getElementById('e_priceProduct');
+  if (ppSet) ppSet.value = (parseInt(ppSet.value)||0) + price;
   calcEditTotal();
   // 초기화
   window._editCurrentSetItems = [];
@@ -6546,6 +6557,8 @@ function addEditDoeTteok() {
   const total = db ? Math.round((db.doePrice||0)/5*doeQty) : 0;
   editTteokItems.push({ name: name, qty: doeLabel, price: total });
   renderEditTteokList();
+  const ppDoe = document.getElementById('e_priceProduct');
+  if (ppDoe) ppDoe.value = (parseInt(ppDoe.value)||0) + total;
   calcEditTotal();
   document.getElementById('edit-doeTteokSel').value = '';
   document.getElementById('edit-doePricePreview').textContent = '';
@@ -7002,6 +7015,7 @@ function addChuseokSetItem() {
     displayName = (cfg.customName || cfg.setType) + '(' + allDesc.join(', ') + ')';
     saveName = displayName;
   }
+  tteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
   renderTteokList();
   if (price > 0) {
     const pp = document.getElementById('priceProduct');
@@ -7619,6 +7633,8 @@ function addEditIbajiItem() {
   const saveName = cfg.setType + '(' + allDesc.join(', ') + ')';
   editTteokItems.push({ name: saveName, displayName: displayName, qty: String(qty) + '세트', price: price });
   renderEditTteokList();
+  const ppIbaji = document.getElementById('e_priceProduct');
+  if (ppIbaji) ppIbaji.value = (parseInt(ppIbaji.value)||0) + price;
   calcEditTotal();
   window._editIbajiConfigId = null;
   window._editIbajiChalSelections = {};
@@ -8405,7 +8421,7 @@ function getQuickFee(dong, gu) {
   return matched ? matched[1] : null;
 }
 
-function applyQuickFee(dong, feeFieldId, updateFn, gu) {
+function applyQuickFee(dong, feeFieldId, updateFn, gu, dateFieldId, timeFieldId) {
   const fee = getQuickFee(dong, gu);
   if (fee !== null) {
     const feeEl = document.getElementById(feeFieldId);
@@ -8415,7 +8431,12 @@ function applyQuickFee(dong, feeFieldId, updateFn, gu) {
       const noteEl = document.getElementById(feeFieldId + '_note');
       if (noteEl) noteEl.style.display = 'none';
       showToast('📦 ' + dong + ' 퀵비 ' + fee.toLocaleString() + '원 자동입력!', 'success');
-      if (updateFn) updateFn();
+      // 이미 정해진 배송일/시간이 있으면(공휴일·주말·오후3시이후) 그 추가요금을 새 기본 퀵비 위에 다시 얹음
+      if (dateFieldId) {
+        applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn);
+      } else if (updateFn) {
+        updateFn();
+      }
     }
   }
 }
@@ -8499,13 +8520,13 @@ function openAddrSearch(addrFieldId, detailFieldId) {
           if (dong) {
             const gu = (data.address || '').match(/(동구|중구|서구|유성구|대덕구)/)?.[1] || '';
             if (_addrTargetField === 'g_addr1') {
-              applyQuickFee(dong, 'g_deliveryFee', updateGTotal, gu);
+              applyQuickFee(dong, 'g_deliveryFee', updateGTotal, gu, 'g_deliveryDate', 'g_deliveryTime');
             } else if (_addrTargetField === 'deliveryAddr1') {
-              applyQuickFee(dong, 'priceDelivery', calcTotal, gu);
+              applyQuickFee(dong, 'priceDelivery', calcTotal, gu, 'deliveryDate', 'deliveryTimeCustom');
             } else if (_addrTargetField === 'multiAddr') {
               applyQuickFee(dong, 'multiDeliveryFee', null, gu);
             } else if (_addrTargetField === 'e_addr1') {
-              applyQuickFee(dong, 'e_priceDelivery', calcEditTotal, gu);
+              applyQuickFee(dong, 'e_priceDelivery', calcEditTotal, gu, 'e_deliveryDate', 'e_deliveryTime');
             }
           }
         } catch (err) {
@@ -12611,6 +12632,8 @@ function addEditTteok() {
   const price = Math.round(unitPrice * qty);
   editTteokItems.push({ name: name, qty: qtyStr, price: price });
   renderEditTteokList();
+  const ppMain = document.getElementById('e_priceProduct');
+  if (ppMain) ppMain.value = (parseInt(ppMain.value)||0) + price;
   calcEditTotal();
   if (hidden) hidden.value = '';
   if (custom) { custom.style.display='none'; custom.value=''; }
