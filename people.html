@@ -96,6 +96,7 @@ textarea{resize:vertical;min-height:80px}
 .ot-dc.has-data{background:#fafaf7}
 .ot-dc.hol-day{background:#fff5f5}
 .ot-dc.emp-off{background:#f5f5f4}
+.ot-dc.leave-day{background:#eff6ff}
 .ot-dc.week-ov{border-color:#ef4444!important}
 .ot-dn{font-size:11px;font-weight:600;color:#888;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
 .ot-dn.sun{color:#A32D2D}.ot-dn.sat{color:#185FA5}
@@ -1551,11 +1552,12 @@ function computeDayFields(schedDay,isPubHol,actualStart,actualEnd,holidayWork,ho
     var isComp=holidayMode==='comp';
     return {
       ext:0,night:0,nightOnly:0,
-      // 대체휴무 적립을 선택하면 기본(1.5)·초과(2.0)분은 현금 지급 대신 대체휴무 1일로 적립되므로 급여에는 0으로 반영
+      // 대체휴무 적립은 "하루 8시간(기본 1.5배분)"까지만 대체휴무 1일로 교환됨.
+      // 8시간을 초과한 연장분(2.0배)과 야간가산(+0.5배)은 적립 대상이 아니라 항상 현금으로 지급 (그렇지 않으면 초과근무가 그냥 사라져버림)
       holiday:isComp?0:Math.round(baseMin/60*10)/10,
-      holExcess:isComp?0:Math.round(excessMin/60*10)/10,
-      holNight:Math.round(nightMin/60*10)/10, // 야간가산은 적립 대상이 아니라 항상 현금 지급
-      compAccrueH:isComp?Math.round((baseMin+excessMin)/60*10)/10:0,
+      holExcess:Math.round(excessMin/60*10)/10,
+      holNight:Math.round(nightMin/60*10)/10,
+      compAccrueH:isComp?Math.round(baseMin/60*10)/10:0,
       early:0,lateH:lateH,earlyH:earlyH
     };
   }
@@ -2553,15 +2555,17 @@ function renderOT(){
     var chips=otDayChips(ot,ab), hasData=chips.length>0;
     var isPubHol=isHoliday(dateStr);
     var isEmpOff=empSched && !empSched[DN3[dow]]; // 이 직원의 스케줄상 근무 없는 요일(개인 휴무일)
+    var isLeaveDay=isOnLeave(eid,dateStr); // 연차 등록된 날
     var weekIdxDay=Math.floor((first+d2-1)/7);
     var isWeekOver=(weekExt[weekIdxDay]||0)>12;
     var alignRight=(dow>=5)?1:0;
-    var cellCls="ot-dc"+(dow===0||isPubHol?" hol-day":"")+(isEmpOff&&!isPubHol?" emp-off":"")+(hasData?" has-data":"")+(isWeekOver?" week-ov":"");
+    var cellCls="ot-dc"+(dow===0||isPubHol?" hol-day":"")+(isEmpOff&&!isPubHol?" emp-off":"")+(isLeaveDay?" leave-day":"")+(hasData?" has-data":"")+(isWeekOver?" week-ov":"");
     var dnCls="ot-dn"+(dow===0||isPubHol?" sun":dow===6?" sat":"");
     var pubDot=isPubHol&&dow!==0?"<span style='font-size:8px;color:#ef4444;margin-left:1px'>●</span>":"";
-    var offDot=isEmpOff&&!isPubHol?"<span style='font-size:8px;color:#999;margin-left:1px'>휴무</span>":"";
+    var offDot=isEmpOff&&!isPubHol&&!isLeaveDay?"<span style='font-size:8px;color:#999;margin-left:1px'>휴무</span>":"";
+    var leaveDot=isLeaveDay?"<span style='font-size:8px;color:#2563eb;margin-left:1px;font-weight:700'>연차</span>":"";
     h+="<div class='"+cellCls+"' id='otd-"+key+"' onclick='toggleOTDay(\""+eid+"\",\""+S.cm+"\",\""+key+"\","+alignRight+")'>";
-    h+="<div class='"+dnCls+"'>"+d2+pubDot+offDot+"<span class='ot-toggle' style='color:"+(hasData?"#888":"#ccc")+"'>"+(hasData?"▾":"+")+"</span></div>";
+    h+="<div class='"+dnCls+"'>"+d2+pubDot+offDot+leaveDot+"<span class='ot-toggle' style='color:"+(hasData?"#888":"#ccc")+"'>"+(hasData?"▾":"+")+"</span></div>";
     if(hasData) h+="<div class='ot-chips'>"+chips.join("")+"</div>";
     h+="</div>";
   }
