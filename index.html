@@ -768,6 +768,17 @@ function forceRefreshApp() {
   }
   .sheet-status.connected { background: #dcfce7; color: var(--green); }
   .sheet-status.disconnected { background: #fee2e2; color: var(--accent-red); }
+  .spinner-small {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border: 2px solid var(--border);
+    border-top-color: var(--brown-mid);
+    border-radius: 50%;
+    animation: spin-small 0.7s linear infinite;
+    vertical-align: -2px;
+  }
+  @keyframes spin-small { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -1070,7 +1081,7 @@ function forceRefreshApp() {
         </div>
         <div class="form-group">
           <label>보내는 분 전화번호 <span class="required">*</span></label>
-          <input type="tel" id="senderPhone" placeholder="010-0000-0000" oninput="formatPhone(this)">
+          <input type="tel" id="senderPhone" placeholder="010-0000-0000" oninput="formatPhone(this); checkCustomerHistory();">
         </div>
 
         <!-- 받는분 - 일반 -->
@@ -1086,8 +1097,9 @@ function forceRefreshApp() {
         </div>
         <div id="singleReceiverPhoneArea" class="form-group">
           <label>받는 분 전화번호 <span class="required">*</span></label>
-          <input type="tel" id="receiverPhone" placeholder="010-0000-0000" oninput="formatPhone(this)">
+          <input type="tel" id="receiverPhone" placeholder="010-0000-0000" oninput="formatPhone(this); checkCustomerHistory();">
         </div>
+        <div id="customerHistoryBox" class="form-group full" style="display:none;"></div>
 
         <!-- 받는분 - 묶음 -->
         <div id="multiReceiverArea" class="form-group full" style="display:none;">
@@ -10972,8 +10984,133 @@ function formatPhone(input) {
   else input.value = v.slice(0,3) + '-' + v.slice(3,7) + '-' + v.slice(7,11);
 }
 
+// ============ 이전 주문 이력 자동완성 ============
+// 전화번호 11자리 다 입력됐을 때만 조회(타이핑할 때마다 X), 같은 번호는 세션 안에서 캐시(10분)해서
+// 접수 화면에서 반복 조회로 느려지는 걸 막음. 접수목록(최근 N일 캐시)이랑은 완전 별개 동작.
+window._customerHistoryCache = {}; // { '01012345678': { ts, orders } }
+const CUSTOMER_HISTORY_TTL = 10 * 60 * 1000; // 10분
+let _customerHistoryDebounce = null;
+
+function checkCustomerHistory() {
+  clearTimeout(_customerHistoryDebounce);
+  _customerHistoryDebounce = setTimeout(function() {
+    const s = (document.getElementById('senderPhone').value || '').replace(/\D/g, '');
+    const r = (document.getElementById('receiverPhone').value || '').replace(/\D/g, '');
+    const phone = r.length === 11 ? r : (s.length === 11 ? s : '');
+    if (!phone) { hideCustomerHistory(); return; }
+    fetchCustomerHistory(phone);
+  }, 300);
+}
+
+function hideCustomerHistory() {
+  const box = document.getElementById('customerHistoryBox');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
+
+function fetchCustomerHistory(phone) {
+  const cached = window._customerHistoryCache[phone];
+  if (cached && (Date.now() - cached.ts) < CUSTOMER_HISTORY_TTL) {
+    renderCustomerHistory(phone, cached.orders);
+    return;
+  }
+  if (!gasUrl) return;
+  showCustomerHistoryLoading();
+  gasGet({ action: 'getOrders', phone: phone })
+    .then(function(data) {
+      const found = (data && data.success && data.orders) ? data.orders : [];
+      window._customerHistoryCache[phone] = { ts: Date.now(), orders: found };
+      renderCustomerHistory(phone, found);
+    })
+    .catch(function() { hideCustomerHistory(); /* 조회 실패해도 접수 자체는 방해 안 함 */ });
+}
+
+function showCustomerHistoryLoading() {
+  const box = document.getElementById('customerHistoryBox');
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML =
+    '<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--brown-light);padding:8px 10px;">' +
+      '<span class="spinner-small"></span> 이전 주문 확인 중…' +
+    '</div>';
+}
+
+function renderCustomerHistory(phone, foundOrders) {
+  const box = document.getElementById('customerHistoryBox');
+  if (!box) return;
+  // 그 사이 전화번호가 또 바뀌었으면(늦게 도착한 응답) 무시
+  const s = (document.getElementById('senderPhone').value || '').replace(/\D/g, '');
+  const r = (document.getElementById('receiverPhone').value || '').replace(/\D/g, '');
+  if (phone !== s && phone !== r) return;
+
+  if (!foundOrders.length) {
+    box.style.display = 'block';
+    box.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#0369a1;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;">🌱 첫 주문 고객이시네요!</div>';
+    return;
+  }
+  const recent = foundOrders.slice(0, 3);
+  box.style.display = 'block';
+  box.innerHTML =
+    '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#15803d;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
+      '👤 이전에 주문하신 적 있는 고객이에요 · ' + foundOrders.length + '건' +
+    '</label>' +
+    '<div style="display:flex;flex-direction:column;gap:6px;">' +
+      recent.map(function(o, idx) {
+        const compo = (o.tteokItems||[]).map(function(t){ return t.name + ' ' + t.qty; }).join(', ') || (o.tteokType || '-');
+        return '<div data-hist-idx="' + idx + '" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:2px;">' +
+            '<span>' + (o.deliveryDate||'-') + '</span><span style="font-weight:700;color:var(--brown-deep);">' + (Number(o.priceTotal)||0).toLocaleString() + '원</span>' +
+          '</div>' +
+          '<div style="font-size:13px;margin-bottom:2px;">' + compo + '</div>' +
+          '<div style="font-size:12px;color:#666;margin-bottom:6px;">📍 ' + (o.deliveryAddr1||'-') + '</div>' +
+          '<div style="display:flex;gap:6px;">' +
+            '<button type="button" onclick="applyCustomerHistory(' + idx + ',\'addr\')" style="flex:1;padding:5px;font-size:11px;background:#fff;border:1px solid var(--border);border-radius:6px;color:var(--brown-mid);cursor:pointer;">📍 주소만</button>' +
+            '<button type="button" onclick="applyCustomerHistory(' + idx + ',\'tteok\')" style="flex:1;padding:5px;font-size:11px;background:#fff;border:1px solid var(--border);border-radius:6px;color:var(--brown-mid);cursor:pointer;">🍡 떡만</button>' +
+            '<button type="button" onclick="applyCustomerHistory(' + idx + ',\'both\')" style="flex:1;padding:5px;font-size:11px;background:var(--brown-mid);border:none;border-radius:6px;color:#fff;font-weight:700;cursor:pointer;">둘 다</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  window._customerHistoryOrders = recent;
+}
+
+function applyCustomerHistory(idx, mode) {
+  const o = (window._customerHistoryOrders || [])[idx];
+  if (!o) return;
+  const wantsTteok = mode === 'tteok' || mode === 'both';
+  const wantsAddr = mode === 'addr' || mode === 'both';
+
+  if (wantsTteok && tteokItems.length > 0) {
+    if (!confirm('지금 담긴 떡 목록을 지우고 이전 주문 내용으로 채울까요?')) return;
+  }
+
+  if (wantsAddr) {
+    // 주소 채우기 (구/동 자동인식 배송비 계산은 별도라, 배송비는 직접 한 번 확인해주세요)
+    const addrEl = document.getElementById('deliveryAddr1');
+    if (addrEl && o.deliveryAddr1) addrEl.value = o.deliveryAddr1;
+    const addr2El = document.getElementById('deliveryAddr2');
+    if (addr2El) addr2El.value = o.deliveryAddr2 || '';
+  }
+
+  if (wantsTteok) {
+    // 떡 목록 채우기
+    tteokItems = (o.tteokItems || []).map(function(t) {
+      return { name: t.name, qty: t.qty, price: t.price, csId: t.csId, items: t.items, displayName: t.displayName };
+    });
+    renderTteokList();
+    const pp = document.getElementById('priceProduct');
+    if (pp) pp.value = Number(o.priceProduct) || tteokItems.reduce(function(a,t){ return a + (Number(t.price)||0); }, 0);
+    calcTotal();
+  }
+
+  const msg = mode === 'addr' ? '📍 주소만 채웠어요.'
+    : mode === 'tteok' ? '🍡 떡 목록만 채웠어요.'
+    : '✅ 이전 주문 내용으로 채웠어요.';
+  showToast(msg + (wantsAddr ? ' 배송비는 한 번 확인해주세요!' : ''), 'success');
+}
+
 // 떡 목록 상태
 let tteokItems = [];
+
 
 // 떡 참고사항 팝업 (화면 중앙) - 직원들이 놓치지 않도록 큰 팝업으로 표시
 let _tteokNotePopupLastShown = {}; // { 떡이름: timestamp } - 같은 떡 연속 선택 시 너무 자주 뜨는 것 방지
