@@ -8826,6 +8826,14 @@ function submitMultiOrder(baseOrder) {
     };
   });
 
+  // 영구 번호를 미리 확정해서 저장(온라인/오프라인 둘 다) — 나중에 라벨/쪽지 인쇄할 때
+  // 어느 기기에서 열어도 항상 같은 번호가 나오게
+  const _delivDate = normalizeDateStr(String(baseOrder.deliveryDate||''));
+  const _startSeqNo = orders
+    .filter(function(o){ return normalizeDateStr(String(o.deliveryDate||'')) === _delivDate && o.seqNo; })
+    .reduce(function(max, o){ return Math.max(max, o.seqNo||0); }, 0);
+  ordersToSave.forEach(function(order, i){ order.seqNo = _startSeqNo + i + 1; });
+
   if (gasUrl) {
     // 순차 저장 (동시 저장 시 id 충돌 방지)
     const saveSequentially = (idx) => {
@@ -8839,11 +8847,6 @@ function submitMultiOrder(baseOrder) {
     saveSequentially(0);
   } else {
     // 로컬: 역순으로 unshift해야 목록 순서 맞음
-    const _delivDate = normalizeDateStr(String(baseOrder.deliveryDate||''));
-    const _startSeqNo = orders
-      .filter(function(o){ return normalizeDateStr(String(o.deliveryDate||'')) === _delivDate && o.seqNo; })
-      .reduce(function(max, o){ return Math.max(max, o.seqNo||0); }, 0);
-    ordersToSave.forEach(function(order, i){ order.seqNo = _startSeqNo + i + 1; });
     [...ordersToSave].reverse().forEach(order => orders.unshift(order));
     updateStats(); renderList();
     showToast(`✅ 묶음 주문 ${multiReceivers.length}명 접수! (${bundleId}) — 합계 ${baseOrder.priceTotal.toLocaleString()}원`, 'success');
@@ -9650,7 +9653,9 @@ async function printLabels() {
   const checked = [...document.querySelectorAll('.order-checkbox:checked')];
   if (checked.length === 0) { showToast('라벨을 인쇄할 주문을 선택해주세요.', 'error'); return; }
   const ids = checked.map(c => c.dataset.id);
-  const selected = orders.filter(o => ids.includes(String(o.id)));
+  const selected = orders.filter(o => ids.includes(String(o.id)))
+    .slice()
+    .sort((a, b) => (Number(getOrderNo(a)) || 999999) - (Number(getOrderNo(b)) || 999999)); // 번호 오름차순 - 왼쪽 위부터 1번
 
   // PDF 출력과 동일한 필터 기준으로 번호 계산
   const filterDate = document.getElementById('filterDate').value;
