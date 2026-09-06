@@ -1681,6 +1681,25 @@ function forceRefreshApp() {
       <button class="btn-small btn-success" onclick="printOrders()">🖨️ 출력/PDF</button>
       <button class="btn-small" onclick="printLabels()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">🏷️ 라벨 인쇄</button>
       <button class="btn-small" onclick="downloadSelectedExcel()" style="background:#217346;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">📥 엑셀 다운</button>
+      <button class="btn-small" onclick="toggleDeliveryRoutePanel()" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">🚚 배송 분류</button>
+    </div>
+
+    <!-- 배송 분류(직접배송/퀵배송) 패널 -->
+    <div id="deliveryRoutePanel" style="display:none;background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:700;color:#92400e;">정렬:</span>
+        <button type="button" class="drt-sort-btn" data-sort="check" onclick="setDeliveryRouteSort('check')" style="padding:5px 12px;border:1.5px solid #fbbf24;border-radius:6px;font-size:12px;cursor:pointer;background:#f59e0b;color:#fff;font-weight:700;">체크순</button>
+        <button type="button" class="drt-sort-btn" data-sort="time" onclick="setDeliveryRouteSort('time')" style="padding:5px 12px;border:1.5px solid #fbbf24;border-radius:6px;font-size:12px;cursor:pointer;background:#fff;color:#92400e;">시간순</button>
+        <button type="button" class="drt-sort-btn" data-sort="dong" onclick="setDeliveryRouteSort('dong')" style="padding:5px 12px;border:1.5px solid #fbbf24;border-radius:6px;font-size:12px;cursor:pointer;background:#fff;color:#92400e;">동네순</button>
+        <button type="button" onclick="buildDeliveryRouteText()" style="margin-left:auto;padding:6px 14px;background:#92400e;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">📋 목록 만들기</button>
+        <button type="button" onclick="clearDeliveryRouteChecks()" style="padding:6px 12px;background:#fff;color:#92400e;border:1.5px solid #fbbf24;border-radius:8px;font-size:12px;cursor:pointer;">초기화</button>
+      </div>
+      <div id="deliveryRouteOutput" style="display:none;background:#fff;border:1px solid #fde68a;border-radius:8px;padding:10px;">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+          <button type="button" onclick="copyDeliveryRouteText()" style="padding:4px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;">📋 복사</button>
+        </div>
+        <textarea id="deliveryRouteText" readonly style="width:100%;min-height:180px;box-sizing:border-box;font-size:13px;line-height:1.6;border:1px solid #eee;border-radius:6px;padding:8px;font-family:inherit;"></textarea>
+      </div>
     </div>
 
     <!-- 필터 결과 안내바 -->
@@ -10101,6 +10120,114 @@ function renderDeliveryTab() {
   `;
 }
 
+// ============ 배송 분류 (직접배송/퀵배송) ============
+window._drtActive = false;
+window._drtSort = 'check';
+window._drtChecks = {}; // { orderId: { type:'direct'|'quick', order:N } }
+window._drtCounter = 0;
+
+function toggleDeliveryRoutePanel() {
+  window._drtActive = !window._drtActive;
+  const panel = document.getElementById('deliveryRoutePanel');
+  if (panel) panel.style.display = window._drtActive ? 'block' : 'none';
+  document.querySelectorAll('[id^="drt-wrap-"]').forEach(function(el) { el.style.display = window._drtActive ? 'block' : 'none'; });
+}
+
+function setDeliveryRouteSort(sort) {
+  window._drtSort = sort;
+  document.querySelectorAll('.drt-sort-btn').forEach(function(b) {
+    const on = b.dataset.sort === sort;
+    b.style.background = on ? '#f59e0b' : '#fff';
+    b.style.color = on ? '#fff' : '#92400e';
+  });
+  const out = document.getElementById('deliveryRouteOutput');
+  if (out && out.style.display !== 'none') buildDeliveryRouteText();
+}
+
+function onDeliveryRouteCheck(id, type, el) {
+  const otherSel = (type === 'direct' ? '.drt-quick' : '.drt-direct') + '[data-id="' + id + '"]';
+  const otherEl = document.querySelector(otherSel);
+  if (el.checked) {
+    if (otherEl) otherEl.checked = false;
+    window._drtCounter++;
+    window._drtChecks[id] = { type: type, order: window._drtCounter };
+  } else {
+    delete window._drtChecks[id];
+  }
+}
+
+function clearDeliveryRouteChecks() {
+  window._drtChecks = {};
+  window._drtCounter = 0;
+  document.querySelectorAll('.drt-check').forEach(function(c) { c.checked = false; });
+  const out = document.getElementById('deliveryRouteOutput');
+  if (out) out.style.display = 'none';
+}
+
+function extractDongForRoute(addr) {
+  if (!addr) return '';
+  const m = String(addr).match(/([가-힣]+(?:동|읍|면|리))(?:\s|$|\d)/);
+  return m ? m[1] : String(addr).split(' ').slice(0, 3).join(' ');
+}
+
+function buildDeliveryRouteText() {
+  const groups = { direct: [], quick: [] };
+  Object.keys(window._drtChecks).forEach(function(id) {
+    const info = window._drtChecks[id];
+    const o = orders.find(function(x) { return String(x.id) === String(id); });
+    if (!o) return;
+    groups[info.type].push({ o: o, checkOrder: info.order });
+  });
+
+  function sortList(list) {
+    const sort = window._drtSort;
+    if (sort === 'time') {
+      list.sort(function(a, b) { return String(normalizeTimeStr(a.o.deliveryTime) || '').localeCompare(String(normalizeTimeStr(b.o.deliveryTime) || '')); });
+    } else if (sort === 'dong') {
+      list.sort(function(a, b) { return extractDongForRoute(a.o.deliveryAddr1).localeCompare(extractDongForRoute(b.o.deliveryAddr1)); });
+    } else {
+      list.sort(function(a, b) { return a.checkOrder - b.checkOrder; });
+    }
+    return list;
+  }
+
+  function formatLine(item) {
+    const o = item.o;
+    const no = getOrderNo(o);
+    const dong = extractDongForRoute(o.deliveryAddr1);
+    const tteok = (o.tteokItems && o.tteokItems.length) ? o.tteokItems.map(function(t) { return t.name + (t.qty || ''); }).join(',') : (o.tteokType || '');
+    const time = normalizeTimeStr(o.deliveryTime) || '';
+    return no + '/' + dong + '/' + tteok + '/' + time;
+  }
+
+  const directList = sortList(groups.direct.slice());
+  const quickList = sortList(groups.quick.slice());
+
+  let text = '';
+  if (directList.length) text += '🚚 직접배송\n' + directList.map(formatLine).join('\n') + '\n\n';
+  if (quickList.length) text += '🛵 퀵배송\n' + quickList.map(formatLine).join('\n');
+  if (!text.trim()) text = '체크된 주문이 없어요.';
+
+  const ta = document.getElementById('deliveryRouteText');
+  if (ta) ta.value = text.trim();
+  const out = document.getElementById('deliveryRouteOutput');
+  if (out) out.style.display = 'block';
+}
+
+function copyDeliveryRouteText() {
+  const ta = document.getElementById('deliveryRouteText');
+  if (!ta) return;
+  ta.select();
+  try {
+    navigator.clipboard.writeText(ta.value)
+      .then(function() { showToast('📋 복사했어요!', 'success'); })
+      .catch(function() { document.execCommand('copy'); showToast('📋 복사했어요!', 'success'); });
+  } catch (e) {
+    document.execCommand('copy');
+    showToast('📋 복사했어요!', 'success');
+  }
+}
+
 function downloadSelectedExcel() {
   const checked = [...document.querySelectorAll('.order-checkbox:checked')];
   if (checked.length === 0) { showToast('먼저 주문을 선택해주세요.', 'error'); return; }
@@ -11898,7 +12025,13 @@ function renderList() {
       ? `<span style="color:#aaa;font-size:12px;">-</span>`
       : `<span style="font-size:12px;">${o.receiverPhone}<br><span style="color:var(--brown-light);">${o.senderPhone}</span></span>`;
     return `<tr onclick="openModal(${o.id})" style="${rowStyle}">
-      <td onclick="event.stopPropagation()"><input type="checkbox" class="order-checkbox" data-id="${o.id}" style="width:auto;cursor:pointer;"></td>
+      <td onclick="event.stopPropagation()">
+        <input type="checkbox" class="order-checkbox" data-id="${o.id}" style="width:auto;cursor:pointer;">
+        <div id="drt-wrap-${o.id}" style="display:none;margin-top:4px;font-size:10px;line-height:1.3;">
+          <label style="cursor:pointer;white-space:nowrap;"><input type="checkbox" class="drt-check drt-direct" data-id="${o.id}" onchange="onDeliveryRouteCheck(${o.id},'direct',this)" style="width:auto;vertical-align:-1px;"> 직접</label><br>
+          <label style="cursor:pointer;white-space:nowrap;"><input type="checkbox" class="drt-check drt-quick" data-id="${o.id}" onchange="onDeliveryRouteCheck(${o.id},'quick',this)" style="width:auto;vertical-align:-1px;"> 퀵</label>
+        </div>
+      </td>
       <td style="color:var(--brown-light);font-size:12px;">#${getOrderNo(o)}${bundleBadge}${pendingBadge}${waitingBadge}</td>
       <td>${nameCell}</td>
       <td>${phoneCell}</td>
