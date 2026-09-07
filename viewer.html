@@ -246,6 +246,7 @@ function normalizeTimeStr(val) {
 }
 
 function getOrderNo(order, allOrders) {
+  if (order.seqNo) return order.seqNo; // 장부앱에서 고정한 번호가 있으면 그대로 씀
   const date = normDate(String(order.deliveryDate || ''));
   if (!date) return '-';
   // 장부앱과 동일: 전체 주문(택배 포함) 기준, 오래된 순(reverse)
