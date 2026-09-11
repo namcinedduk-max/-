@@ -820,6 +820,7 @@ function forceRefreshApp() {
       <div class="tab-group-items">
         <button class="tab-btn" onclick="switchTab('production')">생산계획</button>
         <button class="tab-btn" onclick="switchTab('delivery')">택배</button>
+        <button class="tab-btn" onclick="switchTab('songpyeonStock')">🥮 송편재고</button>
       </div>
     </div>
     <div class="tab-group">
@@ -2532,6 +2533,45 @@ function forceRefreshApp() {
     </div>
   </div>
 
+  <!-- ==================== 송편재고 패널 (추석 시즌 전용) ==================== -->
+  <div class="panel" id="panel-songpyeonStock">
+    <div class="form-card">
+      <h2 style="margin:0 0 4px;">🥮 송편 재고 확인</h2>
+      <p style="font-size:12px;color:var(--brown-light);margin:0 0 16px;">기간 안 예약 수량이랑 지금 냉동 재고를 비교해요. 업체에서 받아온 거든 직접 만든 거든 냉동 보관 중인 건 똑같이 "재고"로 관리하면 돼요.</p>
+
+      <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px;background:var(--cream);padding:12px;border-radius:10px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">예약 집계 시작일</label>
+          <input type="date" id="spk_startDate" onchange="onSongpyeonStockRangeChange()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">종료일</label>
+          <input type="date" id="spk_endDate" onchange="onSongpyeonStockRangeChange()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+        </div>
+        <button onclick="refreshSongpyeonStockOrders()" style="padding:8px 14px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🔄 새로고침</button>
+        <button onclick="showUnmatchedSongpyeonOrders()" style="padding:8px 14px;background:#fff;border:1.5px solid #f59e0b;color:#d97706;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🔍 안 잡힌 "송편" 주문 확인</button>
+      </div>
+
+      <div id="songpyeonStockTable"></div>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--border);">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+          <div style="position:relative;display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;">
+            <label style="font-size:12px;font-weight:700;color:var(--brown-mid);">품목 검색 (떡단가 + 실제 주문에 찍힌 이름까지 나와요)</label>
+            <input type="text" id="spk_newItemSearch" placeholder="떡 이름 검색..." autocomplete="off"
+              oninput="filterSongpyeonItemDropdown()" onfocus="filterSongpyeonItemDropdown()"
+              onblur="setTimeout(function(){var d=document.getElementById('spk_itemDropdown');if(d)d.style.display='none';},200)"
+              style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;width:100%;box-sizing:border-box;">
+            <input type="hidden" id="spk_newItemName">
+            <div id="spk_itemDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:200px;overflow-y:auto;"></div>
+          </div>
+          <button onclick="addSongpyeonStockItem()" style="padding:8px 16px;background:#fff;border:1.5px dashed var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--brown-mid);cursor:pointer;">+ 추적할 품목 추가</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
   <!-- ==================== 단가 설정 패널 ==================== -->
   <div class="panel" id="panel-settings">
     <div class="form-card">
@@ -3417,6 +3457,16 @@ function forceRefreshApp() {
   </div>
 </div>
 
+<div class="modal-overlay" id="songpyeonDetailModal" style="display:none;">
+  <div class="modal" style="max-width:min(1100px,95vw);max-height:88vh;overflow-y:auto;">
+    <h3 id="songpyeonDetailTitle">📋 예약 수량 상세</h3>
+    <div id="songpyeonDetailBody"></div>
+    <div class="modal-actions">
+      <button class="btn-small btn-secondary" onclick="document.getElementById('songpyeonDetailModal').style.display='none'">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 매입 기록 수정 모달 --><div class="modal-overlay" id="purEditModal" style="display:none;">
   <div class="modal" style="max-width:500px;">
     <h3>✏️ 매입 기록 수정</h3>
@@ -4004,6 +4054,7 @@ function loadTteokPriceSettings() {
         });
       }
       if (d.koreaPresets) { try { window.KOREA_PRESETS = d.koreaPresets; } catch(e){} }
+      if (d.songpyeonStock) { try { window.SONGPYEON_STOCK = d.songpyeonStock; localStorage.setItem('songpyeonStock', JSON.stringify(d.songpyeonStock)); } catch(e){} }
       if (d.customSets && Array.isArray(d.customSets) && d.customSets.length > 0) { try { window.CUSTOM_SETS = d.customSets; localStorage.setItem('customSets', JSON.stringify(d.customSets)); if (typeof renderCustomSetList === 'function') renderCustomSetList(); } catch(e){} }
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
       if (d.purchaseVendorProducts) {
@@ -10320,6 +10371,136 @@ function downloadDeliveryExcel() {
 }
 
 // ============ 생산계획 ============
+// ── 세트 → 개별 떡 분해 헬퍼 (전역) ──────────────────────────────────────────
+// itemName: tteokItems[].name 값, itemQty: tteokItems[].qty 값
+// 반환값: [{ name, qty }] (qty는 "20개", "3kg", "1말 5되" 같은 문자열)
+// 생산계획뿐 아니라 송편재고 등 다른 화면에서도 재사용
+function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
+  const name = (itemName || '').trim();
+
+  // ── -1. 실제 주문 시점에 담긴 구성이 저장돼있으면(프리셋/직접담기 등) 그걸 최우선으로 사용
+  //    (세트의 "기본 구성"이 바뀌었거나, 프리셋/커스텀 조합을 골랐어도 항상 실제 담긴 대로 집계됨)
+  if (itemsOverride && itemsOverride.length) {
+    const setQtyOv = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
+    return itemsOverride.map(function(it) {
+      const num = (parseFloat(it.qty) || 0) * setQtyOv;
+      const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+      return { name: it.name, qty: displayNum + (it.unit || '개') };
+    });
+  }
+
+  // ── 0. 내가 만든 커스텀 세트 (CUSTOM_SETS)
+  //    csId가 있으면 id로 정확히 조회(세트명에 괄호 있어도 안전),
+  //    없으면(구버전 주문) 세트명으로 조회
+  if (window.CUSTOM_SETS && window.CUSTOM_SETS.length) {
+    let cs = null;
+    if (csId) {
+      cs = window.CUSTOM_SETS.find(function(s){ return s.id === csId; });
+    }
+    if (!cs) {
+      // 이름으로 조회: 가장 긴 이름부터 매칭(괄호 포함 이름 우선)
+      const sorted = window.CUSTOM_SETS.slice().sort(function(a,b){ return b.name.length - a.name.length; });
+      cs = sorted.find(function(s){ return name.indexOf(s.name + '(') === 0 || name === s.name; });
+    }
+    if (cs) {
+      const setQty = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
+      return (cs.items || []).map(function(it) {
+        const num = it.qty * setQty;
+        const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+        return { name: it.name, qty: displayNum + (it.unit || '개') };
+      });
+    }
+  }
+
+  // ── 1. 덕세트 / 덕6구세트 / 이바지大 / 이바지小
+  //    saveName 형식: "덕세트(흰모찌 8개, 쑥모찌 8개, 호박모찌 4개)"
+  //                   "이바지大(흰모찌 20개, 깨끼떡 3kg, ...)"
+  //    qty 형식: "2세트" → 전체 multiplier
+  const setHeaderMatch = name.match(/^(덕세트|덕6구세트|추석1호|추석2호|추석3호|추석3호반반|이바지大|이바지小)\((.+)\)$/);
+  if (setHeaderMatch) {
+    const setQtyStr = (itemQty || '1세트').replace(/세트$/, '').trim();
+    const multiplier = parseFloat(setQtyStr) || 1;
+    const innerStr = setHeaderMatch[2];
+    // "흰모찌 8개, 쑥모찌 8개" 또는 "흰모찌 8개/쑥모찌 8개" 형식 모두 처리
+    const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+    const result = [];
+    parts.forEach(part => {
+      // "흰모찌 8개" / "깨끼떡 3kg" / "찰떡 9개" 패턴
+      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)?$/);
+      if (m) {
+        const tteokName = m[1].trim();
+        const num = parseFloat(m[2]) * multiplier;
+        const unit = m[3] || '개';
+        // 말/되는 multiplier 후 그대로 표현
+        const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+        result.push({ name: tteokName, qty: displayNum + unit });
+        return;
+      }
+      // "옛날송편(깨) 900g~1kg" / "서리태콩송편 1.2~1.4kg" 같은 무게 범위 표기
+      // → 높은 쪽 숫자로 계산, kg 단위로 통일
+      const rangeMatch = part.match(/^(.+?)\s+([\d.]+)\s*(g|kg)?\s*~\s*([\d.]+)\s*(g|kg)?$/);
+      if (rangeMatch) {
+        const tteokName = rangeMatch[1].trim();
+        const unit2 = rangeMatch[5] || rangeMatch[3] || 'kg'; // 끝쪽 숫자에 단위 없으면 kg 기본
+        const unit1 = rangeMatch[3] || unit2; // 앞쪽 숫자에 단위 없으면 끝쪽 단위 따라감
+        const toKg = function(n, u) { return u === 'g' ? n / 1000 : n; };
+        const v1 = toKg(parseFloat(rangeMatch[2]), unit1);
+        const v2 = toKg(parseFloat(rangeMatch[4]), unit2);
+        const higherKg = Math.max(v1, v2) * multiplier;
+        const displayNum = Math.round(higherKg * 100) / 100;
+        result.push({ name: tteokName, qty: displayNum + 'kg' });
+        return;
+      }
+      // 단위 없는 경우(혹시 모를 대비): 그냥 text로
+      result.push({ name: part, qty: multiplier > 1 ? String(multiplier) + '개' : '' });
+    });
+    return result;
+  }
+
+  // ── 2. 코리아(대) / 코리아(소)
+  //    saveName 형식: "코리아(대)(흰모찌 10개/쑥모찌 5개)"
+  //    qty 형식: "1세트" (항상 1세트)
+  const koreaMatch = name.match(/^(코리아\([대소]\)|쿠키상자\([대소]\))\((.+)\)$/);
+  if (koreaMatch) {
+    const innerStr = koreaMatch[2];
+    const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+    const result = [];
+    parts.forEach(part => {
+      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉)?$/);
+      if (m) {
+        result.push({ name: m[1].trim(), qty: m[2] + (m[3] || '개') });
+      } else {
+        result.push({ name: part, qty: '' });
+      }
+    });
+    return result;
+  }
+
+  // ── 3. 분홍세트 / 은혜세트
+  //    saveName 형식: "분홍세트(흰모찌/쑥모찌)" 또는 "은혜세트(흰모찌/깨끼떡)"
+  //    qty 형식: "20개" → 세트 개수. 한 세트에 구성 떡이 "각각 1개씩" 들어감.
+  //    ※ 따라서 20개 세트 = 흰모찌 20개 + 쑥모찌 20개 (나누지 않음!)
+  const pinkEhyeMatch = name.match(/^(분홍세트|은혜세트)\((.+)\)$/);
+  if (pinkEhyeMatch) {
+    const innerStr = pinkEhyeMatch[2];
+    const parts = innerStr.split('/').map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return [{ name: name, qty: itemQty }];
+    // qty 파싱: "20개" → 세트 수. 각 구성 떡에 전체 세트 수만큼 배분(나눗셈 X)
+    const totalM = (itemQty || '').match(/^([\d.]+)\s*(개|kg|g|말|되)?$/);
+    if (totalM && parts.length > 0) {
+      const totalNum = parseFloat(totalM[1]);
+      const unit = totalM[2] || '개';
+      const perDisplay = Number.isInteger(totalNum) ? totalNum : Math.round(totalNum * 10) / 10;
+      return parts.map(p => ({ name: p, qty: perDisplay + unit }));
+    }
+    // qty 파싱 불가시 그대로 각 구성 떡에 전체 qty 배분
+    return parts.map(p => ({ name: p, qty: itemQty || '' }));
+  }
+
+  // ── 4. 일반 떡 (세트 아님) → 그대로 반환
+  return [{ name: name, qty: itemQty || '' }];
+}
+
 function loadProductionPlan() {
   const date = document.getElementById('prodDate').value;
   if (!date) { showToast('날짜를 선택해주세요.', 'error'); return; }
@@ -10383,120 +10564,6 @@ function loadProductionPlan() {
   if (personalOrders.length === 0 && weddingOrdersToday.length === 0 && otherMemoOrders.length === 0 && chungdaeMemoOrders.length === 0) {
     container.innerHTML = `<div style="text-align:center;color:#999;padding:40px;font-size:14px;">📭 ${formatDateKor(date)} 배송 예정 주문이 없어요</div>`;
     return;
-  }
-
-  // ── 세트 → 개별 떡 분해 헬퍼 ──────────────────────────────────────────
-  // itemName: tteokItems[].name 값, itemQty: tteokItems[].qty 값
-  // 반환값: [{ name, qty }] (qty는 "20개", "3kg", "1말 5되" 같은 문자열)
-  function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
-    const name = (itemName || '').trim();
-
-    // ── -1. 실제 주문 시점에 담긴 구성이 저장돼있으면(프리셋/직접담기 등) 그걸 최우선으로 사용
-    //    (세트의 "기본 구성"이 바뀌었거나, 프리셋/커스텀 조합을 골랐어도 항상 실제 담긴 대로 집계됨)
-    if (itemsOverride && itemsOverride.length) {
-      const setQtyOv = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
-      return itemsOverride.map(function(it) {
-        const num = (parseFloat(it.qty) || 0) * setQtyOv;
-        const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
-        return { name: it.name, qty: displayNum + (it.unit || '개') };
-      });
-    }
-
-    // ── 0. 내가 만든 커스텀 세트 (CUSTOM_SETS)
-    //    csId가 있으면 id로 정확히 조회(세트명에 괄호 있어도 안전),
-    //    없으면(구버전 주문) 세트명으로 조회
-    if (window.CUSTOM_SETS && window.CUSTOM_SETS.length) {
-      let cs = null;
-      if (csId) {
-        cs = window.CUSTOM_SETS.find(function(s){ return s.id === csId; });
-      }
-      if (!cs) {
-        // 이름으로 조회: 가장 긴 이름부터 매칭(괄호 포함 이름 우선)
-        const sorted = window.CUSTOM_SETS.slice().sort(function(a,b){ return b.name.length - a.name.length; });
-        cs = sorted.find(function(s){ return name.indexOf(s.name + '(') === 0 || name === s.name; });
-      }
-      if (cs) {
-        const setQty = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
-        return (cs.items || []).map(function(it) {
-          const num = it.qty * setQty;
-          const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
-          return { name: it.name, qty: displayNum + (it.unit || '개') };
-        });
-      }
-    }
-
-    // ── 1. 덕세트 / 덕6구세트 / 이바지大 / 이바지小
-    //    saveName 형식: "덕세트(흰모찌 8개, 쑥모찌 8개, 호박모찌 4개)"
-    //                   "이바지大(흰모찌 20개, 깨끼떡 3kg, ...)"
-    //    qty 형식: "2세트" → 전체 multiplier
-    const setHeaderMatch = name.match(/^(덕세트|덕6구세트|추석1호|추석2호|추석3호|추석3호반반|이바지大|이바지小)\((.+)\)$/);
-    if (setHeaderMatch) {
-      const setQtyStr = (itemQty || '1세트').replace(/세트$/, '').trim();
-      const multiplier = parseFloat(setQtyStr) || 1;
-      const innerStr = setHeaderMatch[2];
-      // "흰모찌 8개, 쑥모찌 8개" 또는 "흰모찌 8개/쑥모찌 8개" 형식 모두 처리
-      const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
-      const result = [];
-      parts.forEach(part => {
-        // "흰모찌 8개" / "깨끼떡 3kg" / "찰떡 9개" 패턴
-        const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)?$/);
-        if (m) {
-          const tteokName = m[1].trim();
-          const num = parseFloat(m[2]) * multiplier;
-          const unit = m[3] || '개';
-          // 말/되는 multiplier 후 그대로 표현
-          const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
-          result.push({ name: tteokName, qty: displayNum + unit });
-        } else {
-          // 단위 없는 경우(혹시 모를 대비): 그냥 text로
-          result.push({ name: part, qty: multiplier > 1 ? String(multiplier) + '개' : '' });
-        }
-      });
-      return result;
-    }
-
-    // ── 2. 코리아(대) / 코리아(소)
-    //    saveName 형식: "코리아(대)(흰모찌 10개/쑥모찌 5개)"
-    //    qty 형식: "1세트" (항상 1세트)
-    const koreaMatch = name.match(/^(코리아\([대소]\)|쿠키상자\([대소]\))\((.+)\)$/);
-    if (koreaMatch) {
-      const innerStr = koreaMatch[2];
-      const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
-      const result = [];
-      parts.forEach(part => {
-        const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉)?$/);
-        if (m) {
-          result.push({ name: m[1].trim(), qty: m[2] + (m[3] || '개') });
-        } else {
-          result.push({ name: part, qty: '' });
-        }
-      });
-      return result;
-    }
-
-    // ── 3. 분홍세트 / 은혜세트
-    //    saveName 형식: "분홍세트(흰모찌/쑥모찌)" 또는 "은혜세트(흰모찌/깨끼떡)"
-    //    qty 형식: "20개" → 세트 개수. 한 세트에 구성 떡이 "각각 1개씩" 들어감.
-    //    ※ 따라서 20개 세트 = 흰모찌 20개 + 쑥모찌 20개 (나누지 않음!)
-    const pinkEhyeMatch = name.match(/^(분홍세트|은혜세트)\((.+)\)$/);
-    if (pinkEhyeMatch) {
-      const innerStr = pinkEhyeMatch[2];
-      const parts = innerStr.split('/').map(s => s.trim()).filter(Boolean);
-      if (!parts.length) return [{ name: name, qty: itemQty }];
-      // qty 파싱: "20개" → 세트 수. 각 구성 떡에 전체 세트 수만큼 배분(나눗셈 X)
-      const totalM = (itemQty || '').match(/^([\d.]+)\s*(개|kg|g|말|되)?$/);
-      if (totalM && parts.length > 0) {
-        const totalNum = parseFloat(totalM[1]);
-        const unit = totalM[2] || '개';
-        const perDisplay = Number.isInteger(totalNum) ? totalNum : Math.round(totalNum * 10) / 10;
-        return parts.map(p => ({ name: p, qty: perDisplay + unit }));
-      }
-      // qty 파싱 불가시 그대로 각 구성 떡에 전체 qty 배분
-      return parts.map(p => ({ name: p, qty: itemQty || '' }));
-    }
-
-    // ── 4. 일반 떡 (세트 아님) → 그대로 반환
-    return [{ name: name, qty: itemQty || '' }];
   }
 
   // ── 개인 주문 떡별 합산 ─────────────────────────────────────
@@ -11027,6 +11094,7 @@ function switchTab(tab) {
       renderDeliveryTab();
     }
   }
+  if (tab === 'songpyeonStock') { initSongpyeonStockTab(); }
   if (tab === 'funeral') {
     const fd = document.getElementById('f_deliveryDate');
     if (fd && !fd.value) fd.value = getLocalDateStr();
@@ -11064,6 +11132,527 @@ function switchTab(tab) {
       labelPanel.classList.remove('active');
     }
   }
+}
+
+// ============ 송편재고 (추석 시즌 예약 vs 재고 확인) ============
+// 저장 형태: { items: [{name, stock}], startDate, endDate } — 떡단가설정 시트에 다른 설정값들과 같이 저장됨
+window.SONGPYEON_STOCK = JSON.parse(localStorage.getItem('songpyeonStock') || 'null') || {
+  items: [],
+  startDate: '', endDate: ''
+};
+
+function saveSongpyeonStock() {
+  localStorage.setItem('songpyeonStock', JSON.stringify(window.SONGPYEON_STOCK));
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { songpyeonStock: window.SONGPYEON_STOCK } }).catch(function(){});
+}
+
+function initSongpyeonStockTab() {
+  const s = window.SONGPYEON_STOCK;
+  const startEl = document.getElementById('spk_startDate');
+  const endEl = document.getElementById('spk_endDate');
+  if (startEl) startEl.value = s.startDate || getLocalDateStr();
+  if (endEl) endEl.value = s.endDate || getLocalDateStr();
+  if (!s.startDate) { s.startDate = startEl ? startEl.value : ''; }
+  if (!s.endDate) { s.endDate = endEl ? endEl.value : ''; }
+  renderSongpyeonStockTab(); // 일단 지금 메모리에 있는 걸로 먼저 보여주고
+  refreshSongpyeonStockOrders(true); // 개인/장례식장/웨딩홀/기타업체 전부 최신으로 다시 불러와서 갱신 (조용히)
+}
+
+// 떡단가표에 등록된 이름 + 실제 주문에 찍혀본 적 있는 이름(세트 분해 포함)을 합쳐서 반환.
+// "송편"처럼 떡단가엔 없어도 장례식장 등 특정 거래처 주문엔 실제로 찍히는 이름도 검색에 걸리게 하기 위함
+function getAllKnownTteokNames() {
+  const set = {};
+  if (typeof TTEOK_DB !== 'undefined') {
+    Object.keys(TTEOK_DB).forEach(function(n) { set[n] = true; });
+  }
+  const allOrderLists = [
+    (typeof orders !== 'undefined' ? orders : []),
+    (typeof funeralOrders !== 'undefined' ? funeralOrders : []),
+    (typeof weddingOrders !== 'undefined' ? weddingOrders : []),
+    (typeof otherOrders !== 'undefined' ? otherOrders : [])
+  ];
+  allOrderLists.forEach(function(list) {
+    (list || []).forEach(function(o) {
+      (o.tteokItems || []).forEach(function(item) {
+        if (!item.name) return;
+        const decomposed = decomposeSetItem(item.name, item.qty, item.csId, item.items);
+        decomposed.forEach(function(part) { if (part.name) set[part.name] = true; });
+      });
+    });
+  });
+  return Object.keys(set);
+}
+
+function filterSongpyeonItemDropdown() {
+  const dd = document.getElementById('spk_itemDropdown');
+  if (!dd) return;
+  if (typeof TTEOK_DB === 'undefined') {
+    dd.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#aaa;">떡단가 목록을 아직 못 불러왔어요.</div>';
+    dd.style.display = 'block';
+    return;
+  }
+  const q = ((document.getElementById('spk_newItemSearch') || {}).value || '').toLowerCase();
+  const names = getAllKnownTteokNames()
+    .filter(function(n) { return !q || n.toLowerCase().indexOf(q) !== -1; })
+    .sort(function(a, b) { return a.localeCompare(b, 'ko'); });
+  if (!names.length) {
+    dd.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#aaa;">일치하는 떡이 없어요.</div>';
+  } else {
+    dd.innerHTML = names.slice(0, 50).map(function(n) {
+      const inDb = typeof TTEOK_DB !== 'undefined' && TTEOK_DB[n];
+      return '<div onclick="selectSongpyeonItemFromSearch(\'' + n.replace(/'/g,"\\'") + '\')" ' +
+        'style="padding:7px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;" ' +
+        'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">' +
+        '<span>' + n + '</span>' + (inDb ? '' : '<span style="font-size:11px;color:#aaa;">주문에서만 확인됨</span>') + '</div>';
+    }).join('');
+  }
+  dd.style.display = 'block';
+}
+
+function selectSongpyeonItemFromSearch(name) {
+  const searchEl = document.getElementById('spk_newItemSearch');
+  const hiddenEl = document.getElementById('spk_newItemName');
+  const dd = document.getElementById('spk_itemDropdown');
+  if (searchEl) searchEl.value = name;
+  if (hiddenEl) hiddenEl.value = name;
+  if (dd) dd.style.display = 'none';
+}
+
+function onSongpyeonStockRangeChange() {
+  window.SONGPYEON_STOCK.startDate = (document.getElementById('spk_startDate') || {}).value || '';
+  window.SONGPYEON_STOCK.endDate = (document.getElementById('spk_endDate') || {}).value || '';
+  saveSongpyeonStock();
+  renderSongpyeonStockTab();
+}
+
+function refreshSongpyeonStockOrders(silent) {
+  if (!gasUrl) { renderSongpyeonStockTab(); if (!silent) showToast('🔄 새로고침했어요.', 'success'); return; }
+  Promise.all([
+    loadOrdersFromSheet(true, true),
+    loadFuneralOrdersFromSheet(true, true),
+    loadWeddingOrdersFromSheet(true, true),
+    loadOtherOrdersFromSheet(true, true)
+  ]).then(function() {
+    renderSongpyeonStockTab();
+    if (!silent) showToast('🔄 최신 주문으로 다시 계산했어요.', 'success');
+  }).catch(function() { renderSongpyeonStockTab(); });
+}
+
+// "1박스(1kg)"처럼 괄호 안에 진짜 수량·단위가 따로 있으면 그게 진짜 값 — 앞의 "1박스"는 무시하고 괄호 안 걸 씀.
+// 괄호가 없으면 원래 문자열 그대로 반환.
+function extractAuthoritativeQty(str) {
+  const m = String(str || '').match(/\(([\d.]+)\s*(kg|g|개|알)\)/);
+  return m ? (m[1] + m[2]) : str;
+}
+
+// tteokItems 안의 qty 문자열("40개","1kg","950g","2세트" 등)에서 원래 단위가 개(piece)인지 무게(weight)인지 구분
+function detectQtyUnitType(qtyStr) {
+  const str = extractAuthoritativeQty(String(qtyStr || '').trim());
+  const m = str.match(/^([\d.]+)\s*(g|kg|개|알)?/);
+  if (!m) return null;
+  return (m[2] === 'g' || m[2] === 'kg') ? 'weight' : 'piece';
+}
+
+// qty 문자열을 원하는 단위(kg 또는 개)로 환산.
+// - detected 단위가 targetUnit이랑 같은 계열(무게↔무게, 개↔개)이면 그대로 변환(g→kg 등)
+// - 계열이 다르면(개↔무게) piecesPerKg(1kg당 개수)가 있어야만 변환 가능 — 없으면 null(합산 불가)
+function parseQtyForUnit(qtyStr, piecesPerKg, targetUnit) {
+  const str = extractAuthoritativeQty(String(qtyStr || '').replace(/,/g, '').trim());
+  const m = String(str).match(/^([\d.]+)\s*(g|kg|개|알)?/);
+  if (!m) return 0;
+  const n = parseFloat(m[1]);
+  if (isNaN(n)) return 0;
+  const detected = m[2] === 'g' ? 'g' : (m[2] === 'kg' ? 'kg' : 'piece'); // "개"나 단위 없음 → piece 취급
+
+  if (targetUnit === 'piece') {
+    if (detected === 'piece') return n;
+    const kg = detected === 'g' ? n / 1000 : n;
+    return (piecesPerKg && piecesPerKg > 0) ? kg * piecesPerKg : null;
+  }
+  // targetUnit === 'kg'
+  if (detected === 'g') return n / 1000;
+  if (detected === 'kg') return n;
+  return (piecesPerKg && piecesPerKg > 0) ? n / piecesPerKg : null;
+}
+
+// 지정한 떡 이름이 들어간 주문을 전체(개인/장례식장/웨딩홀/기타업체)에서 찾아, 기간 안에서 매칭된
+// 건들을 하나씩 리스트로 모음 — 합계 계산과 "몇 건이 이렇게 잡혔는지" 상세보기 둘 다 이걸 재사용
+// 세트(추석세트/내가 만든 선물세트 등) 안에 섞여 들어간 것도 실제 담긴 양 그대로 잡음.
+// 이름 매칭: 기본은 "주문 이름에 추적명이 포함되면 매칭"(예: "흑임자모시송편"엔 "모시송편" 포함되니 매칭).
+// exactOnly가 true면 정확히 같은 이름일 때만 매칭 — "송편"처럼 다른 추적 품목(모시송편/알송편 등) 안에도
+// 다 들어있는 짧은 이름을 추적할 때, 그 구체적인 품목들까지 같이 잡아버리는 걸 막기 위함
+// 이름 끝에 "숫자+단위"가 붙어있으면 그건 "OO 용량짜리 팩" 상품이라는 뜻 — 공백 있든 없든, 개수(개/구/입/알)든
+// 무게(g/kg)든 다 인식함. 예: "모시송편 12개"(공백O,개수) / "콩송편700g"(공백X,무게) /
+// "포크도시락(옛날송편.깨 12알)"(다른 상품명 뒤 괄호 안에 숨은 경우)
+function extractEmbeddedQty(name) {
+  const str = String(name || '');
+  // 1) 이름 맨 끝이 그냥 "숫자+단위"인 경우
+  let m = str.match(/^(.+?)\s*([\d.]+)\s*(kg|g|개|구|입|알)$/);
+  if (m) return { baseName: m[1].trim(), amount: parseFloat(m[2]) || 0, unit: m[3] };
+  // 2) 이름 맨 끝이 괄호로 끝나고, 그 괄호 안에 "숫자+단위"가 있는 경우 (앞에 다른 포장 이름이 붙어있어도 됨)
+  m = str.match(/\(([^()]*?)([\d.]+)\s*(kg|g|개|구|입|알)\)$/);
+  if (m) return { baseName: m[1].trim(), amount: parseFloat(m[2]) || 0, unit: m[3] };
+  return null;
+}
+
+// "." 든 "()" 든 구분 상관없이 같은 이름으로 보고 비교하기 위한 정규화
+// 예: "옛날송편.깨"와 "옛날송편(깨)"를 같은 걸로 인식하게 함
+function normalizeTteokName(s) {
+  return String(s || '').replace(/[.()]/g, '').trim();
+}
+
+// names: [주 이름, 별칭1, 별칭2, ...] — 이 중 하나라도 매칭되면 잡음
+function collectSongpyeonMatches(names, startDate, endDate, piecesPerKg, unit, exactOnly) {
+  const nameList = Array.isArray(names) ? names : [names];
+  const sources = [
+    { list: (typeof orders !== 'undefined' ? orders : []), label: '개인', nameField: 'receiverName' },
+    { list: (typeof funeralOrders !== 'undefined' ? funeralOrders : []), label: '장례식장', nameField: 'funeralName' },
+    { list: (typeof weddingOrders !== 'undefined' ? weddingOrders : []), label: '웨딩홀', nameField: 'weddingName' },
+    { list: (typeof otherOrders !== 'undefined' ? otherOrders : []), label: '기타업체', nameField: 'venueName' }
+  ];
+  const matches = [];
+  sources.forEach(function(src) {
+    (src.list || []).forEach(function(o) {
+      const d = normalizeDateStr(String(o.deliveryDate || ''));
+      if (startDate && d < startDate) return;
+      if (endDate && d > endDate) return;
+      (o.tteokItems || []).forEach(function(item) {
+        if (!item.name) return;
+        // 세트든 낱개든 상관없이 실제 담긴 구성으로 분해해서 확인
+        const decomposed = decomposeSetItem(item.name, item.qty, item.csId, item.items);
+        decomposed.forEach(function(part) {
+          if (!part.name) return;
+          // 이름 끝에 용량이 붙어있으면(예: "콩송편700g", "모시송편 12개") 그 용량을 떼고 이름만 비교
+          const embedded = extractEmbeddedQty(part.name);
+          const matchName = embedded ? embedded.baseName : part.name;
+          const normMatchName = normalizeTteokName(matchName);
+          const matched = nameList.some(function(n) {
+            const normN = normalizeTteokName(n);
+            return exactOnly ? (normMatchName === normN) : (normMatchName.indexOf(normN) !== -1);
+          });
+          if (matched) {
+            // 팩 상품이면 "팩 개수 × 팩당 용량"으로 실제 총량을 다시 계산해서 씀
+            let effectiveQty = part.qty;
+            if (embedded && embedded.amount > 0) {
+              const qm = extractAuthoritativeQty(String(part.qty || '')).match(/^([\d.]+)/);
+              const packs = qm ? (parseFloat(qm[1]) || 0) : 0;
+              if (embedded.unit === 'kg' || embedded.unit === 'g') {
+                const perPackKg = embedded.unit === 'g' ? embedded.amount / 1000 : embedded.amount;
+                effectiveQty = (Math.round(perPackKg * packs * 1000) / 1000) + 'kg';
+              } else {
+                effectiveQty = (packs * embedded.amount) + '개';
+              }
+            }
+            const isSet = item.name !== part.name; // 분해돼서 나온 거면(=세트 안에 들어있던 거면) 원본 세트명도 같이 남김
+            matches.push({
+              source: src.label,
+              date: d,
+              label: o[src.nameField] || '-',
+              rawName: part.name,
+              rawQty: part.qty,
+              effectiveQty: embedded ? effectiveQty : '', // 팩 상품이면 환산된 실제 수량(예: "12개", "1.4kg")도 같이 보여줌
+              setName: isSet ? item.name : '', // 예: "추석2호(옛날송편(깨) 1.2~1.4kg)" — 세트 안에 있던 거면 채워짐
+              setQty: isSet ? item.qty : '',
+              detectedUnit: detectQtyUnitType(effectiveQty), // 'piece' | 'weight' | null
+              value: parseQtyForUnit(effectiveQty, piecesPerKg, unit || 'kg') // null이면 환산 불가
+            });
+          }
+        });
+      });
+    });
+  });
+  return matches;
+}
+
+// names: [주 이름, 별칭들...] — 예약수량 합계(item.unit 기준) — 환산 불가(null)인 건 빼고 더함
+// 반환값: { total, unconvertedCount } — unconvertedCount>0이면 1kg당 개수 설정이 필요하다는 뜻
+function countSongpyeonReservations(names, startDate, endDate, piecesPerKg, unit, exactOnly) {
+  const matches = collectSongpyeonMatches(names, startDate, endDate, piecesPerKg, unit, exactOnly);
+  let total = 0, unconvertedCount = 0;
+  matches.forEach(function(m) {
+    if (m.value == null) unconvertedCount++;
+    else total += m.value;
+  });
+  return { total: total, unconvertedCount: unconvertedCount };
+}
+
+// itemName이 다른 추적 품목 이름 "안에" 포함되는 경우(예: "송편"이 "모시송편" 안에 포함)라면
+// 그 다른 구체적인 품목까지 같이 잡아버리지 않도록 정확히 일치하는 것만 매칭하게 함
+function isSongpyeonExactOnly(itemName) {
+  const items = window.SONGPYEON_STOCK.items;
+  return items.some(function(other) { return other.name !== itemName && normalizeTteokName(other.name).indexOf(normalizeTteokName(itemName)) !== -1; });
+}
+
+// 주문에 "송편"이라는 글자가 들어간 건 다 찾아보고, 그중 지금 추적 중인 품목 어디에도 안 잡히는 것만 골라서 보여줌
+// → 새로 나온 상품명이나 오타 등으로 집계가 새고 있는 걸 찾아내는 용도
+function showUnmatchedSongpyeonOrders() {
+  const s = window.SONGPYEON_STOCK;
+  const startDate = s.startDate || '';
+  const endDate = s.endDate || '';
+  const sources = [
+    { list: (typeof orders !== 'undefined' ? orders : []), label: '개인', nameField: 'receiverName' },
+    { list: (typeof funeralOrders !== 'undefined' ? funeralOrders : []), label: '장례식장', nameField: 'funeralName' },
+    { list: (typeof weddingOrders !== 'undefined' ? weddingOrders : []), label: '웨딩홀', nameField: 'weddingName' },
+    { list: (typeof otherOrders !== 'undefined' ? otherOrders : []), label: '기타업체', nameField: 'venueName' }
+  ];
+  const unmatched = [];
+  sources.forEach(function(src) {
+    (src.list || []).forEach(function(o) {
+      const d = normalizeDateStr(String(o.deliveryDate || ''));
+      if (startDate && d < startDate) return;
+      if (endDate && d > endDate) return;
+      (o.tteokItems || []).forEach(function(item) {
+        if (!item.name) return;
+        const decomposed = decomposeSetItem(item.name, item.qty, item.csId, item.items);
+        decomposed.forEach(function(part) {
+          if (!part.name || part.name.indexOf('송편') === -1) return; // "송편" 글자가 없으면 관심 없음
+          const embedded = extractEmbeddedQty(part.name);
+          const matchName = embedded ? embedded.baseName : part.name;
+          // 지금 추적 중인 품목 중 하나라도 이걸 잡고 있으면 "이미 집계됨"으로 보고 건너뜀
+          const isTracked = s.items.some(function(it) {
+            const exact = isSongpyeonExactOnly(it.name);
+            const names = [it.name].concat(it.aliases || []);
+            return names.some(function(n) {
+              const normN = normalizeTteokName(n);
+              return exact ? (normalizeTteokName(matchName) === normN) : (normalizeTteokName(matchName).indexOf(normN) !== -1);
+            });
+          });
+          if (isTracked) return;
+          const isSet = item.name !== part.name;
+          unmatched.push({
+            source: src.label,
+            date: d,
+            label: o[src.nameField] || '-',
+            rawName: part.name,
+            rawQty: part.qty,
+            setName: isSet ? item.name : '',
+            setQty: isSet ? item.qty : ''
+          });
+        });
+      });
+    });
+  });
+  unmatched.sort(function(a, b) { return a.date.localeCompare(b.date); });
+
+  document.getElementById('songpyeonDetailTitle').textContent = '🔍 "송편" 들어갔는데 집계 안 된 주문 (' + unmatched.length + '건)';
+  const body = document.getElementById('songpyeonDetailBody');
+  if (!unmatched.length) {
+    body.innerHTML = '<div style="text-align:center;color:#16a34a;padding:20px;font-size:13px;">✅ 놓친 거 없어요 — "송편" 들어간 주문은 전부 지금 추적 품목 중 하나에 잡히고 있어요.</div>';
+  } else {
+    const sourceColor = { '개인': '#0369a1', '장례식장': '#7c3aed', '웨딩홀': '#db2777', '기타업체': '#0891b2' };
+    body.innerHTML =
+      '<div style="font-size:12px;color:#92400e;background:#fffbeb;border-radius:8px;padding:8px 10px;margin-bottom:10px;">이 주문들은 지금 추적 목록 어디에도 안 잡히고 있어요. 새 상품명이거나 오타일 수 있어요 — 필요하면 아래 이름으로 추적 품목을 새로 추가해주세요.</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>날짜</th><th>출처</th><th>이름/업체</th><th>담긴 표기</th></tr></thead><tbody>' +
+      unmatched.map(function(m) {
+        const setBadge = m.setName
+          ? '<div style="margin-top:3px;"><span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:8px;">📦 세트: ' + m.setName + (m.setQty ? ' ' + m.setQty : '') + '</span></div>'
+          : '';
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:9px 11px;font-size:13px;white-space:nowrap;">' + m.date + '</td>' +
+          '<td style="padding:9px 11px;font-size:13px;white-space:nowrap;"><span style="background:#f1f5f9;color:' + (sourceColor[m.source]||'#555') + ';padding:3px 9px;border-radius:10px;">' + m.source + '</span></td>' +
+          '<td style="padding:9px 11px;font-size:13px;">' + m.label + '</td>' +
+          '<td style="padding:9px 11px;font-size:13px;color:#666;">' + m.rawName + ' ' + m.rawQty + setBadge + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }
+  document.getElementById('songpyeonDetailModal').style.display = 'flex';
+}
+
+// 예약 수량이 어떻게 합산됐는지 상세 목록으로 보여줌
+function showSongpyeonDetail(idx) {
+  const it = window.SONGPYEON_STOCK.items[idx];
+  if (!it) return;
+  const unit = it.unit || 'kg';
+  const piecesPerKg = it.piecesPerKg || 0;
+  const startDate = window.SONGPYEON_STOCK.startDate || '';
+  const endDate = window.SONGPYEON_STOCK.endDate || '';
+  const matches = collectSongpyeonMatches([it.name].concat(it.aliases||[]), startDate, endDate, piecesPerKg, unit, isSongpyeonExactOnly(it.name))
+    .sort(function(a, b) { return a.date.localeCompare(b.date); });
+
+  document.getElementById('songpyeonDetailTitle').textContent = '📋 ' + it.name + ' — 예약 수량 상세 (' + matches.length + '건)';
+  const body = document.getElementById('songpyeonDetailBody');
+  if (!matches.length) {
+    body.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;font-size:13px;">해당 기간에 잡힌 주문이 없어요.</div>';
+    document.getElementById('songpyeonDetailModal').style.display = 'flex';
+    return;
+  }
+
+  // 섞어서 더하지 않고, 원래 단위(개로 들어온 것 / kg,g로 들어온 것)별로 나눠서 각자 합계를 보여줌
+  const pieceMatches = matches.filter(function(m) { return m.detectedUnit === 'piece'; });
+  const weightMatches = matches.filter(function(m) { return m.detectedUnit === 'weight'; });
+  const sourceColor = { '개인': '#0369a1', '장례식장': '#7c3aed', '웨딩홀': '#db2777', '기타업체': '#0891b2' };
+
+  function renderMiniTable(list) {
+    if (!list.length) return '<div style="text-align:center;color:#ccc;padding:14px;font-size:13px;">없음</div>';
+    return '<div class="table-wrap"><table><thead><tr><th>날짜</th><th>출처</th><th>이름/업체</th><th>담긴 표기</th></tr></thead><tbody>' +
+      list.map(function(m) {
+        const setBadge = m.setName
+          ? '<div style="margin-top:3px;"><span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:8px;">📦 세트: ' + m.setName + (m.setQty ? ' ' + m.setQty : '') + '</span></div>'
+          : '';
+        const packNote = m.effectiveQty
+          ? '<div style="margin-top:3px;font-size:11px;color:#15803d;">↳ 팩 상품 환산: 실제 ' + m.effectiveQty + '</div>'
+          : '';
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:9px 11px;font-size:13px;white-space:nowrap;">' + m.date + '</td>' +
+          '<td style="padding:9px 11px;font-size:13px;white-space:nowrap;"><span style="background:#f1f5f9;color:' + (sourceColor[m.source]||'#555') + ';padding:3px 9px;border-radius:10px;">' + m.source + '</span></td>' +
+          '<td style="padding:9px 11px;font-size:13px;">' + m.label + '</td>' +
+          '<td style="padding:9px 11px;font-size:13px;color:#666;">' + m.rawName + ' ' + m.rawQty + packNote + setBadge + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }
+
+  const pieceTotal = pieceMatches.reduce(function(s, m) { return s + (parseFloat(m.effectiveQty || m.rawQty) || 0); }, 0);
+  const weightTotal = weightMatches.reduce(function(s, m) { return s + (parseQtyForUnit(m.effectiveQty || m.rawQty, 0, 'kg') || 0); }, 0);
+  const convertedTotal = matches.reduce(function(s, m) { return s + (m.value || 0); }, 0);
+  const unconverted = matches.filter(function(m) { return m.value == null; }).length;
+
+  body.innerHTML =
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;">' +
+      '<div style="flex:1;min-width:320px;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">🔢 개로 들어온 주문 — 합계 ' + pieceTotal.toLocaleString() + '개</div>' +
+        renderMiniTable(pieceMatches) +
+      '</div>' +
+      '<div style="flex:1;min-width:320px;border-left:1.5px dashed var(--border);padding-left:16px;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">⚖️ kg/g으로 들어온 주문 — 합계 ' + (Math.round(weightTotal*100)/100).toLocaleString() + 'kg</div>' +
+        renderMiniTable(weightMatches) +
+      '</div>' +
+    '</div>' +
+    (piecesPerKg > 0
+      ? '<div style="font-size:13px;font-weight:700;color:#15803d;background:#f0fdf4;border-radius:8px;padding:8px 10px;">1kg당 ' + piecesPerKg + '개 기준으로 환산한 합계: ' + (Math.round(convertedTotal*100)/100).toLocaleString() + (unit === 'piece' ? '개' : 'kg') + '</div>'
+      : '<div style="font-size:12px;color:#d97706;background:#fffbeb;border-radius:8px;padding:8px 10px;">⚠ "1kg당 개수"를 입력 안 해서, 위 개수/kg 합계를 하나로 합칠 수 없어요. 표 왼쪽 "1kg당 개수" 칸을 채워주시면 자동으로 합쳐져요.</div>');
+  document.getElementById('songpyeonDetailModal').style.display = 'flex';
+}
+
+function renderSongpyeonStockTab() {
+  const box = document.getElementById('songpyeonStockTable');
+  if (!box) return;
+  const s = window.SONGPYEON_STOCK;
+  const startDate = s.startDate || '';
+  const endDate = s.endDate || '';
+
+  if (!s.items.length) {
+    box.innerHTML = '<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">아래 입력칸에서 떡 이름을 검색해(자동완성 뜸) 추적할 품목을 추가해주세요.</div>';
+    return;
+  }
+
+  // 실제 items 배열 인덱스를 함께 들고 있어야 버튼 onclick에서 정확한 항목을 가리킬 수 있음
+  const kgItems = [];
+  s.items.forEach(function(it, idx) { kgItems.push(idx); });
+
+  function renderGroupTable(indexes, unit) {
+    const unitLabel = unit === 'piece' ? '개' : 'kg';
+    if (!indexes.length) {
+      return '<div style="text-align:center;padding:20px;color:#ccc;font-size:12px;">' + unitLabel + ' 기준 품목 없음</div>';
+    }
+    return '<div class="table-wrap"><table><thead><tr>' +
+      '<th>품목</th><th style="text-align:right;">1kg당 개수</th><th style="text-align:right;">현재 재고 (' + unitLabel + ')</th>' +
+      '<th style="text-align:right;">예약(' + unitLabel + ')</th><th style="text-align:right;">남은 재고</th><th></th>' +
+      '</tr></thead><tbody>' +
+      indexes.map(function(idx) {
+        const it = s.items[idx];
+        const piecesPerKg = it.piecesPerKg || 0;
+        const rsv = countSongpyeonReservations([it.name].concat(it.aliases||[]), startDate, endDate, piecesPerKg, unit, isSongpyeonExactOnly(it.name));
+        const reserved = Math.round(rsv.total * 100) / 100;
+        const remain = Math.round(((it.stock || 0) - reserved) * 100) / 100;
+        const color = remain < 0 ? '#dc2626' : (remain < (it.stock || 0) * 0.2 ? '#d97706' : '#16a34a');
+        const badge = remain < 0 ? '🔴' : (remain < (it.stock || 0) * 0.2 ? '🟡' : '🟢');
+        const warnBadge = rsv.unconvertedCount > 0
+          ? ' <span title="다른 단위로 들어온 주문 ' + rsv.unconvertedCount + '건은 1kg당 개수가 없어서 이 합계에 안 들어갔어요. 상세보기에서 확인하세요." style="color:#d97706;cursor:help;">⚠</span>'
+          : '';
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:8px 10px;font-size:13px;">' +
+            '<div style="font-weight:700;">' + it.name + '</div>' +
+            (it.aliases && it.aliases.length ? '<div style="margin-top:2px;">' + it.aliases.map(function(a, ai) {
+              return '<span style="display:inline-block;font-size:10px;background:#f1f5f9;color:#555;padding:1px 6px;border-radius:8px;margin:1px 2px 0 0;">' + a + ' <span onclick="removeSongpyeonAlias(' + idx + ',' + ai + ')" style="cursor:pointer;color:#dc2626;">✕</span></span>';
+            }).join('') + '</div>' : '') +
+            '<span onclick="addSongpyeonAlias(' + idx + ')" style="font-size:10px;color:#2563eb;cursor:pointer;">+ 별칭 추가</span>' +
+          '</td>' +
+          '<td style="padding:8px 10px;text-align:right;">' +
+            '<input type="number" value="' + piecesPerKg + '" min="0" placeholder="개당환산" onchange="updateSongpyeonPiecesPerKg(' + idx + ',this.value)" style="width:70px;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;text-align:right;">' +
+          '</td>' +
+          '<td style="padding:8px 10px;text-align:right;">' +
+            '<input type="number" step="0.1" value="' + (it.stock || 0) + '" min="0" onchange="updateSongpyeonStockQty(' + idx + ',this.value)" style="width:80px;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;text-align:right;">' +
+          '</td>' +
+          '<td onclick="showSongpyeonDetail(' + idx + ')" style="padding:8px 10px;text-align:right;font-size:12px;color:#2563eb;text-decoration:underline;cursor:pointer;">' + reserved.toLocaleString() + unitLabel + warnBadge + '</td>' +
+          '<td style="padding:8px 10px;text-align:right;font-size:13px;font-weight:800;color:' + color + ';">' + badge + ' ' + remain.toLocaleString() + unitLabel + '</td>' +
+          '<td style="padding:8px 10px;text-align:center;">' +
+            '<button onclick="removeSongpyeonStockItem(' + idx + ')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:11px;">삭제</button>' +
+          '</td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }
+
+  box.innerHTML =
+    renderGroupTable(kgItems, 'kg') +
+    (startDate && endDate ? '<div style="font-size:11px;color:#888;margin-top:8px;">예약 집계 기간: ' + startDate + ' ~ ' + endDate + '</div>' : '') +
+    '<div style="font-size:11px;color:#aaa;margin-top:4px;">※ "1kg당 개수"를 입력해두면, 낱개("개")로 들어온 주문도 자동으로 kg 환산해서 합산해요. 비워두면 원래 숫자 그대로 더해져서 단위가 안 맞을 수 있어요.</div>';
+}
+
+function updateSongpyeonStockQty(idx, val) {
+  const s = window.SONGPYEON_STOCK;
+  if (!s.items[idx]) return;
+  s.items[idx].stock = parseFloat(val) || 0;
+  saveSongpyeonStock();
+  renderSongpyeonStockTab();
+}
+
+function updateSongpyeonPiecesPerKg(idx, val) {
+  const s = window.SONGPYEON_STOCK;
+  if (!s.items[idx]) return;
+  s.items[idx].piecesPerKg = parseFloat(val) || 0;
+  saveSongpyeonStock();
+  renderSongpyeonStockTab();
+}
+
+// 별칭 추가 — 주문에 찍히는 이름이 사장님이 부르는 이름이랑 완전히 다를 때(예: "기피" ↔ "녹두기피") 씀
+function addSongpyeonAlias(idx) {
+  const s = window.SONGPYEON_STOCK;
+  const it = s.items[idx];
+  if (!it) return;
+  const alias = (prompt('주문에 찍히는 다른 이름을 입력해주세요. (예: 녹두기피)') || '').trim();
+  if (!alias) return;
+  if (!it.aliases) it.aliases = [];
+  if (it.aliases.indexOf(alias) !== -1) { showToast('이미 추가된 별칭이에요.', 'error'); return; }
+  it.aliases.push(alias);
+  saveSongpyeonStock();
+  renderSongpyeonStockTab();
+}
+
+function removeSongpyeonAlias(idx, aliasIdx) {
+  const s = window.SONGPYEON_STOCK;
+  const it = s.items[idx];
+  if (!it || !it.aliases) return;
+  it.aliases.splice(aliasIdx, 1);
+  saveSongpyeonStock();
+  renderSongpyeonStockTab();
+}
+
+function addSongpyeonStockItem() {
+  const searchEl = document.getElementById('spk_newItemSearch');
+  const nameEl = document.getElementById('spk_newItemName');
+  const name = (searchEl.value || '').trim();
+  if (!name || getAllKnownTteokNames().indexOf(name) === -1) {
+    showToast('검색해서 목록에 뜨는 걸 골라주세요.', 'error');
+    return;
+  }
+  const s = window.SONGPYEON_STOCK;
+  if (s.items.find(function(it){ return it.name === name; })) { showToast('이미 추가된 품목이에요.', 'error'); return; }
+  s.items.push({ name: name, stock: 0, piecesPerKg: 0, unit: 'kg' });
+  saveSongpyeonStock();
+  if (nameEl) nameEl.value = '';
+  searchEl.value = '';
+  renderSongpyeonStockTab();
+}
+
+function removeSongpyeonStockItem(idx) {
+  const s = window.SONGPYEON_STOCK;
+  if (!s.items[idx]) return;
+  if (!confirm('"' + s.items[idx].name + '" 품목을 추적 목록에서 뺄까요? (재고 데이터도 같이 삭제돼요)')) return;
+  s.items.splice(idx, 1);
+  saveSongpyeonStock();
+  renderSongpyeonStockTab();
 }
 
 function loadUnusedLinks() {
