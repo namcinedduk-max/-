@@ -3174,7 +3174,7 @@ function forceRefreshApp() {
           <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">항목 *</span>
           <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">수량</span>
           <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">단위</span>
-          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">단가</span>
+          <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">단가 <span style="font-weight:400;color:#2563eb;">💡 인상시 수정</span></span>
           <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">금액 *</span>
           <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">부가세</span>
           <span style="font-size:11px;font-weight:700;color:var(--brown-mid);">분류</span>
@@ -3211,6 +3211,9 @@ function forceRefreshApp() {
         </select>
         <span style="font-size:13px;color:#888;margin-left:auto;" id="pur_totalLabel"></span>
       </div>
+
+      <!-- 거래처별 월 집계 / 거래처 선택 시 월별 내역 -->
+      <div id="vendorSummaryPanel" style="margin-bottom:14px;"></div>
 
       <div class="table-wrap">
         <table>
@@ -16153,7 +16156,12 @@ function onPurPartnerChange() {
 function syncPurItemRowsFromDOM() {
   purItemRows.forEach(function(row) {
     var g = function(id) { var el = document.getElementById(id + row.id); return el ? el.value : ''; };
-    row.item = g('purRow-item-text-') || row.item;
+    if (row.isNew) {
+      row.item = g('purRow-item-newtext-') || row.item;
+    } else {
+      const selEl = document.getElementById('purRow-item-select-' + row.id);
+      if (selEl && selEl.value && selEl.value !== '__new__') row.item = selEl.value;
+    }
     row.qty = g('purRow-qty-') || row.qty;
     row.unit = g('purRow-unit-') || row.unit;
     row.unitprice = g('purRow-unitprice-') || row.unitprice;
@@ -16177,107 +16185,85 @@ function removePurItemRow(rowId) {
   renderPurItemRows();
 }
 
-function openPurItemDropdown(rowId) {
+// 품목 드롭다운 옵션 생성 — 등록된 품목만 나열, 맨 아래 "새 품목 직접 입력" 옵션
+function buildPurItemSelectOptions(row) {
   const partner = (document.getElementById('pur_partner') || {}).value || '';
   const products = purchaseVendorProducts[partner] || [];
-  const q = ((document.getElementById('purRow-item-text-' + rowId) || {}).value || '').toLowerCase();
-  const dd = document.getElementById('purRow-item-dd-' + rowId);
-  if (!dd) return;
-  const matched = products.filter(function(p){ return !q || p.name.toLowerCase().indexOf(q) !== -1; });
-  if (matched.length === 0 && !q) {
-    dd.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#aaa;">등록된 품목 없음 — 직접 입력하세요</div>';
-  } else {
-    dd.innerHTML = matched.map(function(p) {
-      const hint = p.basePrice > 0 ? ' <span style="color:#2563eb;font-size:11px;">' + p.basePrice.toLocaleString() + '원</span>' : '';
-      return '<div onclick="selectPurItem(' + rowId + ',\'' + p.name.replace(/'/g,"\\'") + '\')" ' +
-        'style="padding:7px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;" ' +
-        'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">' +
-        '<span>' + p.name + '</span>' + hint + '</div>';
-    }).join('') +
-    '<div onclick="selectPurItem(' + rowId + ',\'\')" ' +
-    'style="padding:7px 12px;font-size:12px;color:#3b82f6;cursor:pointer;border-top:1px solid #f0f0f0;" ' +
-    'onmouseenter="this.style.background=\'#eff6ff\'" onmouseleave="this.style.background=\'#fff\'">✏️ 직접 입력</div>';
-  }
-  dd.style.display = 'block';
+  let html = '<option value="">-- 품목 선택 --</option>';
+  html += products.map(function(p) {
+    const sel = (!row.isNew && row.item === p.name) ? ' selected' : '';
+    const priceHint = p.lastPrice > 0 ? ' (' + p.lastPrice.toLocaleString() + '원)' : '';
+    return '<option value="' + p.name.replace(/"/g,'&quot;') + '"' + sel + '>' + p.name + priceHint + '</option>';
+  }).join('');
+  html += '<option value="__new__"' + (row.isNew ? ' selected' : '') + '>➕ 새 품목 직접 입력</option>';
+  return html;
 }
 
-function filterPurItemDropdown(rowId) {
-  const partner = (document.getElementById('pur_partner') || {}).value || '';
-  const products = purchaseVendorProducts[partner] || [];
-  const q = ((document.getElementById('purRow-item-text-' + rowId) || {}).value || '').toLowerCase();
-  const dd = document.getElementById('purRow-item-dd-' + rowId);
-  if (!dd) return;
-  const matched = q ? products.filter(function(p){ return p.name.toLowerCase().indexOf(q) !== -1; }) : products;
-  dd.innerHTML = matched.map(function(p) {
-    const hint = p.basePrice > 0 ? ' <span style="color:#2563eb;font-size:11px;">' + p.basePrice.toLocaleString() + '원</span>' : '';
-    return '<div onclick="selectPurItem(' + rowId + ',\'' + p.name.replace(/'/g,"\\'") + '\')" ' +
-      'style="padding:7px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;" ' +
-      'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">' +
-      '<span>' + p.name + '</span>' + hint + '</div>';
-  }).join('') + (q
-    ? '<div onclick="selectPurItem(' + rowId + ',\'\')" ' +
-      'style="padding:7px 12px;font-size:12px;color:#888;cursor:pointer;border-top:1px solid #f0f0f0;" ' +
-      'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">검색어로 새 항목 입력</div>'
-    : '<div onclick="selectPurItem(' + rowId + ',\'\')" ' +
-      'style="padding:7px 12px;font-size:12px;color:#3b82f6;cursor:pointer;border-top:1px solid #f0f0f0;" ' +
-      'onmouseenter="this.style.background=\'#eff6ff\'" onmouseleave="this.style.background=\'#fff\'">✏️ 직접 입력</div>');
-  dd.style.display = matched.length > 0 || q ? 'block' : 'none';
-}
-
-function selectPurItem(rowId, name) {
-  const textEl = document.getElementById('purRow-item-text-' + rowId);
-  const dd = document.getElementById('purRow-item-dd-' + rowId);
-  if (dd) dd.style.display = 'none';
-
+function onPurItemSelectChange(rowId) {
+  syncPurItemRowsFromDOM();
+  const sel = document.getElementById('purRow-item-select-' + rowId);
   const row = purItemRows.find(function(r){ return r.id === rowId; });
-  if (!row) return;
+  if (!row || !sel) return;
+  const val = sel.value;
 
-  if (name === '') {
-    // 직접 입력 모드
-    if (textEl) { textEl.value = ''; textEl.placeholder = '품목 직접 입력'; textEl.focus(); }
-    row.item = '';
+  if (val === '__new__') {
     row.isNew = true;
+    row.item = '';
+    renderPurItemRows();
+    setTimeout(function(){ const t = document.getElementById('purRow-item-newtext-' + rowId); if (t) t.focus(); }, 0);
     return;
   }
 
-  if (textEl) textEl.value = name;
-  row.item = name;
   row.isNew = false;
+  row.item = val;
 
-  // 단위 + 기준단가 자동채움
+  // 단위 + 최근단가 자동채움 (기준단가 아닌, 마지막에 실제로 산 가격)
   const partner = (document.getElementById('pur_partner') || {}).value || '';
   const products = purchaseVendorProducts[partner] || [];
-  const prod = products.find(function(p){ return p.name === name; });
+  const prod = products.find(function(p){ return p.name === val; });
   if (prod) {
     row.unit = prod.unit || 'kg';
-    const unitSel = document.getElementById('purRow-unit-' + rowId);
-    if (unitSel) {
-      for (let i = 0; i < unitSel.options.length; i++) {
-        if (unitSel.options[i].value === row.unit) { unitSel.selectedIndex = i; break; }
-      }
-    }
-    const autoPrice = prod.basePrice > 0 ? prod.basePrice : (prod.lastPrice || 0);
-    if (autoPrice > 0) {
-      const upEl = document.getElementById('purRow-unitprice-' + rowId);
-      if (upEl) upEl.value = autoPrice;
-      row.unitprice = autoPrice;
-    }
-    const hint = document.getElementById('purRow-hint-' + rowId);
-    if (hint && prod.basePrice > 0) {
-      hint.textContent = '기준: ' + prod.basePrice.toLocaleString() + '원/' + prod.unit;
-      hint.style.display = '';
-    } else if (hint) hint.style.display = 'none';
+    row.unitprice = prod.lastPrice || row.unitprice;
   }
+  renderPurItemRows();
   calcPurRowAmount(rowId);
 }
 
-function onPurRowItemSelect(rowId) { /* 구버전 호환용, selectPurItem으로 대체 */ }
+function onPurItemNewTextInput(rowId) {
+  const row = purItemRows.find(function(r){ return r.id === rowId; });
+  const t = document.getElementById('purRow-item-newtext-' + rowId);
+  if (row && t) row.item = t.value;
+}
+
+// 단가를 입력/변경할 때, 그 거래처에서 마지막으로 샀던 가격이랑 비교해서 인상/인하 알려줌
+function checkPurRowPriceChange(rowId) {
+  const hint = document.getElementById('purRow-hint-' + rowId);
+  if (!hint) return;
+  const row = purItemRows.find(function(r){ return r.id === rowId; });
+  const partner = (document.getElementById('pur_partner') || {}).value || '';
+  const itemName = row ? row.item : '';
+  const upEl = document.getElementById('purRow-unitprice-' + rowId);
+  const curPrice = parseInt((upEl || {}).value) || 0;
+  const products = purchaseVendorProducts[partner] || [];
+  const prod = products.find(function(p){ return p.name === itemName; });
+
+  if (!prod || !prod.lastPrice || !curPrice) { hint.style.display = 'none'; return; }
+  if (curPrice === prod.lastPrice) { hint.style.display = 'none'; return; }
+
+  const diff = curPrice - prod.lastPrice;
+  const pct = Math.round(Math.abs(diff) / prod.lastPrice * 100);
+  const up = diff > 0;
+  hint.textContent = (up ? '📈 인상' : '📉 인하') + ': ' + prod.lastPrice.toLocaleString() + '원 → ' + curPrice.toLocaleString() + '원 (' + (up ? '+' : '-') + pct + '%)';
+  hint.style.color = up ? '#dc2626' : '#2563eb';
+  hint.style.display = '';
+}
 
 function calcPurRowAmount(rowId) {
   const qty = parseFloat((document.getElementById('purRow-qty-' + rowId) || {}).value) || 0;
   const up = parseInt((document.getElementById('purRow-unitprice-' + rowId) || {}).value) || 0;
   const amtEl = document.getElementById('purRow-amount-' + rowId);
   if (qty > 0 && up > 0 && amtEl) amtEl.value = Math.round(qty * up);
+  checkPurRowPriceChange(rowId);
   autoFillPurVat(rowId);
   updatePurItemsTotal();
 }
@@ -16294,7 +16280,8 @@ function updatePurItemsTotal() {
   let total = 0;
   purItemRows.forEach(function(r) {
     const amtEl = document.getElementById('purRow-amount-' + r.id);
-    total += parseInt((amtEl || {}).value) || 0;
+    const vatEl = document.getElementById('purRow-vat-' + r.id);
+    total += (parseInt((amtEl || {}).value) || 0) + (parseInt((vatEl || {}).value) || 0);
   });
   const el = document.getElementById('purItemsTotal');
   if (el) el.textContent = total.toLocaleString() + '원';
@@ -16315,28 +16302,24 @@ function renderPurItemRows() {
     const unitOpts = UNITS.map(function(u){ return '<option value="' + u + '"' + (u===row.unit?' selected':'') + '>' + u + '</option>'; }).join('');
     const typeOpts = TYPES.map(function(t){ return '<option value="' + t.v + '"' + (t.v===row.type?' selected':'') + '>' + t.l + '</option>'; }).join('');
     return '<div style="display:grid;grid-template-columns:1fr 80px 70px 100px 110px 90px 80px 1fr 32px;gap:5px;align-items:start;">' +
-      // 항목 (검색형)
-      '<div style="position:relative;display:flex;flex-direction:column;gap:2px;">' +
-      '<input type="text" id="purRow-item-text-' + row.id + '" ' +
-        'value="' + (row.item||'').replace(/"/g,'&quot;') + '" ' +
-        'placeholder="품목 검색..." autocomplete="off" ' +
-        'oninput="filterPurItemDropdown(' + row.id + ')" ' +
-        'onfocus="openPurItemDropdown(' + row.id + ')" ' +
-        'onblur="setTimeout(function(){var d=document.getElementById(\'purRow-item-dd-' + row.id + '\');if(d)d.style.display=\'none\';},200)" ' +
-        'style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;width:100%;box-sizing:border-box;">' +
-      '<div id="purRow-item-dd-' + row.id + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:#fff;border:1.5px solid var(--border);border-radius:7px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:160px;overflow-y:auto;"></div>' +
-      '<span id="purRow-hint-' + row.id + '" style="display:none;font-size:10px;color:#2563eb;"></span>' +
+      // 항목 (드롭다운 — 등록된 품목만 고름. 새 품목은 목록 맨 아래 "➕ 새 품목 직접 입력" 선택시만 타이핑)
+      '<div style="display:flex;flex-direction:column;gap:2px;">' +
+      '<select id="purRow-item-select-' + row.id + '" onchange="onPurItemSelectChange(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;width:100%;box-sizing:border-box;">' + buildPurItemSelectOptions(row) + '</select>' +
+      (row.isNew ? '<input type="text" id="purRow-item-newtext-' + row.id + '" value="' + (row.item||'').replace(/"/g,'&quot;') + '" placeholder="새 품목 이름 입력" autocomplete="off" oninput="onPurItemNewTextInput(' + row.id + ')" style="padding:6px 8px;border:1.5px solid #3b82f6;border-radius:7px;font-size:13px;width:100%;box-sizing:border-box;">' : '') +
       '</div>' +
       // 수량
       '<input type="number" id="purRow-qty-' + row.id + '" value="' + (row.qty||'') + '" placeholder="0" min="0" step="0.1" oninput="calcPurRowAmount(' + row.id + ')" onchange="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
       // 단위
       '<select id="purRow-unit-' + row.id + '" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">' + unitOpts + '</select>' +
       // 단가
-      '<input type="number" id="purRow-unitprice-' + row.id + '" value="' + (row.unitprice||'') + '" placeholder="단가" min="0" oninput="calcPurRowAmount(' + row.id + ')" onchange="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
+      '<div style="display:flex;flex-direction:column;gap:2px;">' +
+      '<input type="number" id="purRow-unitprice-' + row.id + '" value="' + (row.unitprice||'') + '" placeholder="인상시 수정" min="0" oninput="calcPurRowAmount(' + row.id + ')" onchange="calcPurRowAmount(' + row.id + ')" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;width:100%;box-sizing:border-box;">' +
+      '<span id="purRow-hint-' + row.id + '" style="display:none;font-size:10px;"></span>' +
+      '</div>' +
       // 금액
       '<input type="number" id="purRow-amount-' + row.id + '" value="' + (row.amount||'') + '" placeholder="금액" min="0" oninput="updatePurItemsTotal();autoFillPurVat(' + row.id + ')" style="padding:6px 8px;border:1.5px solid #3b82f6;border-radius:7px;font-size:13px;text-align:right;font-weight:700;">' +
       // 부가세
-      '<input type="number" id="purRow-vat-' + row.id + '" value="' + (row.vat||'') + '" placeholder="부가세" min="0" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
+      '<input type="number" id="purRow-vat-' + row.id + '" value="' + (row.vat||'') + '" placeholder="부가세" min="0" oninput="updatePurItemsTotal()" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;text-align:right;">' +
       // 분류
       '<select id="purRow-type-' + row.id + '" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">' + typeOpts + '</select>' +
       // 메모
@@ -16367,8 +16350,8 @@ function savePurAllItems() {
   const records = [];
   let hasError = false;
   purItemRows.forEach(function(row) {
-    const item = (document.getElementById('purRow-item-text-' + row.id) || {}).value || row.item || '';
-    const isNew = item && !((purchaseVendorProducts[partner] || []).find(function(p){ return p.name === item; }));
+    const item = row.item || '';
+    const isNew = row.isNew && item;
     const unit = (document.getElementById('purRow-unit-' + row.id) || {}).value || 'kg';
     const qty = parseFloat((document.getElementById('purRow-qty-' + row.id) || {}).value) || 0;
     const unitprice = parseInt((document.getElementById('purRow-unitprice-' + row.id) || {}).value) || 0;
@@ -16512,6 +16495,94 @@ function deletePurchaseRecord(id) {
   }
 }
 
+function renderVendorSummaryPanel() {
+  const box = document.getElementById('vendorSummaryPanel');
+  if (!box) return;
+  const filterMonth = (document.getElementById('pur_filterMonth') || {}).value || '';
+  const filterPartner = (document.getElementById('pur_filterPartner') || {}).value || '';
+
+  if (filterPartner) {
+    // 특정 거래처 선택 중 → 월별 거래 내역(최근 12개월)
+    const vendorRecords = purchaseRecords.filter(function(r) { return r.partner === filterPartner; });
+    const byMonth = {};
+    vendorRecords.forEach(function(r) {
+      const m = String(r.date || '').substring(0, 7);
+      if (!m) return;
+      if (!byMonth[m]) byMonth[m] = { amount: 0, vat: 0, count: 0 };
+      byMonth[m].amount += r.amount || 0;
+      byMonth[m].vat += r.vat || 0;
+      byMonth[m].count += 1;
+    });
+    const months = Object.keys(byMonth).sort().reverse().slice(0, 12);
+    if (!months.length) {
+      box.innerHTML = '<div style="font-size:12px;color:#aaa;padding:6px 2px;">' + filterPartner + ' 거래 기록이 없어요.</div>';
+      return;
+    }
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+        '<span style="font-size:12px;font-weight:700;color:var(--brown-mid);">📅 ' + filterPartner + ' — 월별 거래 내역</span>' +
+        '<span onclick="clearVendorSummarySelection()" style="font-size:11px;color:#3b82f6;cursor:pointer;">✕ 전체 거래처 보기</span>' +
+      '</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>월</th><th style="text-align:right;">건수</th><th style="text-align:right;">금액</th><th style="text-align:right;">부가세</th><th style="text-align:right;">합계</th></tr></thead><tbody>' +
+      months.map(function(m) {
+        const d = byMonth[m];
+        const on = m === filterMonth;
+        return '<tr onclick="selectVendorMonthFromSummary(\'' + m + '\')" style="cursor:pointer;' + (on ? 'background:#fff7ed;' : '') + '">' +
+          '<td style="font-weight:600;">' + m + '</td><td style="text-align:right;">' + d.count + '건</td>' +
+          '<td style="text-align:right;">' + d.amount.toLocaleString() + '원</td>' +
+          '<td style="text-align:right;">' + d.vat.toLocaleString() + '원</td>' +
+          '<td style="text-align:right;font-weight:700;">' + (d.amount + d.vat).toLocaleString() + '원</td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  } else {
+    // 전체 거래처 → 선택된 월 기준 거래처별 집계
+    const monthRecords = purchaseRecords.filter(function(r) { return !filterMonth || String(r.date || '').startsWith(filterMonth); });
+    const byPartner = {};
+    monthRecords.forEach(function(r) {
+      const p = r.partner || '(미지정)';
+      if (!byPartner[p]) byPartner[p] = { amount: 0, vat: 0, count: 0 };
+      byPartner[p].amount += r.amount || 0;
+      byPartner[p].vat += r.vat || 0;
+      byPartner[p].count += 1;
+    });
+    const partners = Object.keys(byPartner).sort(function(a, b) { return byPartner[b].amount - byPartner[a].amount; });
+    if (!partners.length) {
+      box.innerHTML = '<div style="font-size:12px;color:#aaa;padding:6px 2px;">' + (filterMonth || '전체 기간') + ' 매입 기록이 없어요.</div>';
+      return;
+    }
+    box.innerHTML =
+      '<div style="font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">📊 ' + (filterMonth || '전체 기간') + ' — 거래처별 집계 (눌러서 해당 거래처만 보기)</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>거래처</th><th style="text-align:right;">건수</th><th style="text-align:right;">금액</th><th style="text-align:right;">부가세</th><th style="text-align:right;">합계</th></tr></thead><tbody>' +
+      partners.map(function(p) {
+        const d = byPartner[p];
+        return '<tr onclick="selectVendorFromSummary(\'' + p.replace(/'/g, "\\'") + '\')" style="cursor:pointer;">' +
+          '<td style="font-weight:600;">' + p + '</td><td style="text-align:right;">' + d.count + '건</td>' +
+          '<td style="text-align:right;">' + d.amount.toLocaleString() + '원</td>' +
+          '<td style="text-align:right;">' + d.vat.toLocaleString() + '원</td>' +
+          '<td style="text-align:right;font-weight:700;">' + (d.amount + d.vat).toLocaleString() + '원</td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }
+}
+
+function selectVendorFromSummary(name) {
+  const sel = document.getElementById('pur_filterPartner');
+  if (sel) sel.value = name;
+  renderPurchaseTable();
+}
+
+function selectVendorMonthFromSummary(month) {
+  const monthEl = document.getElementById('pur_filterMonth');
+  if (monthEl) monthEl.value = month;
+  renderPurchaseTable();
+}
+
+function clearVendorSummarySelection() {
+  const sel = document.getElementById('pur_filterPartner');
+  if (sel) sel.value = '';
+  renderPurchaseTable();
+}
+
 function renderPurchaseTable() {
   const tbody = document.getElementById('purchaseTableBody');
   if (!tbody) return;
@@ -16528,6 +16599,7 @@ function renderPurchaseTable() {
   const total = filtered.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
   const labelEl = document.getElementById('pur_totalLabel');
   if (labelEl) labelEl.textContent = '합계: ' + total.toLocaleString() + '원';
+  renderVendorSummaryPanel();
   if (filtered.length === 0) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:#aaa;">기록이 없어요.</td></tr>';
     return;
