@@ -12617,7 +12617,7 @@ function renderList() {
       : `${smsBtnRow}<button class="btn-small btn-danger" onclick="event.stopPropagation();deleteOrder(${o.id})" style="padding:4px 10px;font-size:11px;">삭제</button>`;
     const nameCell = isLinkWaiting
       ? `<span style="color:#aaa;font-size:12px;">고객 입력 전</span>`
-      : `<strong>${o.receiverName}</strong><br><span style="color:var(--brown-light);font-size:12px;">${o.senderName}</span>`;
+      : `<strong>${o.receiverName}</strong> <span onclick="event.stopPropagation();openPayStatusQuickMenu(event,${o.id},'${o.payStatus}')" style="cursor:pointer;display:inline-block;">${getPayBadge(o.payStatus)}</span><br><span style="color:var(--brown-light);font-size:12px;">${o.senderName}</span>`;
     const phoneCell = isLinkWaiting
       ? `<span style="color:#aaa;font-size:12px;">-</span>`
       : `<span style="font-size:12px;">${o.receiverPhone}<br><span style="color:var(--brown-light);">${o.senderPhone}</span></span>`;
@@ -12639,7 +12639,7 @@ function renderList() {
       <td style="font-size:12px;">${normalizeTimeStr(o.deliveryTime) || '-'}</td>
       <td style="font-weight:700;">${priceDisplay}</td>
       <td>${methodBadge}</td>
-      <td>${getPayBadge(o.payStatus)}</td>
+      <td onclick="event.stopPropagation();openPayStatusQuickMenu(event,${o.id},'${o.payStatus}')" style="cursor:pointer;">${getPayBadge(o.payStatus)}</td>
       <td>${actionBtns}</td>
     </tr>`;
     }).join('');
@@ -12782,6 +12782,60 @@ function getPayBadge(status) {
     '대기': 'badge-gray',
   };
   return `<span class="badge ${map[status]||'badge-gray'}">${status}</span>`;
+}
+
+// 결제상태 배지를 눌렀을 때 뜨는 작은 선택 메뉴 — 전체수정 화면 안 열고 바로 바꿀 수 있게
+function openPayStatusQuickMenu(evt, id, current) {
+  evt.stopPropagation();
+  const existing = document.getElementById('payStatusQuickMenu');
+  if (existing) existing.remove();
+  const statuses = ['결제완료', '입금대기', '부분결제'];
+  const menu = document.createElement('div');
+  menu.id = 'payStatusQuickMenu';
+  menu.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.18);padding:4px;min-width:100px;';
+  const rect = evt.currentTarget.getBoundingClientRect();
+  menu.style.left = rect.left + 'px';
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.innerHTML = statuses.map(function(s) {
+    const on = s === current;
+    return '<div onclick="event.stopPropagation();quickSetPayStatus(' + id + ',\'' + s + '\')" ' +
+      'style="padding:6px 12px;font-size:13px;cursor:pointer;border-radius:6px;white-space:nowrap;' + (on ? 'background:#f0fdf4;font-weight:700;color:#15803d;' : '') + '" ' +
+      'onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'' + (on ? '#f0fdf4' : '#fff') + '\'">' + (on ? '✓ ' : '') + s + '</div>';
+  }).join('');
+  document.body.appendChild(menu);
+  setTimeout(function() {
+    document.addEventListener('click', function closeMenu() {
+      const m = document.getElementById('payStatusQuickMenu');
+      if (m) m.remove();
+      document.removeEventListener('click', closeMenu);
+    });
+  }, 0);
+}
+
+function quickSetPayStatus(id, newStatus) {
+  const order = orders.find(function(o) { return String(o.id) === String(id); });
+  const menu = document.getElementById('payStatusQuickMenu');
+  if (menu) menu.remove();
+  if (!order) return;
+  if (order.payStatus === newStatus) return;
+  const oldStatus = order.payStatus;
+  order.payStatus = newStatus;
+  renderList();
+  if (gasUrl) {
+    gasPost({ action: 'update', data: order }).then(function(res) {
+      if (!res || !res.success) {
+        order.payStatus = oldStatus;
+        renderList();
+        showToast('저장 실패했어요. 다시 시도해주세요.', 'error');
+      } else {
+        showToast('✅ 결제상태를 "' + newStatus + '"로 바꿨어요.', 'success');
+      }
+    }).catch(function() {
+      order.payStatus = oldStatus;
+      renderList();
+      showToast('저장 실패했어요.', 'error');
+    });
+  }
 }
 function getMethodBadge(method) {
   const map = {
