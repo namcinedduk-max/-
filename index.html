@@ -14827,9 +14827,22 @@ function gasGetOnce(params, urlOverride) {
     const targetUrl = urlOverride || gasUrl;
     const url = targetUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&callback=' + cb;
     const sc = document.createElement('script');
-    const timer = setTimeout(function() { delete window[cb]; sc.remove(); reject(new Error('timeout')); }, 10000);
+    // 타임아웃이 나도 window[cb]를 완전히 지우지 않고, 늦게 도착하는 응답을
+    // 조용히 무시하는 빈 함수로 바꿔둔다. (사람이 몰려서 GAS 응답이 10초보다
+    // 늦게 오는 경우, 이미 삭제된 콜백을 뒤늦게 호출하며 "cb... is not defined"
+    // ReferenceError가 나던 문제를 막기 위함 — 2026-09-13)
+    const timer = setTimeout(function() {
+      window[cb] = function() { delete window[cb]; };
+      sc.remove();
+      reject(new Error('timeout'));
+    }, 20000);
     window[cb] = function(data) { clearTimeout(timer); delete window[cb]; sc.remove(); resolve(data); };
-    sc.onerror = function() { clearTimeout(timer); delete window[cb]; sc.remove(); reject(new Error('network error')); };
+    sc.onerror = function() {
+      clearTimeout(timer);
+      window[cb] = function() { delete window[cb]; };
+      sc.remove();
+      reject(new Error('network error'));
+    };
     sc.src = url;
     document.head.appendChild(sc);
   });
