@@ -8913,14 +8913,27 @@ function submitMultiOrder(baseOrder) {
   ordersToSave.forEach(function(order, i){ order.seqNo = _startSeqNo + i + 1; });
 
   if (gasUrl) {
-    // 순차 저장 (동시 저장 시 id 충돌 방지)
+    // 순차 저장 (동시 저장 시 id 충돌 방지) — 중간에 하나 실패해도 나머지는 계속 시도하고,
+    // 끝나고 나서 몇 명 성공/실패했는지 정확히 알려줌 (예전엔 하나 실패하면 뒤엣것들이 통째로 조용히 씹혔음)
+    const _results = { success: [], failed: [] };
     const saveSequentially = (idx) => {
       if (idx >= ordersToSave.length) {
-        showToast(`✅ 묶음 주문 ${multiReceivers.length}명 접수! (${bundleId}) — 합계 ${baseOrder.priceTotal.toLocaleString()}원`, 'success');
-        loadOrdersFromSheet();
+        if (_results.failed.length === 0) {
+          showToast(`✅ 묶음 주문 ${multiReceivers.length}명 접수! (${bundleId}) — 합계 ${baseOrder.priceTotal.toLocaleString()}원`, 'success');
+        } else {
+          const names = _results.failed.map(function(o){ return o.receiverName; }).join(', ');
+          showToast(`⚠️ ${_results.success.length}명 저장됨, ${_results.failed.length}명 실패(${names}) — 실패한 분은 다시 입력해주세요!`, 'error');
+        }
+        loadOrdersFromSheet(true, true);
         return;
       }
-      gasPost({ action: 'save', data: ordersToSave[idx] }).then(() => saveSequentially(idx + 1));
+      gasPost({ action: 'save', data: ordersToSave[idx] })
+        .then(function(res) {
+          if (res && res.success) _results.success.push(ordersToSave[idx]);
+          else _results.failed.push(ordersToSave[idx]);
+        })
+        .catch(function() { _results.failed.push(ordersToSave[idx]); })
+        .finally(function() { saveSequentially(idx + 1); });
     };
     saveSequentially(0);
   } else {
@@ -14808,7 +14821,7 @@ function gasGetOnce(params) {
     const cb = 'cb' + Date.now() + Math.floor(Math.random()*9999);
     const url = gasUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&callback=' + cb;
     const sc = document.createElement('script');
-    const timer = setTimeout(function() { delete window[cb]; sc.remove(); reject(new Error('timeout')); }, 15000);
+    const timer = setTimeout(function() { delete window[cb]; sc.remove(); reject(new Error('timeout')); }, 10000);
     window[cb] = function(data) { clearTimeout(timer); delete window[cb]; sc.remove(); resolve(data); };
     sc.onerror = function() { clearTimeout(timer); delete window[cb]; sc.remove(); reject(new Error('network error')); };
     sc.src = url;
@@ -14856,7 +14869,7 @@ function diagnosGAS() {
 
 function gasPostOnce(body) {
   const controller = new AbortController();
-  const timeout = setTimeout(function(){ controller.abort(); }, 30000); // 30초 타임아웃
+  const timeout = setTimeout(function(){ controller.abort(); }, 12000); // 12초 타임아웃 (예전 30초에서 줄임 — 실패든 성공이든 빨리 알 수 있게)
   return fetch(gasUrl, {
     method: 'POST',
     headers: {'Content-Type': 'text/plain'},
@@ -14882,10 +14895,10 @@ function gasPostOnce(body) {
   });
 }
 
-// 저장/수정처럼 "서버에 변화를 주는" 요청이라, 이미 성공적으로 처리됐는데 응답만 못 받은 경우와
-// 구분하기 애매해서 재시도는 1번만(조회보다 보수적으로) — 순간적인 끊김만 커버하는 목적
+// 저장/수정 요청은 재시도 안 함(기본값 0) — 서버가 이미 처리했는데 응답만 못 받은 경우 재시도하면
+// 중복 저장될 위험이 있고, 지금은 실패를 빨리 눈에 보이게 하는 게 더 중요해서 뺐음
 function gasPost(body, _retriesLeft) {
-  if (_retriesLeft === undefined) _retriesLeft = 1;
+  if (_retriesLeft === undefined) _retriesLeft = 0;
   return gasPostOnce(body).catch(function(err) {
     if (_retriesLeft <= 0) throw err;
     return new Promise(function(resolve) { setTimeout(resolve, 800); })
