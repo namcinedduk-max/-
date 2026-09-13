@@ -8539,7 +8539,7 @@ let sortDir = 1; // 1=오름차순, -1=내림차순
 let funeralOrders = [];
 let funeralSortKey = 'deliveryDate';
 let funeralSortDir = 1;
-let gasUrl = localStorage.getItem('gasUrl') || 'https://script.google.com/macros/s/AKfycbxVlzh9rzQaA9G8DntgEUExgDWUKsvtYb9LM3Blbh0QBZRv_SZdtL657_SpJ56n1qnE/exec';
+let gasUrl = localStorage.getItem('gasUrl') || 'https://script.google.com/macros/s/AKfycbxy_0D_upR_CoIK_VbH6JwOON_9uHqKSIlxLtHJI8sCeOilhS_J24oW1tdyW5FOhR-P/exec';
 let selectedPay = '';
 let currentModalId = null;
 let currentModalType = 'order';
@@ -14816,10 +14816,16 @@ function saveGasUrl() {
 // ============ SHEET API ============
 // JSONP 방식으로 GAS 서버에 GET 요청. 순간적인 네트워크 끊김/응답 지연으로 실패하면
 // 조용히 포기하지 않고 짧은 간격으로 자동 재시도함 ("간헐적으로 안 불러와지는" 문제 완화용)
-function gasGetOnce(params) {
+// 오늘 새로 살아있는 걸로 확인된 주소 — 기기에 저장된 게 옛날(죽은) 주소라 계속 실패하면
+// 자동으로 이 주소로 한 번 더 시도해보고, 되면 그 기기에 자동으로 갈아끼워서 저장해둠
+// (컴퓨터/폰마다 일일이 시트연동 들어가서 안 바꿔도 되게 하려는 임시 안전장치)
+const KNOWN_GOOD_GAS_URL = 'https://script.google.com/macros/s/AKfycbxy_0D_upR_CoIK_VbH6JwOON_9uHqKSIlxLtHJI8sCeOilhS_J24oW1tdyW5FOhR-P/exec';
+
+function gasGetOnce(params, urlOverride) {
   return new Promise(function(resolve, reject) {
     const cb = 'cb' + Date.now() + Math.floor(Math.random()*9999);
-    const url = gasUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&callback=' + cb;
+    const targetUrl = urlOverride || gasUrl;
+    const url = targetUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&callback=' + cb;
     const sc = document.createElement('script');
     const timer = setTimeout(function() { delete window[cb]; sc.remove(); reject(new Error('timeout')); }, 10000);
     window[cb] = function(data) { clearTimeout(timer); delete window[cb]; sc.remove(); resolve(data); };
@@ -14832,9 +14838,20 @@ function gasGetOnce(params) {
 function gasGet(params, _retriesLeft) {
   if (_retriesLeft === undefined) _retriesLeft = 2; // 첫 시도 실패해도 최대 2번 더 재시도
   return gasGetOnce(params).catch(function(err) {
-    if (_retriesLeft <= 0) throw err;
-    return new Promise(function(resolve) { setTimeout(resolve, 800); })
-      .then(function() { return gasGet(params, _retriesLeft - 1); });
+    if (_retriesLeft > 0) {
+      return new Promise(function(resolve) { setTimeout(resolve, 800); })
+        .then(function() { return gasGet(params, _retriesLeft - 1); });
+    }
+    // 재시도까지 다 실패했는데, 지금 이 기기가 옛날(죽은) 주소를 쓰고 있는 거면 새 정상 주소로 한 번 더 시도
+    if (gasUrl !== KNOWN_GOOD_GAS_URL) {
+      return gasGetOnce(params, KNOWN_GOOD_GAS_URL).then(function(data) {
+        gasUrl = KNOWN_GOOD_GAS_URL;
+        localStorage.setItem('gasUrl', KNOWN_GOOD_GAS_URL);
+        showToast('🔧 시트 연결 주소를 자동으로 최신으로 바꿨어요.', 'success');
+        return data;
+      });
+    }
+    throw err;
   });
 }
 
@@ -14867,10 +14884,11 @@ function diagnosGAS() {
     });
 }
 
-function gasPostOnce(body) {
+function gasPostOnce(body, urlOverride) {
   const controller = new AbortController();
   const timeout = setTimeout(function(){ controller.abort(); }, 12000); // 12초 타임아웃 (예전 30초에서 줄임 — 실패든 성공이든 빨리 알 수 있게)
-  return fetch(gasUrl, {
+  const targetUrl = urlOverride || gasUrl;
+  return fetch(targetUrl, {
     method: 'POST',
     headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify(body),
@@ -14900,9 +14918,21 @@ function gasPostOnce(body) {
 function gasPost(body, _retriesLeft) {
   if (_retriesLeft === undefined) _retriesLeft = 0;
   return gasPostOnce(body).catch(function(err) {
-    if (_retriesLeft <= 0) throw err;
-    return new Promise(function(resolve) { setTimeout(resolve, 800); })
-      .then(function() { return gasPost(body, _retriesLeft - 1); });
+    if (_retriesLeft > 0) {
+      return new Promise(function(resolve) { setTimeout(resolve, 800); })
+        .then(function() { return gasPost(body, _retriesLeft - 1); });
+    }
+    // 지금 이 기기가 옛날(죽은) 주소를 쓰고 있는 거면 새 정상 주소로 한 번 더 시도
+    // (원래 요청이 죽은 주소라 서버까지 아예 도달을 못 한 상태라 중복저장 걱정 없음)
+    if (gasUrl !== KNOWN_GOOD_GAS_URL) {
+      return gasPostOnce(body, KNOWN_GOOD_GAS_URL).then(function(data) {
+        gasUrl = KNOWN_GOOD_GAS_URL;
+        localStorage.setItem('gasUrl', KNOWN_GOOD_GAS_URL);
+        showToast('🔧 시트 연결 주소를 자동으로 최신으로 바꿨어요.', 'success');
+        return data;
+      });
+    }
+    throw err;
   });
 }
 
