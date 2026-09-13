@@ -14816,10 +14816,10 @@ function saveGasUrl() {
 // ============ SHEET API ============
 // JSONP 방식으로 GAS 서버에 GET 요청. 순간적인 네트워크 끊김/응답 지연으로 실패하면
 // 조용히 포기하지 않고 짧은 간격으로 자동 재시도함 ("간헐적으로 안 불러와지는" 문제 완화용)
-// 오늘 새로 살아있는 걸로 확인된 주소 — 기기에 저장된 게 옛날(죽은) 주소라 계속 실패하면
-// 자동으로 이 주소로 한 번 더 시도해보고, 되면 그 기기에 자동으로 갈아끼워서 저장해둠
-// (컴퓨터/폰마다 일일이 시트연동 들어가서 안 바꿔도 되게 하려는 임시 안전장치)
-const KNOWN_GOOD_GAS_URL = 'https://script.google.com/macros/s/AKfycbxy_0D_upR_CoIK_VbH6JwOON_9uHqKSIlxLtHJI8sCeOilhS_J24oW1tdyW5FOhR-P/exec';
+// 예전엔 여기에 "옛날 주소로 실패하면 하드코딩된 주소로 자동전환" 안전장치가 있었는데,
+// 배포를 새로 할 때마다 주소가 바뀔 수 있어서 오히려 옛날 배포로 몰래 갈아타는 부작용이
+// 있었음. 배포는 이제 "기존 배포 편집 → 새 버전"으로만 해서 주소를 고정하기로 했고,
+// 이 자동전환 로직은 제거함 (2026-09-13)
 
 function gasGetOnce(params, urlOverride) {
   return new Promise(function(resolve, reject) {
@@ -14854,15 +14854,6 @@ function gasGet(params, _retriesLeft) {
     if (_retriesLeft > 0) {
       return new Promise(function(resolve) { setTimeout(resolve, 800); })
         .then(function() { return gasGet(params, _retriesLeft - 1); });
-    }
-    // 재시도까지 다 실패했는데, 지금 이 기기가 옛날(죽은) 주소를 쓰고 있는 거면 새 정상 주소로 한 번 더 시도
-    if (gasUrl !== KNOWN_GOOD_GAS_URL) {
-      return gasGetOnce(params, KNOWN_GOOD_GAS_URL).then(function(data) {
-        gasUrl = KNOWN_GOOD_GAS_URL;
-        localStorage.setItem('gasUrl', KNOWN_GOOD_GAS_URL);
-        showToast('🔧 시트 연결 주소를 자동으로 최신으로 바꿨어요.', 'success');
-        return data;
-      });
     }
     throw err;
   });
@@ -14899,7 +14890,8 @@ function diagnosGAS() {
 
 function gasPostOnce(body, urlOverride) {
   const controller = new AbortController();
-  const timeout = setTimeout(function(){ controller.abort(); }, 12000); // 12초 타임아웃 (예전 30초에서 줄임 — 실패든 성공이든 빨리 알 수 있게)
+  // 12초→20초로 늘림 (컴퓨터 여러 대에서 동시에 저장할 때 GAS 응답이 늦어질 수 있어서 — 2026-09-13)
+  const timeout = setTimeout(function(){ controller.abort(); }, 20000);
   const targetUrl = urlOverride || gasUrl;
   return fetch(targetUrl, {
     method: 'POST',
@@ -14934,16 +14926,6 @@ function gasPost(body, _retriesLeft) {
     if (_retriesLeft > 0) {
       return new Promise(function(resolve) { setTimeout(resolve, 800); })
         .then(function() { return gasPost(body, _retriesLeft - 1); });
-    }
-    // 지금 이 기기가 옛날(죽은) 주소를 쓰고 있는 거면 새 정상 주소로 한 번 더 시도
-    // (원래 요청이 죽은 주소라 서버까지 아예 도달을 못 한 상태라 중복저장 걱정 없음)
-    if (gasUrl !== KNOWN_GOOD_GAS_URL) {
-      return gasPostOnce(body, KNOWN_GOOD_GAS_URL).then(function(data) {
-        gasUrl = KNOWN_GOOD_GAS_URL;
-        localStorage.setItem('gasUrl', KNOWN_GOOD_GAS_URL);
-        showToast('🔧 시트 연결 주소를 자동으로 최신으로 바꿨어요.', 'success');
-        return data;
-      });
     }
     throw err;
   });
@@ -16357,12 +16339,16 @@ function loadFuneralOrdersFromSheet(silent, force) {
 }
 
 function gasFuneralGet(params) {
-  const url = gasUrl.replace('/exec', '/exec') + '?' + Object.entries({...params, sheet:'funeral'}).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
-  return fetch(url).then(r => r.json());
+  // 예전엔 fetch()로 직접 호출했는데, GAS 응답이 리다이렉트되면서 CORS가 막혀
+  // "장례식장 시트 연결 실패"가 자주 뜨는 원인이었음. 나머지 데이터(주문/정산)와
+  // 동일하게 JSONP 방식(gasGet)으로 통일해서 CORS 문제 자체를 없앰 (2026-09-13)
+  return gasGet({ ...params, sheet: 'funeral' });
 }
 
 function gasFuneralPost(body) {
-  return fetch(gasUrl, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify({...body, sheet:'funeral'}) }).then(r => r.json());
+  // 기존엔 fetch()를 따로 호출했는데, 나머지 저장 요청과 동일하게 공용 gasPost로
+  // 통일 — 죽은 주소 자동전환 등 안전장치를 똑같이 받게 함 (2026-09-13)
+  return gasPost({ ...body, sheet: 'funeral' });
 }
 
 function sendToFuneralSheet(order) {
