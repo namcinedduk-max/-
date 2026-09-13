@@ -12836,24 +12836,12 @@ function quickSetPayStatus(id, newStatus) {
   if (menu) menu.remove();
   if (!order) return;
   if (order.payStatus === newStatus) return;
-  const oldStatus = order.payStatus;
   order.payStatus = newStatus;
   renderList();
-  if (gasUrl) {
-    gasPost({ action: 'update', data: order }).then(function(res) {
-      if (!res || !res.success) {
-        order.payStatus = oldStatus;
-        renderList();
-        showToast('저장 실패했어요. 다시 시도해주세요.', 'error');
-      } else {
-        showToast('✅ 결제상태를 "' + newStatus + '"로 바꿨어요.', 'success');
-      }
-    }).catch(function() {
-      order.payStatus = oldStatus;
-      renderList();
-      showToast('저장 실패했어요.', 'error');
-    });
-  }
+  showToast('✅ 결제상태를 "' + newStatus + '"로 바꿨어요.', 'success');
+  // 예전엔 여기서도 타임아웃 나면 화면을 도로 되돌리고 "저장 실패"를 띄웠음 —
+  // 접수·수정과 똑같이 큐에 넣어서 뒤에서 계속 재시도하도록 통일 (2026-09-13)
+  if (gasUrl) queueForSync('order', order);
 }
 function getMethodBadge(method) {
   const map = {
@@ -15043,7 +15031,17 @@ function loadOrdersFromSheet(silent, force, skipLocalSkip) {
   if (!force && !skipLocalSkip && silent && orders.length > 0 && Date.now() - _cacheTs.orders < SHEET_CACHE_TTL) {
     return Promise.resolve();
   }
-  if (!silent) showLoading(true);
+  // 화면에 이미 목록이 떠있으면 새 데이터가 올 때까지 기존 목록을 그대로 두고,
+  // 정말 아무것도 없을 때(최초 로딩)만 "불러오는 중..." 화면을 보여줌.
+  // 예전엔 새로고침을 누르자마자 화면부터 먼저 지워버려서, 응답이 늦으면
+  // (1분 이상) 그동안 목록이 통째로 텅 비어보이는 게 큰 문제였음 (2026-09-13)
+  if (!silent) {
+    if (orders.length === 0) {
+      showLoading(true);
+    } else {
+      showToast('🔄 새로고침 중...', '');
+    }
+  }
   var _params = { action: 'getOrders', days: ORDERS_RECENT_DAYS };
   if (force) _params.force = 1; // 새로고침·접수 직후엔 서버 캐시까지 건너뛰고 진짜 최신
   return gasGet(_params)
@@ -15058,10 +15056,11 @@ function loadOrdersFromSheet(silent, force, skipLocalSkip) {
         }
         if (!silent) { updateStats(); renderList(); }
       } else {
-        if (!silent) showToast('⚠️ 데이터 불러오기 실패', 'error');
+        // 실패해도 기존 화면(orders)은 그대로 둠 — 여기서 orders를 건드리지 않음
+        if (!silent) showToast('⚠️ 데이터 불러오기 실패 - 기존 목록 유지', 'error');
       }
     })
-    .catch(() => { if (!silent) showToast('❌ 시트 연결 실패. URL을 확인해주세요.', 'error'); })
+    .catch(() => { if (!silent) showToast('❌ 시트 연결 실패 - 기존 목록 유지', 'error'); })
     .finally(() => { if (!silent) showLoading(false); });
 }
 
@@ -15108,7 +15107,8 @@ function loadAllDataOnStartup() {
 function loadAllOrdersFromSheet() {
   if (!gasUrl) return Promise.resolve();
   if (_ordersFullLoaded) return Promise.resolve();
-  showLoading(true);
+  // 목록이 이미 떠있으면 지우지 않고 토스트로만 알림 (2026-09-13)
+  if (orders.length === 0) showLoading(true); else showToast('🔄 전체 불러오는 중...', '');
   return gasGet({ action: 'getOrders' })  // days 없이 = 전체
     .then(data => {
       if (data.success) {
@@ -15117,10 +15117,10 @@ function loadAllOrdersFromSheet() {
         _ordersFullLoaded = true;
         migrateOrderSeqNos();
       } else {
-        showToast('⚠️ 전체 불러오기 실패', 'error');
+        showToast('⚠️ 전체 불러오기 실패 - 기존 목록 유지', 'error');
       }
     })
-    .catch(() => { showToast('❌ 시트 연결 실패. URL을 확인해주세요.', 'error'); })
+    .catch(() => { showToast('❌ 시트 연결 실패 - 기존 목록 유지', 'error'); })
     .finally(() => { showLoading(false); });
 }
 
@@ -18157,7 +18157,7 @@ function saveWeddingModalEdit() {
   }
 
   localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
-  if (gasUrl) gasPost({ action: 'update', sheet: 'wedding', data: o }).catch(() => {});
+  if (gasUrl) queueForSync('wedding', o);
   closeModal();
   renderWeddingList();
   showToast('✅ 수정됐어요!', 'success');
@@ -19068,17 +19068,10 @@ function saveOtherEdit() {
   if (typeof renderOtherList === 'function') renderOtherList();
   if (typeof renderList === 'function') renderList();
   closeOtherModal();
-  if (typeof gasUrl !== 'undefined' && gasUrl) {
-    showToast('⏳ 저장 중...', '');
-    gasPost({ action: 'update', sheet: 'other', data: updated })
-      .then(function(r) {
-        if (r && r.success === false) showToast('❌ 저장 실패 - 다시 시도해주세요', 'error');
-        else { showToast('✅ 저장됐어요!', 'success'); if (typeof loadOtherOrdersFromSheet === 'function') loadOtherOrdersFromSheet(true); }
-      })
-      .catch(function(err) { showToast('❌ 서버 연결 실패: ' + (err.message || '오류'), 'error'); });
-  } else {
-    showToast('✅ 저장됐어요!', 'success');
-  }
+  showToast('✅ 저장됐어요!', 'success');
+  // 예전엔 저장 실패 뜨면 시트엔 안 들어간 채로 끝났음 — 큐에 넣어서 뒤에서
+  // 계속 재시도하도록 통일 (2026-09-13)
+  if (typeof gasUrl !== 'undefined' && gasUrl) queueForSync('other', updated);
 }
 
 document.addEventListener('click', function(e) {
