@@ -14821,35 +14821,26 @@ function saveGasUrl() {
 // 있었음. 배포는 이제 "기존 배포 편집 → 새 버전"으로만 해서 주소를 고정하기로 했고,
 // 이 자동전환 로직은 제거함 (2026-09-13)
 
+// 예전엔 <script> 태그를 몰래 끼워넣는 방식(JSONP)으로 불러왔는데, 이게
+// 보안 프로그램/방화벽에 "수상한 스크립트 삽입"으로 보여서 자주 막혔음
+// (직접 주소 접속은 되는데 앱 안에서는 안 되는 증상의 원인).
+// 저장(POST)이 이미 쓰고 있던 fetch() 방식으로 통일함 — GAS 응답에
+// "access-control-allow-origin: *"가 있어서 fetch로도 문제없이 받아짐
+// (2026-09-13)
 function gasGetOnce(params, urlOverride) {
-  return new Promise(function(resolve, reject) {
-    const cb = 'cb' + Date.now() + Math.floor(Math.random()*9999);
-    const targetUrl = urlOverride || gasUrl;
-    const url = targetUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&callback=' + cb;
-    const sc = document.createElement('script');
-    // 타임아웃이 나도 window[cb]를 완전히 지우지 않고, 늦게 도착하는 응답을
-    // 조용히 무시하는 빈 함수로 바꿔둔다. (사람이 몰려서 GAS 응답이 10초보다
-    // 늦게 오는 경우, 이미 삭제된 콜백을 뒤늦게 호출하며 "cb... is not defined"
-    // ReferenceError가 나던 문제를 막기 위함 — 2026-09-13)
-    // 예전엔 20초였는데 — 실제 구글 서버는 보통 1~2초 안에 응답하는 걸 확인함.
-    // 20초씩 기다렸다가 포기하는 걸 재시도 3번 반복하면 최악의 경우 1분 넘게
-    // 걸릴 수 있어서, 8초로 줄여 "못 받으면 빨리 포기하고 다시 시도"하도록 함
-    // (2026-09-13, "새로고침이 2분 넘게 걸림" 문제 개선)
-    const timer = setTimeout(function() {
-      window[cb] = function() { delete window[cb]; };
-      sc.remove();
-      reject(new Error('timeout'));
-    }, 8000);
-    window[cb] = function(data) { clearTimeout(timer); delete window[cb]; sc.remove(); resolve(data); };
-    sc.onerror = function() {
-      clearTimeout(timer);
-      window[cb] = function() { delete window[cb]; };
-      sc.remove();
-      reject(new Error('network error'));
-    };
-    sc.src = url;
-    document.head.appendChild(sc);
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(function(){ controller.abort(); }, 8000);
+  const targetUrl = urlOverride || gasUrl;
+  const url = targetUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  return fetch(url, { signal: controller.signal })
+    .then(function(r) {
+      clearTimeout(timeout);
+      return r.json();
+    })
+    .catch(function(err) {
+      clearTimeout(timeout);
+      throw err;
+    });
 }
 
 // ── 로딩 경과시간 표시 배지 ──
