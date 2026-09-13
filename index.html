@@ -16327,7 +16327,9 @@ function loadFuneralOrdersFromSheet(silent, force) {
   if (!force && silent && funeralOrders.length > 0 && Date.now() - _cacheTs.funeral < SHEET_CACHE_TTL) {
     return Promise.resolve();
   }
-  return gasFuneralGet({ action: 'getOrders' })
+  var _paramsF = { action: 'getOrders', days: ORDERS_RECENT_DAYS };
+  if (force) _paramsF.force = 1;
+  return gasFuneralGet(_paramsF)
     .then(data => {
       if (data.success) {
         funeralOrders = data.orders || [];
@@ -16386,7 +16388,6 @@ function sendToSheet(order) {
   showToast('⏳ 저장 중...', '');
 
   const doSave = function() {
-    assignOrderSeqNo(order);
     orders.unshift(order);
     updateStats(); renderList();
     if (!gasUrl) { showToast('⚠️ 구글 시트 미연결. 로컬에만 저장됩니다.', ''); return; }
@@ -16407,13 +16408,27 @@ function sendToSheet(order) {
       });
   };
 
-  // 번호 배정 전 서버 최신 데이터 강제 확인 (동시 입력 충돌 방지)
-  if (gasUrl) {
-    loadOrdersFromSheet(true, true).then(doSave).catch(doSave);
+  // 예전엔 접수번호(seqNo) 중복 방지를 위해 저장 전에 전체 주문목록을 통째로
+  // 다시 불러왔음(느림 — 숫자 하나 때문에 수천 건을 다 읽어옴). 이제는 해당
+  // 배송일의 접수번호 최댓값만 가볍게 서버에 물어봐서 훨씬 빠르게 처리함
+  // (실패하면 지금 화면에 있는 데이터 기준으로라도 안전하게 부여) — 2026-09-13
+  const dateForSeq = normalizeDateStr(String(order.deliveryDate || ''));
+  if (gasUrl && dateForSeq && !order.seqNo) {
+    gasGet({ action: 'getMaxSeqNo', date: dateForSeq })
+      .then(function(d) {
+        order.seqNo = (d && d.success ? (d.maxSeqNo || 0) : 0) + 1;
+        doSave();
+      })
+      .catch(function() {
+        assignOrderSeqNo(order);
+        doSave();
+      });
   } else {
+    assignOrderSeqNo(order);
     doSave();
   }
 }
+
 
 // ============ 매입 관리 ============
 let purchasePartners = JSON.parse(localStorage.getItem('purchasePartners') || '[]');
@@ -17815,8 +17830,12 @@ function loadWeddingOrdersFromSheet(silent, force) {
   if (!force && silent && weddingOrders.length > 0 && Date.now() - _cacheTs.wedding < SHEET_CACHE_TTL) {
     return Promise.resolve();
   }
-  return fetch(gasUrl + '?action=getOrders&sheet=wedding')
-    .then(r => r.json())
+  // 예전엔 fetch()로 직접 호출해서 장례식장과 같은 CORS 문제가 있었고,
+  // days 제한도 없어서 시트 전체를 매번 읽었음. 나머지와 동일하게
+  // JSONP(gasGet) + 최근 N일 제한으로 통일함 (2026-09-13)
+  var _paramsW = { action: 'getOrders', sheet: 'wedding', days: ORDERS_RECENT_DAYS };
+  if (force) _paramsW.force = 1;
+  return gasGet(_paramsW)
     .then(data => {
       if (data.success) {
         weddingOrders = data.orders || [];
@@ -18754,9 +18773,11 @@ function sendToOtherSheet(order) {
     });
 }
 
-function loadOtherOrdersFromSheet(silent) {
+function loadOtherOrdersFromSheet(silent, force) {
   if (!gasUrl) return Promise.resolve();
-  return gasGet({ action: 'getOrders', sheet: 'other' })
+  var _paramsO = { action: 'getOrders', sheet: 'other', days: ORDERS_RECENT_DAYS };
+  if (force) _paramsO.force = 1;
+  return gasGet(_paramsO)
     .then(data => {
       if (data.success && data.orders) {
         otherOrders = data.orders;
