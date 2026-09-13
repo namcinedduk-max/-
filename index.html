@@ -14296,8 +14296,14 @@ function confirmApprove() {
   updateStats(); renderList();
   showToast('✅ 주문이 승인됐어요!', 'success');
   // 백그라운드 저장
-  gasPost({ action: 'delete', sheet: 'order', id: String(id) })
-    .then(() => gasPost({ action: 'save', data: o }))
+  // 예전엔 "삭제 먼저 → 저장 나중"이었음 — 둘 사이에 네트워크가 끊기면
+  // 원본 주문이 시트에서 사라진 채로 새 주문 저장은 실패하는, 데이터가
+  // 통째로 없어지는 위험한 구조였음. 순서를 바꿔서 "새 주문 저장 먼저 →
+  // 성공하면 그때 원본 삭제"로 바꿈. 이러면 최악의 경우에도 데이터가
+  // 없어지는 게 아니라 중복(둘 다 남음)만 생기고, 중복은 나중에 손으로
+  // 지우면 되니까 훨씬 안전함 (2026-09-13)
+  gasPost({ action: 'save', data: o })
+    .then(() => gasPost({ action: 'delete', sheet: 'order', id: String(id) }).catch(() => {}))
     .catch(() => {
       orders = backup; updateStats(); renderList();
       showToast('❌ 저장 실패. 다시 시도해주세요.', 'error');
@@ -14986,15 +14992,27 @@ function _trySyncNow() {
     .then(function(res) {
       if (res && res.success) {
         _removeFromSyncQueue(item.sheet, item.id);
+      } else {
+        // 실패해도 큐에 남기되, 맨 앞 자리를 계속 막고 있지 않도록 뒤로
+        // 보냄 — 이 항목 하나가 계속 실패해도 다른 대기 중인 항목들은
+        // 순서가 돌아오도록 하기 위함 (2026-09-13)
+        _rotateSyncQueue();
       }
-      // success:false(서버 쪽 예외)여도 큐에 남겨서 계속 재시도 — 배지가 안
-      // 사라지면 그 자체가 "확인이 필요하다"는 신호가 됨
     })
-    .catch(function() { /* 타임아웃·네트워크 오류 — 큐에 그대로 남겨서 계속 재시도 */ })
+    .catch(function() {
+      _rotateSyncQueue();
+    })
     .finally(function() {
       _syncing = false;
       if (_syncQueue.length > 0) setTimeout(_trySyncNow, 5000);
     });
+}
+
+function _rotateSyncQueue() {
+  if (_syncQueue.length > 1) {
+    _syncQueue.push(_syncQueue.shift());
+    _saveSyncQueue();
+  }
 }
 
 // 혹시 타이머가 끊겼을 경우를 대비한 주기적 재시도
@@ -17844,21 +17862,13 @@ function submitWeddingOrder() {
 }
 
 function sendToWeddingSheet(order) {
-  if (!gasUrl) {
-    weddingOrders.unshift(order);
-    localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
-    updateWeddingStats(); renderWeddingList();
-    showToast('✅ 웨딩홀 주문 접수! (로컬 저장)', 'success');
-    return;
-  }
-  showToast('📤 저장 중...', '');
-  gasPost({ action: 'save', sheet: 'wedding', data: order })
-    .then(data => {
-      if (data.success) {
-        showToast('✅ 웨딩홀 주문 접수 완료!', 'success');
-        loadWeddingOrdersFromSheet();
-      }
-    }).catch(() => showToast('❌ 저장 실패. 다시 시도해주세요.', 'error'));
+  weddingOrders.unshift(order);
+  localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
+  updateWeddingStats(); renderWeddingList();
+  showToast('✅ 웨딩홀 주문 접수 완료!', 'success');
+  // 예전엔 로컬에 먼저 추가도 안 하고, 저장 실패하면 데이터가 그냥
+  // 사라지는 구조였음 — 접수/수정과 동일하게 큐 방식으로 통일 (2026-09-13)
+  if (gasUrl) queueForSync('wedding', order);
 }
 
 function resetWeddingForm() {
@@ -18176,16 +18186,22 @@ function saveWeddingModalEdit() {
 
 function deleteWeddingOrder(id) {
   if (!confirm('이 주문을 삭제할까요?')) return;
+  // 예전엔 실패해도 "삭제됐어요" 토스트가 무조건 같이 떠서 헷갈렸음.
+  // 낙관적으로 먼저 지우고, 실패하면 되돌리고 실패만 알려주도록 수정 (2026-09-13)
+  const backup = weddingOrders.slice();
+  weddingOrders = weddingOrders.filter(o => String(o.id) !== String(id));
+  localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
+  renderWeddingList();
+  showToast('🗑 웨딩홀 주문 삭제됐어요.', '');
   if (gasUrl) {
     gasPost({ action: 'delete', sheet: 'wedding', id: id })
-      .then(() => loadWeddingOrdersFromSheet())
-      .catch(() => showToast('❌ 삭제 실패', 'error'));
-  } else {
-    weddingOrders = weddingOrders.filter(o => String(o.id) !== String(id));
-    localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
-    renderWeddingList();
+      .catch(() => {
+        weddingOrders = backup;
+        localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
+        renderWeddingList();
+        showToast('❌ 삭제 실패 - 다시 시도해주세요', 'error');
+      });
   }
-  showToast('🗑 웨딩홀 주문 삭제됐어요.', '');
 }
 
 function printWeddingOrders() {
@@ -18802,21 +18818,10 @@ function resetOtherForm() {
 function sendToOtherSheet(order) {
   otherOrders.unshift(order);
   updateOtherStats(); renderOtherList();
-  showToast('⏳ 저장 중...', '');
-  if (!gasUrl) { showToast('⚠️ 구글 시트 미연결. 로컬에만 저장됩니다.', ''); return; }
-  gasPost({ action: 'save', sheet: 'other', data: order })
-    .then(data => {
-      if (data.success) { showToast('✅ 기타업체 주문 접수 완료!', 'success'); }
-      else {
-        otherOrders = otherOrders.filter(o => o.id !== order.id);
-        updateOtherStats(); renderOtherList();
-        showToast('❌ 저장 실패', 'error');
-      }
-    }).catch(() => {
-      otherOrders = otherOrders.filter(o => o.id !== order.id);
-      updateOtherStats(); renderOtherList();
-      showToast('❌ 저장 실패 - 다시 시도해주세요', 'error');
-    });
+  showToast('✅ 기타업체 주문 접수 완료!', 'success');
+  // 예전엔 저장 실패하면 화면에서 지워버렸음 — 접수/수정과 동일하게
+  // 큐 방식으로 통일 (2026-09-13)
+  if (gasUrl) queueForSync('other', order);
 }
 
 function loadOtherOrdersFromSheet(silent, force) {
