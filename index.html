@@ -14801,7 +14801,9 @@ function saveGasUrl() {
 }
 
 // ============ SHEET API ============
-function gasGet(params) {
+// JSONP 방식으로 GAS 서버에 GET 요청. 순간적인 네트워크 끊김/응답 지연으로 실패하면
+// 조용히 포기하지 않고 짧은 간격으로 자동 재시도함 ("간헐적으로 안 불러와지는" 문제 완화용)
+function gasGetOnce(params) {
   return new Promise(function(resolve, reject) {
     const cb = 'cb' + Date.now() + Math.floor(Math.random()*9999);
     const url = gasUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&callback=' + cb;
@@ -14811,6 +14813,15 @@ function gasGet(params) {
     sc.onerror = function() { clearTimeout(timer); delete window[cb]; sc.remove(); reject(new Error('network error')); };
     sc.src = url;
     document.head.appendChild(sc);
+  });
+}
+
+function gasGet(params, _retriesLeft) {
+  if (_retriesLeft === undefined) _retriesLeft = 2; // 첫 시도 실패해도 최대 2번 더 재시도
+  return gasGetOnce(params).catch(function(err) {
+    if (_retriesLeft <= 0) throw err;
+    return new Promise(function(resolve) { setTimeout(resolve, 800); })
+      .then(function() { return gasGet(params, _retriesLeft - 1); });
   });
 }
 
@@ -14843,7 +14854,7 @@ function diagnosGAS() {
     });
 }
 
-function gasPost(body) {
+function gasPostOnce(body) {
   const controller = new AbortController();
   const timeout = setTimeout(function(){ controller.abort(); }, 30000); // 30초 타임아웃
   return fetch(gasUrl, {
@@ -14868,6 +14879,17 @@ function gasPost(body) {
     clearTimeout(timeout);
     console.error('gasPost 오류:', err);
     throw err;
+  });
+}
+
+// 저장/수정처럼 "서버에 변화를 주는" 요청이라, 이미 성공적으로 처리됐는데 응답만 못 받은 경우와
+// 구분하기 애매해서 재시도는 1번만(조회보다 보수적으로) — 순간적인 끊김만 커버하는 목적
+function gasPost(body, _retriesLeft) {
+  if (_retriesLeft === undefined) _retriesLeft = 1;
+  return gasPostOnce(body).catch(function(err) {
+    if (_retriesLeft <= 0) throw err;
+    return new Promise(function(resolve) { setTimeout(resolve, 800); })
+      .then(function() { return gasPost(body, _retriesLeft - 1); });
   });
 }
 
