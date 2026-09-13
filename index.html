@@ -8539,7 +8539,18 @@ let sortDir = 1; // 1=오름차순, -1=내림차순
 let funeralOrders = [];
 let funeralSortKey = 'deliveryDate';
 let funeralSortDir = 1;
-let gasUrl = localStorage.getItem('gasUrl') || 'https://script.google.com/macros/s/AKfycbxy_0D_upR_CoIK_VbH6JwOON_9uHqKSIlxLtHJI8sCeOilhS_J24oW1tdyW5FOhR-P/exec';
+// 예전 주소를 저장해둔 기기는 자동으로 새 주소로 갈아탐 — 기기마다 일일이
+// 설정에 들어가서 바꿀 필요 없게 하기 위함 (2026-09-13, 새 Apps Script
+// 프로젝트로 이전하면서 전달 지연 문제 해결)
+const NEW_GAS_URL = 'https://script.google.com/macros/s/AKfycbweHz9OiFlJo2d7OV-etlf2snEVWhvL8PleG8ljoHYtmJ-OMjZyEqorL-tKUSYQkaZz0g/exec';
+const OLD_GAS_URL = 'https://script.google.com/macros/s/AKfycbxy_0D_upR_CoIK_VbH6JwOON_9uHqKSIlxLtHJI8sCeOilhS_J24oW1tdyW5FOhR-P/exec';
+(function() {
+  const saved = localStorage.getItem('gasUrl');
+  if (saved === OLD_GAS_URL) {
+    localStorage.setItem('gasUrl', NEW_GAS_URL);
+  }
+})();
+let gasUrl = localStorage.getItem('gasUrl') || NEW_GAS_URL;
 let selectedPay = '';
 let currentModalId = null;
 let currentModalType = 'order';
