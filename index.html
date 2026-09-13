@@ -11062,6 +11062,10 @@ function switchTab(tab) {
   if (tab === 'list') {
     if (gasUrl) {
       loadOtherOrdersFromSheet(true);
+      // 처음 불러오는 중이거나 데이터가 아직 없으면 "불러오는 중..." 표시라도
+      // 보여줌 — 예전엔 여기서 아무 표시도 없어서 눌러도 반응이 없는 것처럼
+      // 보였고, 그래서 "새로고침을 꼭 눌러야 나온다"는 오해가 생겼음 (2026-09-13)
+      if (orders.length === 0) showLoading(true);
       // 개인주문 + 장례주문 동시 로딩 후 renderList 한 번만 호출
       // 장례+개인 동시 로드, 둘 다 완료 후 renderList 한 번만 호출
       Promise.all([
@@ -14827,11 +14831,15 @@ function gasGetOnce(params, urlOverride) {
     // 조용히 무시하는 빈 함수로 바꿔둔다. (사람이 몰려서 GAS 응답이 10초보다
     // 늦게 오는 경우, 이미 삭제된 콜백을 뒤늦게 호출하며 "cb... is not defined"
     // ReferenceError가 나던 문제를 막기 위함 — 2026-09-13)
+    // 예전엔 20초였는데 — 실제 구글 서버는 보통 1~2초 안에 응답하는 걸 확인함.
+    // 20초씩 기다렸다가 포기하는 걸 재시도 3번 반복하면 최악의 경우 1분 넘게
+    // 걸릴 수 있어서, 8초로 줄여 "못 받으면 빨리 포기하고 다시 시도"하도록 함
+    // (2026-09-13, "새로고침이 2분 넘게 걸림" 문제 개선)
     const timer = setTimeout(function() {
       window[cb] = function() { delete window[cb]; };
       sc.remove();
       reject(new Error('timeout'));
-    }, 20000);
+    }, 8000);
     window[cb] = function(data) { clearTimeout(timer); delete window[cb]; sc.remove(); resolve(data); };
     sc.onerror = function() {
       clearTimeout(timer);
@@ -14886,8 +14894,9 @@ function diagnosGAS() {
 
 function gasPostOnce(body, urlOverride) {
   const controller = new AbortController();
-  // 12초→20초로 늘림 (컴퓨터 여러 대에서 동시에 저장할 때 GAS 응답이 늦어질 수 있어서 — 2026-09-13)
-  const timeout = setTimeout(function(){ controller.abort(); }, 20000);
+  // 20초는 너무 길었음 — 실제 저장은 보통 1~2초면 끝나고, 지금은 실패해도
+  // 동기화 큐가 알아서 재시도하니 빨리 포기하고 큐로 넘기는 게 나음 (2026-09-13)
+  const timeout = setTimeout(function(){ controller.abort(); }, 10000);
   const targetUrl = urlOverride || gasUrl;
   return fetch(targetUrl, {
     method: 'POST',
