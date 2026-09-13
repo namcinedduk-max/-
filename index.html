@@ -9373,17 +9373,20 @@ document.addEventListener('DOMContentLoaded', () => {
   startClock();
   initQuickAlarm();
   // A↔B 2대 동기화: 일반·웨딩 주문도 주기적으로 자동 새로고침
+  // 이 탭의 로컬 "방금 읽었음" 체크만 건너뛰어서 다른 기기 변경사항은 계속
+  // 반영하되, 서버 쪽 3분 캐시는 그대로 써서 여러 대가 동시에 돌 때
+  // 실제 시트 읽기 횟수를 줄임 (2026-09-13)
   if (gasUrl) {
     // 일반 주문: 2분 30초마다 조용히 새로고침 (장례 2분 인터벌과 엇갈리게)
     setInterval(function() {
       if (typeof gasUrl !== 'undefined' && gasUrl) {
-        loadOrdersFromSheet(true, true).catch(function(){});
+        loadOrdersFromSheet(true, false, true).catch(function(){});
       }
     }, 150000); // 2분 30초
     // 웨딩 주문: 3분마다 조용히 새로고침
     setInterval(function() {
       if (typeof gasUrl !== 'undefined' && gasUrl) {
-        loadWeddingOrdersFromSheet(true, true).catch(function(){});
+        loadWeddingOrdersFromSheet(true, false, true).catch(function(){});
       }
     }, 180000); // 3분
   }
@@ -9672,10 +9675,11 @@ function initQuickAlarm() {
   checkQuickAlarms();
   setInterval(checkQuickAlarms, 30000); // 30초마다 검사
   // 다른 기기에서 받은 주문도 잡기 위해 2분마다 조용히 동기화 (알림 켜진 경우만)
+  // 예전엔 force=true로 서버 캐시까지 무시했음 — 로컬 체크만 건너뛰도록 수정 (2026-09-13)
   setInterval(() => {
     if (QUICK_ALARM.enabled && typeof gasUrl !== 'undefined' && gasUrl
         && typeof loadFuneralOrdersFromSheet === 'function') {
-      loadFuneralOrdersFromSheet(true, true).then(checkQuickAlarms).catch(() => {});
+      loadFuneralOrdersFromSheet(true, false, true).then(checkQuickAlarms).catch(() => {});
     }
   }, 120000);
   // A·B 공유: 1분마다 서버의 발송완료 목록을 받아와 합침 (다른 컴퓨터가 보낸 것 반영)
@@ -14964,15 +14968,18 @@ function requestNotifPermission() {}
 const ORDERS_RECENT_DAYS = 30;
 let _ordersFullLoaded = false; // 전체를 불러온 상태인지
 
-function loadOrdersFromSheet(silent, force) {
+function loadOrdersFromSheet(silent, force, skipLocalSkip) {
   if (!gasUrl) return Promise.resolve();
   // 캐시 유효 시 재요청 생략 (force=true 또는 silent=false면 항상 갱신)
-  if (!force && silent && orders.length > 0 && Date.now() - _cacheTs.orders < SHEET_CACHE_TTL) {
+  // skipLocalSkip: 이 탭의 "방금 읽었으니 생략" 체크만 건너뛰고(다른 기기가
+  // 바꾼 걸 놓치지 않게), 서버 쪽 3분 캐시는 그대로 활용 — 여러 대가 동시에
+  // 자동으로 폴링할 때 서버 부담을 줄이기 위한 용도 (2026-09-13)
+  if (!force && !skipLocalSkip && silent && orders.length > 0 && Date.now() - _cacheTs.orders < SHEET_CACHE_TTL) {
     return Promise.resolve();
   }
   if (!silent) showLoading(true);
   var _params = { action: 'getOrders', days: ORDERS_RECENT_DAYS };
-  if (force) _params.force = 1; // 새로고침·접수 직후엔 서버 캐시 건너뛰고 최신
+  if (force) _params.force = 1; // 새로고침·접수 직후엔 서버 캐시까지 건너뛰고 진짜 최신
   return gasGet(_params)
     .then(data => {
       if (data.success) {
@@ -15068,7 +15075,7 @@ function _initPendingPoller() {
     }
   }).catch(() => {});
 
-  // 3) 10초마다 새 주문 감지
+  // 3) 5분마다 새 주문 감지
   setInterval(() => {
     if (!gasUrl || _prevPendingIds === null) return;
     fetchPending().then(pending => {
@@ -16341,9 +16348,9 @@ function printFuneralOrders() {
   w.document.close();
 }
 
-function loadFuneralOrdersFromSheet(silent, force) {
+function loadFuneralOrdersFromSheet(silent, force, skipLocalSkip) {
   if (!gasUrl) return Promise.resolve();
-  if (!force && silent && funeralOrders.length > 0 && Date.now() - _cacheTs.funeral < SHEET_CACHE_TTL) {
+  if (!force && !skipLocalSkip && silent && funeralOrders.length > 0 && Date.now() - _cacheTs.funeral < SHEET_CACHE_TTL) {
     return Promise.resolve();
   }
   var _paramsF = { action: 'getOrders', days: ORDERS_RECENT_DAYS };
@@ -17844,9 +17851,9 @@ function resetWeddingForm() {
   const g = document.getElementById('w_priceGuide'); if (g) g.style.display = 'none';
 }
 
-function loadWeddingOrdersFromSheet(silent, force) {
+function loadWeddingOrdersFromSheet(silent, force, skipLocalSkip) {
   if (!gasUrl) return Promise.resolve();
-  if (!force && silent && weddingOrders.length > 0 && Date.now() - _cacheTs.wedding < SHEET_CACHE_TTL) {
+  if (!force && !skipLocalSkip && silent && weddingOrders.length > 0 && Date.now() - _cacheTs.wedding < SHEET_CACHE_TTL) {
     return Promise.resolve();
   }
   // 예전엔 fetch()로 직접 호출해서 장례식장과 같은 CORS 문제가 있었고,
