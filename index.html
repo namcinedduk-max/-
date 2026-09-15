@@ -12490,6 +12490,7 @@ function updateStats() {
   document.getElementById('stat-sales').textContent = salesToday.toLocaleString();
   document.getElementById('stat-total').textContent = orders.length.toLocaleString();
   document.getElementById('stat-unpaid').textContent = unpaid.toLocaleString();
+  refreshUnpaidTotal('order', 'stat-unpaid');
 }
 
 // 배송시간 정규화 - 날짜객체로 변환된 경우 처리
@@ -14871,6 +14872,29 @@ function gasGet(params, _retriesLeft) {
   });
 }
 
+// ── 미수금 합계는 "최근 N일" 제한과 무관하게 전체 기간 기준으로 따로 조회.
+//    (목록 로딩 속도를 위해 최근 것만 불러오게 되면서, 배송일이 오래된
+//    미수금 주문들이 화면 데이터에서 빠져 합계가 실제보다 적게 보이는
+//    문제가 있었음 — 웨딩홀/기타업체처럼 결제가 몇 주~몇 달 밀리는
+//    거래처에서 특히 두드러짐. 2026-09-13)
+// updateStats류 함수가 검색·필터 바뀔 때마다 자주 불려서, 매번 네트워크
+// 요청을 보내면 부담이 되므로 종류별로 최소 30초 간격만 실제로 조회함
+const _unpaidTotalLastFetch = {};
+function refreshUnpaidTotal(sheetType, elementId) {
+  if (!gasUrl) return;
+  const now = Date.now();
+  if (_unpaidTotalLastFetch[sheetType] && now - _unpaidTotalLastFetch[sheetType] < 30000) return;
+  _unpaidTotalLastFetch[sheetType] = now;
+  gasGet({ action: 'getUnpaidTotal', sheet: sheetType })
+    .then(function(data) {
+      if (data && data.success) {
+        var el = document.getElementById(elementId);
+        if (el) el.textContent = Number(data.total || 0).toLocaleString();
+      }
+    })
+    .catch(function() { /* 실패하면 그냥 최근분 기준 합계(이미 표시된 값)를 유지 */ });
+}
+
 function diagnosGAS() {
   if (!gasUrl) { alert('GAS URL이 설정되지 않았어요.'); return; }
   const results = [];
@@ -15262,6 +15286,7 @@ function updateFuneralStats() {
   document.getElementById('fstat-sales').textContent = salesToday.toLocaleString();
   document.getElementById('fstat-total').textContent = funeralOrders.length.toLocaleString();
   document.getElementById('fstat-unpaid').textContent = unpaid.toLocaleString();
+  refreshUnpaidTotal('funeral', 'fstat-unpaid');
 }
 
 // 현재 선택된 장례식장 카테고리 ('all' | 'chungdae' | 'restaurant' | 'daecheong')
@@ -17912,6 +17937,7 @@ function updateWeddingStats() {
   if (el('wstat-sales')) el('wstat-sales').textContent = todaySales.toLocaleString();
   if (el('wstat-total')) el('wstat-total').textContent = weddingOrders.length.toLocaleString();
   if (el('wstat-unpaid')) el('wstat-unpaid').textContent = unpaid.toLocaleString();
+  refreshUnpaidTotal('wedding', 'wstat-unpaid');
 }
 
 function renderWeddingList() {
@@ -18873,6 +18899,7 @@ function updateOtherStats() {
   el('otstat-sales', todaySales.toLocaleString());
   el('otstat-total', otherOrders.length.toLocaleString());
   el('otstat-unpaid', unpaid.toLocaleString());
+  refreshUnpaidTotal('other', 'otstat-unpaid');
 }
 
 function renderOtherList() {
