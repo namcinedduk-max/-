@@ -240,7 +240,7 @@ function forceRefreshApp() {
     padding: 8px 12px;
   }
   .tteok-item-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--brown-deep); }
-  .tteok-item-qty { width: 90px; font-size: 13px; }
+  .tteok-item-qty { min-width: 90px; font-size: 13px; white-space: nowrap; text-align: right; }
   .tteok-item-del {
     background: #fee2e2;
     color: var(--accent-red);
@@ -2140,15 +2140,12 @@ function forceRefreshApp() {
                 <button type="button" onclick="addOtherTteokItem('20kg')" style="padding:7px 12px;background:#6b7280;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">20kg</button>
               </div>
               <div id="ot_qty_kg_input" style="display:none;gap:6px;align-items:center;">
-                <input type="number" id="ot_tteokKg" placeholder="수량" min="0" step="0.1" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
-                <div style="display:flex;gap:3px;">
-                  <button type="button" id="ot_unitBtn_kg" onclick="setOtherQtyUnit('kg')" style="padding:8px 10px;border:1.5px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">kg</button>
-                  <button type="button" id="ot_unitBtn_count" onclick="setOtherQtyUnit('count')" style="padding:8px 10px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">개</button>
-                </div>
-                <button type="button" onclick="addOtherTteokItem()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+                <input type="number" id="ot_tteokKg" placeholder="수량" min="0" step="0.1" style="width:70px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+                <button type="button" id="ot_tteokQtyUnit" onclick="toggleOtherQtyUnit()" data-unit="kg" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:#f9f5f0;color:var(--text-mid);cursor:pointer;min-width:36px;">kg</button>
+                <button class="btn-add-tteok" type="button" onclick="addOtherTteokItem()">+ 추가</button>
               </div>
               <input type="text" id="ot_tteokQty" placeholder="수량" style="display:none;">
-              <button type="button" id="ot_tteok_default_btn" onclick="addOtherTteokItem()" style="display:none;padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+              <button class="btn-add-tteok" type="button" id="ot_tteok_default_btn" onclick="addOtherTteokItem()" style="display:none;">+ 추가</button>
             </div>
           </div>
         </div>
@@ -3354,12 +3351,9 @@ function forceRefreshApp() {
               <button type="button" onclick="oeAddTteok('20kg')" style="padding:6px 9px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">20kg</button>
             </div>
             <div id="oe_qty_kg_input" style="display:none;gap:4px;align-items:center;">
-              <input type="number" id="oe_tteokKg" placeholder="수량" style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
-              <div style="display:flex;gap:3px;">
-                <button type="button" id="oe_unitBtn_kg" onclick="setOeQtyUnit('kg')" style="padding:6px 8px;border:1.5px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">kg</button>
-                <button type="button" id="oe_unitBtn_count" onclick="setOeQtyUnit('count')" style="padding:6px 8px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">개</button>
-              </div>
-              <button type="button" onclick="oeAddTteok()" style="padding:6px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">+ 추가</button>
+              <input type="number" id="oe_tteokKg" placeholder="kg" style="width:70px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+              <button type="button" id="oe_tteokQtyUnit" onclick="toggleOeQtyUnit()" data-unit="kg" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:#f9f5f0;color:var(--text-mid);cursor:pointer;min-width:32px;">kg</button>
+              <button class="btn-add-tteok" type="button" onclick="oeAddTteok()" style="padding:6px 10px;font-size:12px;">+ 추가</button>
             </div>
           </div>
           <div id="oe_tteokList" style="display:flex;flex-direction:column;gap:4px;"></div>
@@ -18729,16 +18723,22 @@ function updateOtherVenueSelects() {
   });
 }
 
-// ── 주문 입력 UI
+// ── 주문 입력 UI (웨딩홀과 동일한 방식: 버튼 하나로 kg/개 전환)
 let otherQtyUnit = 'kg';
 function setOtherQtyUnit(unit) {
   otherQtyUnit = unit;
-  const btnKg = document.getElementById('ot_unitBtn_kg');
-  const btnCount = document.getElementById('ot_unitBtn_count');
+  const btn = document.getElementById('ot_tteokQtyUnit');
   const kgEl = document.getElementById('ot_tteokKg');
-  if (btnKg) { btnKg.style.background = unit === 'kg' ? '#3b82f6' : '#fff'; btnKg.style.color = unit === 'kg' ? '#fff' : 'var(--brown-mid)'; btnKg.style.borderColor = unit === 'kg' ? '#3b82f6' : 'var(--border)'; }
-  if (btnCount) { btnCount.style.background = unit === 'count' ? '#3b82f6' : '#fff'; btnCount.style.color = unit === 'count' ? '#fff' : 'var(--brown-mid)'; btnCount.style.borderColor = unit === 'count' ? '#3b82f6' : 'var(--border)'; }
-  if (kgEl) kgEl.placeholder = unit === 'count' ? '개수' : '수량';
+  if (btn) {
+    btn.dataset.unit = unit;
+    btn.textContent = unit === 'count' ? '개' : 'kg';
+    btn.style.background = unit === 'count' ? '#ede9fe' : '#f9f5f0';
+    btn.style.color = unit === 'count' ? '#7c3aed' : 'var(--text-mid)';
+  }
+  if (kgEl) { kgEl.placeholder = unit === 'count' ? '개' : 'kg'; kgEl.step = unit === 'count' ? '1' : '0.1'; }
+}
+function toggleOtherQtyUnit() {
+  setOtherQtyUnit(otherQtyUnit === 'count' ? 'kg' : 'count');
 }
 
 function onOtherTteokSelectChange() {
@@ -18854,13 +18854,39 @@ function removeOtherTteokItem(idx) {
   calcOtherVenuePrice();
 }
 
+// 품목 한 줄의 예상 금액 계산 (단가 × 수량) — 목록에 바로 보여주기 위함 (2026-09-13)
+function _otherItemLineAmount(item) {
+  const venue = document.getElementById('ot_venueName').value;
+  const venueInfo = otherVenues.find(v => v.name === venue);
+  const prices = otherVenuePrices[venue] || {};
+  const priceVal = prices[item.name];
+  if (!priceVal || !item.qty) return null;
+  const qtyStr = String(item.qty).trim();
+  const is5kg = venueInfo && venueInfo.type === '5kg';
+  if (is5kg && typeof priceVal === 'object') {
+    const p5 = priceVal.price5 || 0;
+    if (qtyStr === '5kg') return p5;
+    if (qtyStr === '10kg') return p5 * 2;
+    if (qtyStr === '15kg') return p5 * 3;
+    if (qtyStr === '20kg') return p5 * 4;
+    return null;
+  }
+  const unitPrice = (priceVal && typeof priceVal === 'object')
+    ? (priceVal.price5 !== undefined ? priceVal.price5 : (priceVal.price || 0))
+    : priceVal;
+  const m = qtyStr.match(/^(\d+\.?\d*)/);
+  return m ? parseFloat(m[1]) * unitPrice : null;
+}
+
 function renderOtherTteokList() {
   const el = document.getElementById('ot_tteokList');
   if (!el) return;
   if (otherTteokItems.length === 0) { el.innerHTML = ''; return; }
-  el.innerHTML = otherTteokItems.map((item, i) =>
-    `<div class="tteok-item"><span class="tteok-item-name">${item.name}</span><span class="tteok-item-qty">${item.qty || ''}</span><button type="button" onclick="removeOtherTteokItem(${i})" class="tteok-item-del">✕</button></div>`
-  ).join('');
+  el.innerHTML = otherTteokItems.map((item, i) => {
+    const amt = _otherItemLineAmount(item);
+    const amtHtml = amt !== null ? ` <span style="color:#0891b2;font-weight:700;">(${Math.round(amt).toLocaleString()}원)</span>` : '';
+    return `<div class="tteok-item"><span class="tteok-item-name">${item.name}</span><span class="tteok-item-qty">${item.qty || ''}${amtHtml}</span><button type="button" onclick="removeOtherTteokItem(${i})" class="tteok-item-del">✕</button></div>`;
+  }).join('');
 }
 
 function calcOtherVenuePrice() {
@@ -19104,12 +19130,18 @@ function oeUpdateTteokSelect() {
 let oeQtyUnit = 'kg';
 function setOeQtyUnit(unit) {
   oeQtyUnit = unit;
-  const btnKg = document.getElementById('oe_unitBtn_kg');
-  const btnCount = document.getElementById('oe_unitBtn_count');
+  const btn = document.getElementById('oe_tteokQtyUnit');
   const kgEl = document.getElementById('oe_tteokKg');
-  if (btnKg) { btnKg.style.background = unit === 'kg' ? '#3b82f6' : '#fff'; btnKg.style.color = unit === 'kg' ? '#fff' : 'var(--brown-mid)'; btnKg.style.borderColor = unit === 'kg' ? '#3b82f6' : 'var(--border)'; }
-  if (btnCount) { btnCount.style.background = unit === 'count' ? '#3b82f6' : '#fff'; btnCount.style.color = unit === 'count' ? '#fff' : 'var(--brown-mid)'; btnCount.style.borderColor = unit === 'count' ? '#3b82f6' : 'var(--border)'; }
-  if (kgEl) kgEl.placeholder = unit === 'count' ? '개수' : '수량';
+  if (btn) {
+    btn.dataset.unit = unit;
+    btn.textContent = unit === 'count' ? '개' : 'kg';
+    btn.style.background = unit === 'count' ? '#ede9fe' : '#f9f5f0';
+    btn.style.color = unit === 'count' ? '#7c3aed' : 'var(--text-mid)';
+  }
+  if (kgEl) { kgEl.placeholder = unit === 'count' ? '개' : 'kg'; kgEl.step = unit === 'count' ? '1' : '0.1'; }
+}
+function toggleOeQtyUnit() {
+  setOeQtyUnit(oeQtyUnit === 'count' ? 'kg' : 'count');
 }
 
 function oeUpdateQtyUI() {
@@ -19169,14 +19201,37 @@ function oeRemoveTteok(idx) {
   oeCalcVenuePrice();
 }
 
+function _oeItemLineAmount(item) {
+  const venue = document.getElementById('oe_venueName').value;
+  const venueInfo = (typeof otherVenues !== 'undefined' ? otherVenues : []).find(v => v.name === venue);
+  const prices = (typeof otherVenuePrices !== 'undefined' ? otherVenuePrices : {})[venue] || {};
+  const pv = prices[item.name];
+  if (!pv || !item.qty) return null;
+  const qtyStr = String(item.qty).trim();
+  const is5 = venueInfo && venueInfo.type === '5kg';
+  if (is5 && typeof pv === 'object') {
+    const p5 = pv.price5 || 0;
+    if (qtyStr === '5kg') return p5;
+    if (qtyStr === '10kg') return p5 * 2;
+    if (qtyStr === '15kg') return p5 * 3;
+    if (qtyStr === '20kg') return p5 * 4;
+    return null;
+  }
+  const unit = (pv && typeof pv === 'object') ? (pv.price5 !== undefined ? pv.price5 : (pv.price || 0)) : pv;
+  const m = qtyStr.match(/^(\d+\.?\d*)/);
+  return m ? parseFloat(m[1]) * unit : null;
+}
+
 function oeRenderTteokList() {
   const el = document.getElementById('oe_tteokList');
   if (!el) return;
   if (oeTteokItems.length === 0) { el.innerHTML = ''; return; }
   el.innerHTML = oeTteokItems.map(function(item, i) {
+    const amt = _oeItemLineAmount(item);
+    const amtHtml = amt !== null ? ' <span style="color:#0891b2;font-weight:700;font-size:11px;">(' + Math.round(amt).toLocaleString() + '원)</span>' : '';
     return '<div style="display:flex;align-items:center;gap:6px;background:#f9fafb;border:1px solid var(--border);border-radius:6px;padding:5px 8px;">'
-      + '<span style="flex:1;font-size:12px;font-weight:700;">🍡 ' + item.name + '</span>'
-      + '<input type="text" value="' + (item.qty || '') + '" onchange="oeTteokItems[' + i + '].qty=this.value;oeCalcVenuePrice();" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center;">'
+      + '<span style="flex:1;font-size:12px;font-weight:700;">🍡 ' + item.name + amtHtml + '</span>'
+      + '<input type="text" value="' + (item.qty || '') + '" onchange="oeTteokItems[' + i + '].qty=this.value;oeRenderTteokList();oeCalcVenuePrice();" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;text-align:center;">'
       + '<button onclick="oeRemoveTteok(' + i + ')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;">✕</button>'
       + '</div>';
   }).join('');
