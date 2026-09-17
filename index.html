@@ -2132,6 +2132,7 @@ function forceRefreshApp() {
                 <option value="">위에서 업체를 먼저 선택해주세요</option>
               </select>
               <input type="text" id="ot_tteokCustom" placeholder="직접 입력" style="display:none;">
+              <span id="ot_tteokPricePreview" style="font-size:12px;color:var(--accent-red);font-weight:700;"></span>
               <div id="ot_qty_5kg_btns" style="display:none;gap:6px;align-items:center;">
                 <button type="button" onclick="addOtherTteokItem('5kg')" style="padding:7px 14px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">5kg</button>
                 <button type="button" onclick="addOtherTteokItem('10kg')" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">10kg</button>
@@ -2139,8 +2140,11 @@ function forceRefreshApp() {
                 <button type="button" onclick="addOtherTteokItem('20kg')" style="padding:7px 12px;background:#6b7280;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">20kg</button>
               </div>
               <div id="ot_qty_kg_input" style="display:none;gap:6px;align-items:center;">
-                <input type="number" id="ot_tteokKg" placeholder="kg" min="0" step="0.1" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
-                <span style="font-size:13px;font-weight:700;">kg</span>
+                <input type="number" id="ot_tteokKg" placeholder="수량" min="0" step="0.1" style="width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
+                <div style="display:flex;gap:3px;">
+                  <button type="button" id="ot_unitBtn_kg" onclick="setOtherQtyUnit('kg')" style="padding:8px 10px;border:1.5px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">kg</button>
+                  <button type="button" id="ot_unitBtn_count" onclick="setOtherQtyUnit('count')" style="padding:8px 10px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">개</button>
+                </div>
                 <button type="button" onclick="addOtherTteokItem()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
               </div>
               <input type="text" id="ot_tteokQty" placeholder="수량" style="display:none;">
@@ -2756,6 +2760,7 @@ function forceRefreshApp() {
             <select id="other-venue-new-type" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
               <option value="kg">kg 단위</option>
               <option value="5kg">5kg 단위</option>
+              <option value="count">개수 단위</option>
             </select>
             <input id="other-venue-new-regno" placeholder="사업자번호" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
             <input id="other-venue-new-ceo" placeholder="대표자명" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
@@ -2778,6 +2783,10 @@ function forceRefreshApp() {
             <input id="other-new-tteok-name" placeholder="떡 이름 *" style="flex:2;min-width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
             <input id="other-new-tteok-price" type="number" placeholder="단가(원)" style="width:100px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
             <span id="other-price-unit-label" style="font-size:12px;color:var(--brown-mid);white-space:nowrap;">/kg</span>
+            <div id="other-price-unit-toggle" style="display:none;gap:4px;">
+              <button type="button" class="otherPriceUnit-btn" data-unit="kg" onclick="selectOtherPriceUnit('kg')" style="padding:7px 10px;border:1.5px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">kg당</button>
+              <button type="button" class="otherPriceUnit-btn" data-unit="count" onclick="selectOtherPriceUnit('count')" style="padding:7px 10px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">개당</button>
+            </div>
             <button onclick="addOtherVenuePrice()" style="padding:8px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
           </div>
         </div>
@@ -3346,6 +3355,10 @@ function forceRefreshApp() {
             </div>
             <div id="oe_qty_kg_input" style="display:none;gap:4px;align-items:center;">
               <input type="number" id="oe_tteokKg" placeholder="수량" style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+              <div style="display:flex;gap:3px;">
+                <button type="button" id="oe_unitBtn_kg" onclick="setOeQtyUnit('kg')" style="padding:6px 8px;border:1.5px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">kg</button>
+                <button type="button" id="oe_unitBtn_count" onclick="setOeQtyUnit('count')" style="padding:6px 8px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">개</button>
+              </div>
               <button type="button" onclick="oeAddTteok()" style="padding:6px 10px;background:var(--brown-mid);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;">+ 추가</button>
             </div>
           </div>
@@ -3412,6 +3425,7 @@ function forceRefreshApp() {
       <div style="display:flex;gap:6px;">
         <button type="button" class="newOtherUnit-btn" data-unit="kg" onclick="selectNewOtherUnit('kg')" style="flex:1;padding:8px;border:1.5px solid #3b82f6;background:#3b82f6;color:#fff;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">kg당</button>
         <button type="button" class="newOtherUnit-btn" data-unit="5kg" onclick="selectNewOtherUnit('5kg')" style="flex:1;padding:8px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">5kg 고정</button>
+        <button type="button" class="newOtherUnit-btn" data-unit="count" onclick="selectNewOtherUnit('count')" style="flex:1;padding:8px;border:1.5px solid var(--border);background:#fff;color:var(--brown-mid);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">개수</button>
       </div>
     </div>
 
@@ -18573,7 +18587,7 @@ function renderOtherVenueList() {
     return `<div style="border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--warm-white);margin-bottom:4px;">
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="flex:1;font-size:13px;font-weight:700;">${v.name}</span>
-        <span style="font-size:11px;color:#888;background:#f3f4f6;padding:2px 8px;border-radius:10px;">${v.type === '5kg' ? '5kg단위' : 'kg단위'}</span>
+        <span style="font-size:11px;color:#888;background:#f3f4f6;padding:2px 8px;border-radius:10px;">${v.type === '5kg' ? '5kg단위' : (v.type === 'count' ? '개수단위' : 'kg단위')}</span>
         <button onclick="toggleOtherEdit(${idx})" style="font-size:11px;padding:3px 10px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;cursor:pointer;">수정</button>
         <button onclick="removeOtherVenue('${v.name}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;">삭제</button>
       </div>
@@ -18611,12 +18625,18 @@ function addOtherVenuePrice() {
   if (!price) { showToast('단가를 입력해주세요.', 'error'); return; }
   const venueInfo = otherVenues.find(v => v.name === venue);
   if (!otherVenuePrices[venue]) otherVenuePrices[venue] = {};
-  otherVenuePrices[venue][name] = venueInfo && venueInfo.type === '5kg' ? { price5: price } : price;
+  if (venueInfo && venueInfo.type === '5kg') {
+    otherVenuePrices[venue][name] = { price5: price };
+  } else if (otherNewPriceUnit === 'count') {
+    otherVenuePrices[venue][name] = { price: price, unit: 'count' };
+  } else {
+    otherVenuePrices[venue][name] = price; // kg당 (예전과 동일한 형식 유지)
+  }
   document.getElementById('other-new-tteok-name').value = '';
   document.getElementById('other-new-tteok-price').value = '';
   saveOtherVenueData();
   renderOtherVenuePrices();
-  showToast('✅ 단가 등록됐어요!', 'success');
+  showToast('✅ 단가 등록됐어요! (' + (otherNewPriceUnit === 'count' && !(venueInfo && venueInfo.type === '5kg') ? '개당' : 'kg당') + ')', 'success');
 }
 
 function removeOtherVenuePrice(venue, name) {
@@ -18636,34 +18656,54 @@ function renderOtherVenuePrices() {
   const venueInfo = otherVenues.find(v => v.name === venue);
   const is5kg = venueInfo && venueInfo.type === '5kg';
   const unitLabel = document.getElementById('other-price-unit-label');
-  if (unitLabel) unitLabel.textContent = is5kg ? '/5kg' : '/kg';
+  const unitToggle = document.getElementById('other-price-unit-toggle');
+  // 5kg 고정 거래처는 예전처럼 "/5kg" 고정 표시, 그 외는 등록할 때마다
+  // kg당/개당을 골라서 등록할 수 있게 토글로 보여줌 (2026-09-13)
+  if (is5kg) {
+    if (unitLabel) { unitLabel.style.display = 'inline'; unitLabel.textContent = '/5kg'; }
+    if (unitToggle) unitToggle.style.display = 'none';
+  } else {
+    if (unitLabel) unitLabel.style.display = 'none';
+    if (unitToggle) unitToggle.style.display = 'flex';
+    selectOtherPriceUnit('kg'); // 새로 열 때마다 kg당으로 기본값 초기화
+  }
   const prices = otherVenuePrices[venue] || {};
   const entries = Object.entries(prices);
   if (entries.length === 0) { el.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px 0;">등록된 단가가 없어요.</div>'; return; }
   el.innerHTML = entries.map(([tteok, val]) => {
-    const p = typeof val === 'object' ? (val.price5 || 0) : val;
+    // 값 형태로 단위를 판단: {price5}=5kg고정, {price,unit:'count'}=개당, 그 외 숫자=kg당
+    let p, itemUnitTxt, itemUnitFlag;
+    if (val && typeof val === 'object' && val.price5 !== undefined) {
+      p = val.price5 || 0; itemUnitTxt = '/5kg'; itemUnitFlag = '5kg';
+    } else if (val && typeof val === 'object' && val.unit === 'count') {
+      p = val.price || 0; itemUnitTxt = '/개'; itemUnitFlag = 'count';
+    } else {
+      p = (val && typeof val === 'object') ? (val.price || 0) : val; itemUnitTxt = '/kg'; itemUnitFlag = 'kg';
+    }
     const eid = 'edit-other-' + venue.replace(/[^a-zA-Z0-9가-힣]/g,'_') + '-' + tteok.replace(/[^a-zA-Z0-9가-힣]/g,'_');
     return `<div style="background:var(--warm-white);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:4px;">
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="flex:1;font-size:13px;font-weight:700;">${tteok}</span>
-        <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(p).toLocaleString()}원${is5kg ? '/5kg' : '/kg'}</span>
+        <span style="font-size:13px;color:var(--brown-mid);font-weight:600;">${Number(p).toLocaleString()}원${itemUnitTxt}</span>
         <button onclick="toggleVenueEdit('${eid}')" style="padding:4px 10px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">✏️ 수정</button>
         <button onclick="removeOtherVenuePrice('${venue}','${tteok}')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;font-weight:700;">삭제</button>
       </div>
       <div id="${eid}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
         <div style="display:flex;gap:8px;align-items:center;">
           <input type="number" id="${eid}-price" value="${p}" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:right;">
-          <span style="font-size:13px;color:var(--brown-mid);white-space:nowrap;">원${is5kg ? '/5kg' : '/kg'}</span>
-          <button onclick="saveOtherVenuePriceEdit('${venue}','${tteok}','${eid}','${is5kg}')" style="padding:7px 14px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 저장</button>
+          <span style="font-size:13px;color:var(--brown-mid);white-space:nowrap;">원${itemUnitTxt}</span>
+          <button onclick="saveOtherVenuePriceEdit('${venue}','${tteok}','${eid}','${itemUnitFlag}')" style="padding:7px 14px;background:var(--brown-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 저장</button>
         </div>
       </div>
     </div>`;
   }).join('');
 }
 
-function saveOtherVenuePriceEdit(venue, tteok, eid, is5kg) {
+function saveOtherVenuePriceEdit(venue, tteok, eid, unitFlag) {
   const p = parseInt(document.getElementById(eid + '-price').value) || 0;
-  otherVenuePrices[venue][tteok] = (is5kg === 'true') ? { price5: p } : p;
+  if (unitFlag === '5kg') otherVenuePrices[venue][tteok] = { price5: p };
+  else if (unitFlag === 'count') otherVenuePrices[venue][tteok] = { price: p, unit: 'count' };
+  else otherVenuePrices[venue][tteok] = p;
   saveOtherVenueData();
   if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { otherVenues, otherVenuePrices } }).catch(() => {});
   renderOtherVenuePrices();
@@ -18690,11 +18730,51 @@ function updateOtherVenueSelects() {
 }
 
 // ── 주문 입력 UI
+let otherQtyUnit = 'kg';
+function setOtherQtyUnit(unit) {
+  otherQtyUnit = unit;
+  const btnKg = document.getElementById('ot_unitBtn_kg');
+  const btnCount = document.getElementById('ot_unitBtn_count');
+  const kgEl = document.getElementById('ot_tteokKg');
+  if (btnKg) { btnKg.style.background = unit === 'kg' ? '#3b82f6' : '#fff'; btnKg.style.color = unit === 'kg' ? '#fff' : 'var(--brown-mid)'; btnKg.style.borderColor = unit === 'kg' ? '#3b82f6' : 'var(--border)'; }
+  if (btnCount) { btnCount.style.background = unit === 'count' ? '#3b82f6' : '#fff'; btnCount.style.color = unit === 'count' ? '#fff' : 'var(--brown-mid)'; btnCount.style.borderColor = unit === 'count' ? '#3b82f6' : 'var(--border)'; }
+  if (kgEl) kgEl.placeholder = unit === 'count' ? '개수' : '수량';
+}
+
 function onOtherTteokSelectChange() {
   const sel = document.getElementById('ot_tteokSelect');
   const custom = document.getElementById('ot_tteokCustom');
   if (sel.value === '직접입력') { custom.style.display = 'block'; custom.focus(); }
   else { custom.style.display = 'none'; custom.value = ''; }
+  updateOtherItemUnitUI();
+}
+
+// 품목을 고르면, 그 품목에 등록된 단가 단위(kg/개)를 보고 입력칸 옆 토글을
+// 자동으로 맞춰줌 (직접 바꿀 수도 있음). 칸을 두 개로 나눠 보여줬다 숨겼다
+// 하니 오히려 헷갈린다고 해서, 칸 하나 + 단위 버튼으로 단순화함 (2026-09-13)
+function updateOtherItemUnitUI() {
+  const venue = document.getElementById('ot_venueName').value;
+  const sel = document.getElementById('ot_tteokSelect');
+  if (!venue || !sel) return;
+  const venueInfo = otherVenues.find(v => v.name === venue);
+  const preview = document.getElementById('ot_tteokPricePreview');
+  const prices = otherVenuePrices[venue] || {};
+  const val = prices[sel.value];
+  if (preview) {
+    if (!sel.value || sel.value === '직접입력' || !val) {
+      preview.textContent = '';
+    } else if (val && typeof val === 'object' && val.price5 !== undefined) {
+      preview.textContent = Number(val.price5).toLocaleString() + '원/5kg';
+    } else if (val && typeof val === 'object' && val.unit === 'count') {
+      preview.textContent = Number(val.price || 0).toLocaleString() + '원/개';
+    } else {
+      preview.textContent = Number(val).toLocaleString() + '원/kg';
+    }
+  }
+  if (venueInfo && venueInfo.type === '5kg') return; // 5kg 고정은 updateOtherQtyUI가 처리
+  if (!sel.value || sel.value === '직접입력' || !val) return; // 모르면 직전 상태 유지
+  const isCountItem = val && typeof val === 'object' && val.unit === 'count';
+  setOtherQtyUnit(isCountItem ? 'count' : 'kg');
 }
 
 function updateOtherVenueTteokSelect() {
@@ -18736,6 +18816,7 @@ function updateOtherQtyUI() {
     if (kgInput) kgInput.style.display = 'flex';
     if (defBtn) defBtn.style.display = 'none';
     if (defQty) defQty.style.display = 'none';
+    setOtherQtyUnit('kg');
   }
 }
 
@@ -18750,17 +18831,20 @@ function addOtherTteokItem(fixedQty) {
   } else {
     const kgEl = document.getElementById('ot_tteokKg');
     const qtyEl = document.getElementById('ot_tteokQty');
-    if (kgEl && kgEl.closest('#ot_qty_kg_input') && kgEl.closest('#ot_qty_kg_input').style.display !== 'none') {
-      qty = kgEl.value ? kgEl.value + 'kg' : '';
+    const kgVisible = kgEl && kgEl.closest('#ot_qty_kg_input') && kgEl.closest('#ot_qty_kg_input').style.display !== 'none';
+    if (kgVisible && kgEl.value) {
+      qty = kgEl.value + (otherQtyUnit === 'count' ? '개' : 'kg');
       kgEl.value = '';
     } else if (qtyEl) {
       qty = qtyEl.value.trim();
       qtyEl.value = '';
     }
   }
+  if (!qty) { showToast('수량을 입력해주세요.', 'error'); return; }
   otherTteokItems.push({ name, qty });
   renderOtherTteokList();
   sel.value = ''; custom.style.display = 'none'; custom.value = '';
+  updateOtherItemUnitUI();
   calcOtherVenuePrice();
 }
 
@@ -18801,7 +18885,10 @@ function calcOtherVenuePrice() {
       else if (qtyStr === '15kg') total += p5 * 3;
       else if (qtyStr === '20kg') total += p5 * 4;
     } else {
-      const unitPrice = typeof priceVal === 'object' ? (priceVal.price5 || 0) : priceVal;
+      // {price5}=5kg형식(위 분기가 안 맞을 때 대비), {price,unit:'count'}=개당, 숫자=kg당
+      const unitPrice = (priceVal && typeof priceVal === 'object')
+        ? (priceVal.price5 !== undefined ? priceVal.price5 : (priceVal.price || 0))
+        : priceVal;
       const m = qtyStr.match(/^(\d+\.?\d*)/);
       if (m) total += parseFloat(m[1]) * unitPrice;
     }
@@ -19014,6 +19101,17 @@ function oeUpdateTteokSelect() {
   }
 }
 
+let oeQtyUnit = 'kg';
+function setOeQtyUnit(unit) {
+  oeQtyUnit = unit;
+  const btnKg = document.getElementById('oe_unitBtn_kg');
+  const btnCount = document.getElementById('oe_unitBtn_count');
+  const kgEl = document.getElementById('oe_tteokKg');
+  if (btnKg) { btnKg.style.background = unit === 'kg' ? '#3b82f6' : '#fff'; btnKg.style.color = unit === 'kg' ? '#fff' : 'var(--brown-mid)'; btnKg.style.borderColor = unit === 'kg' ? '#3b82f6' : 'var(--border)'; }
+  if (btnCount) { btnCount.style.background = unit === 'count' ? '#3b82f6' : '#fff'; btnCount.style.color = unit === 'count' ? '#fff' : 'var(--brown-mid)'; btnCount.style.borderColor = unit === 'count' ? '#3b82f6' : 'var(--border)'; }
+  if (kgEl) kgEl.placeholder = unit === 'count' ? '개수' : '수량';
+}
+
 function oeUpdateQtyUI() {
   const venue = document.getElementById('oe_venueName').value;
   const venueInfo = (typeof otherVenues !== 'undefined' ? otherVenues : []).find(v => v.name === venue);
@@ -19022,6 +19120,7 @@ function oeUpdateQtyUI() {
   const is5 = venueInfo && venueInfo.type === '5kg';
   if (btn5) btn5.style.display = is5 ? 'flex' : 'none';
   if (kgIn) kgIn.style.display = is5 ? 'none' : 'flex';
+  if (!is5) setOeQtyUnit('kg');
 }
 
 function oeOnTteokSelectChange() {
@@ -19030,6 +19129,21 @@ function oeOnTteokSelectChange() {
   if (!custom) return;
   if (sel.value === '직접입력') { custom.style.display = 'block'; custom.focus(); }
   else { custom.style.display = 'none'; custom.value = ''; }
+  oeUpdateItemUnitUI();
+}
+
+// 품목을 고르면, 등록된 단가 단위(kg/개)에 맞춰 토글을 자동으로 맞춰줌 (2026-09-13)
+function oeUpdateItemUnitUI() {
+  const venue = document.getElementById('oe_venueName').value;
+  const sel = document.getElementById('oe_tteokSelect');
+  if (!venue || !sel) return;
+  const venueInfo = (typeof otherVenues !== 'undefined' ? otherVenues : []).find(v => v.name === venue);
+  if (venueInfo && venueInfo.type === '5kg') return; // 5kg 고정은 oeUpdateQtyUI가 처리
+  const prices = (typeof otherVenuePrices !== 'undefined' ? otherVenuePrices : {})[venue] || {};
+  const val = prices[sel.value];
+  if (!sel.value || sel.value === '직접입력' || !val) return; // 모르면 직전 상태 유지
+  const isCountItem = val && typeof val === 'object' && val.unit === 'count';
+  setOeQtyUnit(isCountItem ? 'count' : 'kg');
 }
 
 function oeAddTteok(fixedQty) {
@@ -19040,11 +19154,12 @@ function oeAddTteok(fixedQty) {
   let qty = fixedQty || '';
   if (!fixedQty) {
     const kgEl = document.getElementById('oe_tteokKg');
-    if (kgEl && kgEl.value) { qty = kgEl.value + 'kg'; kgEl.value = ''; }
+    if (kgEl && kgEl.value) { qty = kgEl.value + (oeQtyUnit === 'count' ? '개' : 'kg'); kgEl.value = ''; }
   }
   oeTteokItems.push({ name: name, qty: qty });
   oeRenderTteokList();
   sel.value = ''; if (custom) { custom.style.display = 'none'; custom.value = ''; }
+  oeUpdateItemUnitUI();
   oeCalcVenuePrice();
 }
 
@@ -19086,7 +19201,9 @@ function oeCalcVenuePrice() {
       else if (qtyStr === '20kg') total += p5 * 4;
       else { const u = Math.floor((parseFloat(qtyStr) || 0) / 5); total += u * p5; }
     } else {
-      const unit = typeof pv === 'object' ? (pv.price5 || 0) : pv;
+      const unit = (pv && typeof pv === 'object')
+        ? (pv.price5 !== undefined ? pv.price5 : (pv.price || 0))
+        : pv;
       const m = qtyStr.match(/^(\d+\.?\d*)/);
       if (m) total += parseFloat(m[1]) * unit;
     }
@@ -19943,6 +20060,12 @@ function countVenuePrices(venueName, type) {
 
 let currentVenueFilter = 'all';
 let expandedVenueName = null;
+let vCardPriceUnit = {}; // 거래처 카드별 "새 단가 등록" 단위 선택 상태 (kg/count)
+
+function vCardSelectPriceUnit(venueName, unit) {
+  vCardPriceUnit[venueName] = unit;
+  renderVenuesList();
+}
 
 function filterVenueList(filter) {
   currentVenueFilter = filter;
@@ -19990,8 +20113,12 @@ function renderPriceRows(data, venueName) {
         + ' · <span style="color:#16a34a;font-weight:600;">' + p10.toLocaleString() + '원/10kg</span></span>' + removeBtn + '</span></div>';
     }
     if (data.format === 'other') {
-      const p = (typeof val === 'object') ? (val.price5 || val.price || 0) : val;
-      const unit = data.unit === '5kg' ? '/5kg' : '/kg';
+      // {price5}=5kg고정, {price,unit:'count'}=개당, 그 외 숫자=kg당 — 값 자체로 판단
+      // (거래처 전체가 아니라 품목마다 단위가 다를 수 있음, 2026-09-13)
+      let p, unit;
+      if (val && typeof val === 'object' && val.price5 !== undefined) { p = val.price5; unit = '/5kg'; }
+      else if (val && typeof val === 'object' && val.unit === 'count') { p = val.price || 0; unit = '/개'; }
+      else { p = (val && typeof val === 'object') ? (val.price || 0) : val; unit = '/kg'; }
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">'
         + '<span>' + name + '</span>'
         + '<span style="display:flex;align-items:center;"><span style="color:#0891b2;font-weight:600;">' + p.toLocaleString() + '원' + unit + '</span>' + removeBtn + '</span></div>';
@@ -20011,6 +20138,21 @@ function renderPriceAddForm(v, data) {
       + '<input type="text" id="vCardAdd-name-' + safeName + '" placeholder="떡 이름" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
       + '<input type="number" id="vCardAdd-p5-' + safeName + '" placeholder="5kg" style="padding:6px 8px;border:1px solid #3b82f6;border-radius:6px;font-size:12px;text-align:right;">'
       + '<input type="number" id="vCardAdd-p10-' + safeName + '" placeholder="10kg" style="padding:6px 8px;border:1px solid #16a34a;border-radius:6px;font-size:12px;text-align:right;">'
+      + '<button onclick="event.stopPropagation();vCardAddPrice(\'' + safeName + '\')" style="padding:6px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
+      + '</div>';
+  }
+  // 기타업체(5kg 고정 아님)는 한 거래처 안에서도 품목별로 kg당/개당이 섞일 수
+  // 있어서, 등록할 때마다 단위를 골라 저장할 수 있게 토글을 추가함 (2026-09-13)
+  if (data.format === 'other' && data.unit !== '5kg') {
+    const curUnit = vCardPriceUnit[safeName] || 'kg';
+    const kgActive = curUnit === 'kg';
+    return '<div style="display:grid;grid-template-columns:1fr 80px auto auto;gap:5px;margin-top:8px;align-items:center;" onclick="event.stopPropagation()">'
+      + '<input type="text" id="vCardAdd-name-' + safeName + '" placeholder="떡 이름" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;">'
+      + '<input type="number" id="vCardAdd-p-' + safeName + '" placeholder="단가" style="padding:6px 8px;border:1px solid #3b82f6;border-radius:6px;font-size:12px;text-align:right;">'
+      + '<div style="display:flex;gap:3px;">'
+      + '<button type="button" onclick="event.stopPropagation();vCardSelectPriceUnit(\'' + safeName + '\',\'kg\')" style="padding:6px 8px;border:1.5px solid ' + (kgActive?'#3b82f6':'var(--border)') + ';background:' + (kgActive?'#3b82f6':'#fff') + ';color:' + (kgActive?'#fff':'var(--brown-mid)') + ';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">kg당</button>'
+      + '<button type="button" onclick="event.stopPropagation();vCardSelectPriceUnit(\'' + safeName + '\',\'count\')" style="padding:6px 8px;border:1.5px solid ' + (!kgActive?'#3b82f6':'var(--border)') + ';background:' + (!kgActive?'#3b82f6':'#fff') + ';color:' + (!kgActive?'#fff':'var(--brown-mid)') + ';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">개당</button>'
+      + '</div>'
       + '<button onclick="event.stopPropagation();vCardAddPrice(\'' + safeName + '\')" style="padding:6px 10px;background:var(--brown-deep);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>'
       + '</div>';
   }
@@ -20157,6 +20299,15 @@ function renderVenuesList() {
 // ── 새 거래처 추가 모달 ─────────────────────────────────────
 let newVenueType = null;
 let newVenueOtherUnit = 'kg';
+let otherNewPriceUnit = 'kg';
+function selectOtherPriceUnit(unit) {
+  otherNewPriceUnit = unit;
+  document.querySelectorAll('.otherPriceUnit-btn').forEach(function(b) {
+    const isActive = b.dataset.unit === unit;
+    if (isActive) { b.style.background = '#3b82f6'; b.style.color = '#fff'; b.style.borderColor = '#3b82f6'; }
+    else { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; b.style.borderColor = 'var(--border)'; }
+  });
+}
 
 function openVenueAddModal() {
   document.getElementById('newVenueName').value = '';
@@ -20355,7 +20506,14 @@ function vCardAddPrice(venueName) {
     if (data.storeKey && data.storeKey.indexOf('other:') === 0) {
       const key = data.storeKey.slice(6);
       if (!otherVenuePrices[key]) otherVenuePrices[key] = {};
-      otherVenuePrices[key][tteokName] = (data.unit === '5kg') ? { price5: price } : price;
+      const chosenUnit = vCardPriceUnit[venueName] || 'kg';
+      if (data.unit === '5kg') {
+        otherVenuePrices[key][tteokName] = { price5: price };
+      } else if (chosenUnit === 'count') {
+        otherVenuePrices[key][tteokName] = { price: price, unit: 'count' };
+      } else {
+        otherVenuePrices[key][tteokName] = price;
+      }
       localStorage.setItem('otherVenuePrices', JSON.stringify(otherVenuePrices));
       if (typeof gasUrl !== 'undefined' && gasUrl) gasPost({action:'saveTteokSettings',data:{otherVenues, otherVenuePrices}}).catch(function(){});
     } else if (data.storeKey) {
