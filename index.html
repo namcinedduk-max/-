@@ -8543,6 +8543,9 @@ function applyQuickFee(dong, feeFieldId, updateFn, gu, dateFieldId, timeFieldId)
 let orders = [];
 let sortKey = 'deliveryDate';
 let sortDir = 1; // 1=오름차순, -1=내림차순
+// 헤더를 아직 한번도 안눌렀으면 접수(등록) 최신순이 기본값 — 헤더를 누르는 순간
+// 그 기준으로 넘어감 (2026-09-18)
+let sortIsDefault = true;
 
 let funeralOrders = [];
 let funeralSortKey = 'deliveryDate';
@@ -12613,7 +12616,9 @@ function renderList() {
     return matchDate && matchSearch;
   });
 
-  filtered = applySort(filtered, sortKey, sortDir);
+  filtered = sortIsDefault
+    ? [...filtered].sort((a, b) => (getOrderCreatedMs(b) || 0) - (getOrderCreatedMs(a) || 0))
+    : applySort(filtered, sortKey, sortDir);
 
   // 필터 결과 안내바
   const resultBar = document.getElementById('filterResultBar');
@@ -12879,6 +12884,7 @@ function getMethodBadge(method) {
 }
 
 function sortOrders(key) {
+  sortIsDefault = false;
   if (sortKey === key) sortDir *= -1;
   else { sortKey = key; sortDir = 1; }
   // 헤더 아이콘 업데이트
