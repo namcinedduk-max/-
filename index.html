@@ -1038,7 +1038,7 @@ function forceRefreshApp() {
         </div>
         <!-- 라벨문구 -->
         <div style="margin-bottom:14px;">
-          <label style="font-size:13px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:6px;">🏷️ 라벨문구 <span style="color:#888;font-size:11px;">라벨 인쇄 시 표시</span></label>
+          <label style="font-size:13px;font-weight:700;color:var(--brown-mid);display:block;margin-bottom:6px;">🏷️ 큰박스문구 <span style="color:#888;font-size:11px;">라벨 인쇄 시 표시</span></label>
           <input type="text" id="g_labelText" placeholder="예: 영전을 축하드립니다" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
         </div>
         <!-- 담당직원 -->
@@ -1147,8 +1147,6 @@ function forceRefreshApp() {
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
                     <button type="button" onclick="chooseSetType('분홍세트')" id="setbtn-분홍세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 분홍세트</button>
                     <button type="button" onclick="chooseSetType('은혜세트')" id="setbtn-은혜세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 은혜세트</button>
-                    <button type="button" onclick="chooseSetType('코리아(대)')" id="setbtn-코리아(대)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(대)</button>
-                    <button type="button" onclick="chooseSetType('코리아(소)')" id="setbtn-코리아(소)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(소)</button>
                     <button type="button" onclick="chooseSetType('쿠키상자(대)')" id="setbtn-쿠키상자(대)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(대)</button>
                     <button type="button" onclick="chooseSetType('쿠키상자(소)')" id="setbtn-쿠키상자(소)" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(소)</button>
                     <button type="button" onclick="chooseSetType('덕세트')" id="setbtn-덕세트" style="flex:1;min-width:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕세트</button>
@@ -1383,7 +1381,7 @@ function forceRefreshApp() {
         </div>
         <!-- 라벨문구 -->
         <div class="form-group full">
-          <label>🏷️ 라벨문구 <span style="color:#888;font-size:12px;">라벨 인쇄 시 표시되는 문구</span></label>
+          <label>🏷️ 큰박스문구 <span style="color:#888;font-size:12px;">라벨 인쇄 시 표시되는 문구</span></label>
           <input type="text" id="labelText" placeholder="예: 영전을 축하드립니다, 항상 감사합니다 등">
         </div>
 
@@ -1473,11 +1471,7 @@ function forceRefreshApp() {
         <!-- 담당 직원 -->
         <div class="form-group">
           <label>담당 직원</label>
-          <select id="staffName">
-            <option value="직원1">직원 1</option>
-            <option value="직원2">직원 2</option>
-            <option value="직원3">직원 3</option>
-          </select>
+          <select id="staffName" class="staff-select-auto"></select>
         </div>
 
       </div>
@@ -1626,11 +1620,7 @@ function forceRefreshApp() {
 
         <div class="form-group">
           <label>담당 직원</label>
-          <select id="f_staffName">
-            <option value="직원1">직원 1</option>
-            <option value="직원2">직원 2</option>
-            <option value="직원3">직원 3</option>
-          </select>
+          <select id="f_staffName" class="staff-select-auto"></select>
         </div>
 
       </div>
@@ -2018,11 +2008,7 @@ function forceRefreshApp() {
         </div>
         <div class="form-group">
           <label>담당 직원</label>
-          <select id="w_staffName">
-            <option value="직원1">직원 1</option>
-            <option value="직원2">직원 2</option>
-            <option value="직원3">직원 3</option>
-          </select>
+          <select id="w_staffName" class="staff-select-auto"></select>
         </div>
 
       </div>
@@ -2120,12 +2106,7 @@ function forceRefreshApp() {
         </div>
         <div class="form-group">
           <label>담당직원</label>
-          <select id="ot_staffName">
-            <option value="">-- 선택 --</option>
-            <option value="직원1">직원 1</option>
-            <option value="직원2">직원 2</option>
-            <option value="직원3">직원 3</option>
-          </select>
+          <select id="ot_staffName" class="staff-select-auto" data-keep-blank="1"><option value="">-- 선택 --</option></select>
         </div>
         <div class="form-group">
           <label>배송일 <span class="required">*</span></label>
@@ -2372,6 +2353,16 @@ function forceRefreshApp() {
           </div>
         </div>
         <button class="btn-small btn-primary" onclick="saveCompanyInfo()">💾 저장</button>
+
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:700;color:var(--brown-mid);margin-bottom:6px;">👩‍💼 담당 직원 목록 (최대 5명)</div>
+          <p style="font-size:12px;color:var(--brown-light);margin-bottom:10px;">여기서 이름을 바꾸면 개인/장례식장/웨딩홀/기타업체 접수 화면의 담당 직원 선택 목록에 전부 반영돼요. 한 컴퓨터에서 저장하면 다른 컴퓨터에도 자동으로 같이 바뀝니다.</p>
+          <div id="staffSettingsList"></div>
+          <button type="button" id="staffSettingsAddBtn" onclick="addStaffSettingRow()" style="padding:6px 12px;background:#fff;border:1.5px dashed var(--border);border-radius:8px;font-size:12px;color:var(--brown-mid);cursor:pointer;margin-bottom:10px;">+ 직원 추가</button>
+          <div>
+            <button type="button" class="btn-small btn-primary" onclick="saveStaffList()">💾 직원 목록 저장</button>
+          </div>
+        </div>
       </div>
 
       <h2>⚙️ 떡 단가 설정</h2>
@@ -4128,6 +4119,14 @@ function loadTteokPriceSettings() {
           loadCompanyInfo();
         } catch(e) {}
       }
+      if (d.staffList && Array.isArray(d.staffList) && d.staffList.length > 0) {
+        try {
+          window.STAFF_LIST = d.staffList;
+          localStorage.setItem('staffList', JSON.stringify(window.STAFF_LIST));
+          if (typeof renderAllStaffSelects === 'function') renderAllStaffSelects();
+          if (typeof renderStaffSettingsList === 'function') renderStaffSettingsList();
+        } catch(e) {}
+      }
       if (d.paymentRecords) {
         try {
           paymentRecords = d.paymentRecords;
@@ -4165,6 +4164,83 @@ function loadTteokPriceSettings() {
   }
 }
 
+
+// ==================== 담당 직원 목록 ====================
+// 예전엔 "직원1/직원2/직원3"가 화면마다 하드코딩돼 있어서 이름을 바꿀 수
+// 없었음. 이제 회사설정에서 1~5명까지 이름을 직접 정할 수 있고, 한 컴퓨터에서
+// 바꾸면 saveTteokSettings로 구글시트에 저장돼 다른 컴퓨터에서도 getTteokSettings로
+// 받아서 전부 같이 바뀜 (2026-09-29)
+window.STAFF_LIST = (function() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('staffList') || 'null');
+    if (Array.isArray(saved) && saved.length > 0) return saved.slice(0, 5);
+  } catch(e) {}
+  return ['직원1', '직원2', '직원3'];
+})();
+
+// 페이지 안의 모든 담당 직원 select에 붙여둘 표시(class)
+const STAFF_SELECT_CLASS = 'staff-select-auto';
+
+function staffOptionsHtml(selected) {
+  return window.STAFF_LIST.map(function(name) {
+    return '<option value="' + name + '"' + (name === selected ? ' selected' : '') + '>' + name + '</option>';
+  }).join('');
+}
+
+// class="staff-select-auto"가 붙은 모든 select를 현재 STAFF_LIST 기준으로 다시 그림
+// (선택돼 있던 값은 목록에 남아있으면 그대로 유지)
+function renderAllStaffSelects() {
+  document.querySelectorAll('select.' + STAFF_SELECT_CLASS).forEach(function(sel) {
+    const cur = sel.value;
+    const keepBlank = sel.dataset.keepBlank === '1';
+    sel.innerHTML = (keepBlank ? '<option value="">-- 선택 --</option>' : '') + staffOptionsHtml(cur);
+    if (cur === '' && keepBlank) {
+      sel.value = '';
+    } else if (window.STAFF_LIST.indexOf(cur) === -1 && window.STAFF_LIST.length > 0) {
+      sel.value = keepBlank ? '' : window.STAFF_LIST[0];
+    } else {
+      sel.value = cur;
+    }
+  });
+}
+
+// 회사설정 안의 "담당 직원 목록" 편집 UI 렌더
+function renderStaffSettingsList() {
+  const wrap = document.getElementById('staffSettingsList');
+  if (!wrap) return;
+  wrap.innerHTML = window.STAFF_LIST.map(function(name, i) {
+    return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
+      '<input type="text" class="staffSettingsInput" data-idx="' + i + '" value="' + name.replace(/"/g,'&quot;') + '" placeholder="직원 이름" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">' +
+      '<button type="button" onclick="removeStaffSettingRow(' + i + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;">삭제</button>' +
+      '</div>';
+  }).join('');
+  const addBtn = document.getElementById('staffSettingsAddBtn');
+  if (addBtn) addBtn.style.display = window.STAFF_LIST.length >= 5 ? 'none' : '';
+}
+
+function addStaffSettingRow() {
+  if (window.STAFF_LIST.length >= 5) { showToast('직원은 최대 5명까지 설정할 수 있어요.', 'error'); return; }
+  window.STAFF_LIST.push('직원' + (window.STAFF_LIST.length + 1));
+  renderStaffSettingsList();
+}
+
+function removeStaffSettingRow(idx) {
+  if (window.STAFF_LIST.length <= 1) { showToast('직원은 최소 1명은 있어야 해요.', 'error'); return; }
+  window.STAFF_LIST.splice(idx, 1);
+  renderStaffSettingsList();
+}
+
+function saveStaffList() {
+  const inputs = document.querySelectorAll('#staffSettingsList .staffSettingsInput');
+  const names = Array.from(inputs).map(function(el) { return el.value.trim(); }).filter(Boolean);
+  if (names.length === 0) { showToast('직원 이름을 최소 1명 입력해주세요.', 'error'); return; }
+  window.STAFF_LIST = names.slice(0, 5);
+  localStorage.setItem('staffList', JSON.stringify(window.STAFF_LIST));
+  renderStaffSettingsList();
+  renderAllStaffSelects();
+  if (gasUrl) gasPost({ action: 'saveTteokSettings', data: { staffList: window.STAFF_LIST } }).catch(function(){});
+  showToast('✅ 담당 직원 목록 저장됐어요!', 'success');
+}
 
 // 카테고리 데이터 구조
 // TTEOK_CATEGORIES = [{id, name, items:[{name,unit,unitPrice,kgPrice,doePrice}]}]
@@ -9363,6 +9439,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadQuickFeeTable();
   loadCompanyInfo();
   loadCompanySeal();
+  renderAllStaffSelects();
+  renderStaffSettingsList();
   loadTteokPriceSettings();
   initDoeTteokSel();
   loadOrderCategories();
@@ -13350,8 +13428,6 @@ function renderModalEdit(o) {
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
             <button type="button" onclick="editChooseSetType('분홍세트')" id="edit-setbtn-분홍세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 분홍세트</button>
             <button type="button" onclick="editChooseSetType('은혜세트')" id="edit-setbtn-은혜세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 은혜세트</button>
-            <button type="button" onclick="editChooseSetType('코리아(대)')" id="edit-setbtn-코리아(대)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(대)</button>
-            <button type="button" onclick="editChooseSetType('코리아(소)')" id="edit-setbtn-코리아(소)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🎁 코리아(소)</button>
             <button type="button" onclick="editChooseSetType('쿠키상자(대)')" id="edit-setbtn-쿠키상자(대)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(대)</button>
             <button type="button" onclick="editChooseSetType('쿠키상자(소)')" id="edit-setbtn-쿠키상자(소)" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍪 쿠키상자(소)</button>
             <button type="button" onclick="editChooseSetType('덕세트')" id="edit-setbtn-덕세트" style="flex:1;min-width:80px;padding:7px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--brown-mid);">🍡 덕세트</button>
@@ -13564,7 +13640,7 @@ function renderModalEdit(o) {
       <div class="modal-detail-row"><span class="modal-detail-label">메모</span>
         <input id="e_memo" value="${o.memo||''}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
       </div>
-      <div class="modal-detail-row"><span class="modal-detail-label">🏷️ 라벨문구</span>
+      <div class="modal-detail-row"><span class="modal-detail-label">🏷️ 큰박스문구</span>
         <input id="e_labelText" value="${o.labelText||''}" placeholder="라벨 인쇄 시 표시" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">상품금액</span>
@@ -13590,11 +13666,7 @@ function renderModalEdit(o) {
         </select>
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
-        <select id="e_staffName" style="flex:1;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-          <option ${o.staffName==='직원1'?'selected':''}>직원1</option>
-          <option ${o.staffName==='직원2'?'selected':''}>직원2</option>
-          <option ${o.staffName==='직원3'?'selected':''}>직원3</option>
-        </select>
+        <select id="e_staffName" class="staff-select-auto" style="flex:1;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">${staffOptionsHtml(o.staffName)}</select>
       </div>
     </div>
   `;
@@ -16283,11 +16355,7 @@ function openFuneralModal(id) {
     </div>
     <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ef_memo" value="${o.memo||''}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
-      <select id="ef_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-        <option value="직원1" ${o.staffName==='직원1'?'selected':''}>직원 1</option>
-        <option value="직원2" ${o.staffName==='직원2'?'selected':''}>직원 2</option>
-        <option value="직원3" ${o.staffName==='직원3'?'selected':''}>직원 3</option>
-      </select>
+      <select id="ef_staffName" class="staff-select-auto" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">${staffOptionsHtml(o.staffName)}</select>
     </div>
   `;
   document.getElementById('modalDeleteBtn').onclick = () => { deleteFuneralOrder(id); closeModal(); };
@@ -18304,11 +18372,7 @@ function openWeddingModal(id) {
     </div>
     <div class="modal-detail-row"><span class="modal-detail-label">메모</span><input id="ew_memo" value="${(o.memo||'').replace(/"/g,'&quot;')}" placeholder="메모" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;"></div>
     <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span>
-      <select id="ew_staffName" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-        <option value="직원1" ${o.staffName==='직원1'?'selected':''}>직원 1</option>
-        <option value="직원2" ${o.staffName==='직원2'?'selected':''}>직원 2</option>
-        <option value="직원3" ${o.staffName==='직원3'?'selected':''}>직원 3</option>
-      </select>
+      <select id="ew_staffName" class="staff-select-auto" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">${staffOptionsHtml(o.staffName)}</select>
     </div>`;
 
   // 배송시간 설정
