@@ -2062,7 +2062,13 @@ function forceRefreshApp() {
           <option value="created">📋 접수일</option>
         </select>
         <div class="filter-divider"></div>
-        <input type="date" id="wFilterDate" onchange="renderWeddingList()">
+        <input type="date" id="wFilterDate" onchange="onWeddingFilterDateChange()">
+      </div>
+      <div class="filter-date-group" title="기간으로 검색 (배송일 기준)">
+        <span style="font-size:12px;color:var(--brown-light);padding:0 4px;">기간</span>
+        <input type="date" id="wFilterFrom" onchange="onWeddingFilterDateChange()">
+        <span style="padding:0 2px;color:var(--brown-light);">~</span>
+        <input type="date" id="wFilterTo" onchange="onWeddingFilterDateChange()">
       </div>
       <input type="text" class="search-input" id="wSearchInput" placeholder="🔍 웨딩홀, 층, 떡 종류 검색..." oninput="renderWeddingList()">
       <button class="btn-small btn-secondary" onclick="clearWeddingFilter()">전체보기</button>
@@ -2215,7 +2221,13 @@ function forceRefreshApp() {
     </div>
     <div class="list-controls">
       <div class="filter-date-group">
-        <input type="date" id="otFilterDate" onchange="renderOtherList()">
+        <input type="date" id="otFilterDate" onchange="onOtherFilterDateChange()">
+      </div>
+      <div class="filter-date-group" title="기간으로 검색 (배송일 기준)">
+        <span style="font-size:12px;color:var(--brown-light);padding:0 4px;">기간</span>
+        <input type="date" id="otFilterFrom" onchange="onOtherFilterDateChange()">
+        <span style="padding:0 2px;color:var(--brown-light);">~</span>
+        <input type="date" id="otFilterTo" onchange="onOtherFilterDateChange()">
       </div>
       <select id="otFilterVenue" onchange="renderOtherList()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
         <option value="">전체 업체</option>
@@ -18082,10 +18094,17 @@ function renderWeddingList() {
 
   const dateType = document.getElementById('wFilterDateType') ? document.getElementById('wFilterDateType').value : 'delivery';
   const filterDate = document.getElementById('wFilterDate') ? document.getElementById('wFilterDate').value : '';
+  const fromDate = document.getElementById('wFilterFrom') ? document.getElementById('wFilterFrom').value : '';
+  const toDate = document.getElementById('wFilterTo') ? document.getElementById('wFilterTo').value : '';
   const search = document.getElementById('wSearchInput') ? document.getElementById('wSearchInput').value.toLowerCase() : '';
 
   let filtered = weddingOrders.filter(o => {
-    if (filterDate) {
+    if (fromDate || toDate) {
+      // 기간 검색은 항상 배송일 기준 (정산용)
+      const d = normalizeDateStr(String(o.deliveryDate||''));
+      if (fromDate && d < fromDate) return false;
+      if (toDate && d > toDate) return false;
+    } else if (filterDate) {
       const d = dateType === 'delivery' ? (o.deliveryDate || '') : (o.createdAt || '');
       if (!d.includes(filterDate)) return false;
     }
@@ -18104,7 +18123,7 @@ function renderWeddingList() {
   const rc = document.getElementById('wFilterResultCount');
   const rt = document.getElementById('wFilterResultText');
   if (rc) rc.textContent = filtered.length + '건';
-  if (rt) rt.textContent = filterDate ? filterDate + ' 기준' : '전체';
+  if (rt) rt.textContent = (fromDate || toDate) ? ((fromDate||'처음') + ' ~ ' + (toDate||'끝')) : (filterDate ? filterDate + ' 기준' : '전체');
 
   if (filtered.length === 0) {
     tbody.innerHTML = '';
@@ -18187,8 +18206,25 @@ function sortWeddingOrders(key) {
   renderWeddingList();
 }
 
+function onWeddingFilterDateChange() {
+  const val = document.getElementById('wFilterDate') ? document.getElementById('wFilterDate').value : '';
+  const fromVal = document.getElementById('wFilterFrom') ? document.getElementById('wFilterFrom').value : '';
+  const earliest = [val, fromVal].filter(Boolean).sort()[0] || '';
+  if (!earliest) { renderWeddingList(); return; }
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - ORDERS_RECENT_DAYS);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  if (earliest < cutoffStr && !_weddingFullLoaded) {
+    loadAllWeddingOrdersFromSheet().then(() => renderWeddingList());
+  } else {
+    renderWeddingList();
+  }
+}
+
 function clearWeddingFilter() {
   const fd = document.getElementById('wFilterDate'); if (fd) fd.value = '';
+  const ff = document.getElementById('wFilterFrom'); if (ff) ff.value = '';
+  const ft = document.getElementById('wFilterTo'); if (ft) ft.value = '';
   const fs = document.getElementById('wSearchInput'); if (fs) fs.value = '';
   renderWeddingList();
 }
@@ -19164,10 +19200,22 @@ function renderOtherList() {
   const empty = document.getElementById('otherEmptyState');
   if (!tbody) return;
   const dateFilter = document.getElementById('otFilterDate') ? document.getElementById('otFilterDate').value : '';
+  const fromDate = document.getElementById('otFilterFrom') ? document.getElementById('otFilterFrom').value : '';
+  const toDate = document.getElementById('otFilterTo') ? document.getElementById('otFilterTo').value : '';
   const venueFilter = document.getElementById('otFilterVenue') ? document.getElementById('otFilterVenue').value : '';
   const search = document.getElementById('otSearchInput') ? document.getElementById('otSearchInput').value.trim() : '';
   let list = [...otherOrders];
-  if (dateFilter) list = list.filter(o => o.deliveryDate === dateFilter);
+  if (fromDate || toDate) {
+    // 기간 검색은 항상 배송일 기준 (정산용)
+    list = list.filter(o => {
+      const d = normalizeDateStr(String(o.deliveryDate||''));
+      if (fromDate && d < fromDate) return false;
+      if (toDate && d > toDate) return false;
+      return true;
+    });
+  } else if (dateFilter) {
+    list = list.filter(o => o.deliveryDate === dateFilter);
+  }
   if (venueFilter) list = list.filter(o => o.venueName === venueFilter);
   if (search) list = list.filter(o => (o.venueName + o.tteokType + o.memo).includes(search));
   if (list.length === 0) {
@@ -19189,8 +19237,25 @@ function renderOtherList() {
     </tr>`).join('');
 }
 
+function onOtherFilterDateChange() {
+  const val = document.getElementById('otFilterDate') ? document.getElementById('otFilterDate').value : '';
+  const fromVal = document.getElementById('otFilterFrom') ? document.getElementById('otFilterFrom').value : '';
+  const earliest = [val, fromVal].filter(Boolean).sort()[0] || '';
+  if (!earliest) { renderOtherList(); return; }
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - ORDERS_RECENT_DAYS);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  if (earliest < cutoffStr && !_otherFullLoaded) {
+    loadAllOtherOrdersFromSheet().then(() => renderOtherList());
+  } else {
+    renderOtherList();
+  }
+}
+
 function clearOtherFilter() {
   const d = document.getElementById('otFilterDate'); if (d) d.value = '';
+  const f = document.getElementById('otFilterFrom'); if (f) f.value = '';
+  const t = document.getElementById('otFilterTo'); if (t) t.value = '';
   const v = document.getElementById('otFilterVenue'); if (v) v.value = '';
   const s = document.getElementById('otSearchInput'); if (s) s.value = '';
   renderOtherList();
