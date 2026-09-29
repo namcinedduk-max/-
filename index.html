@@ -1775,7 +1775,13 @@ function forceRefreshApp() {
           <option value="created">📋 접수일</option>
         </select>
         <div class="filter-divider"></div>
-        <input type="date" id="fFilterDate" onchange="renderFuneralList()">
+        <input type="date" id="fFilterDate" onchange="onFuneralFilterDateChange()">
+      </div>
+      <div class="filter-date-group" title="기간으로 검색 (배송일 기준)">
+        <span style="font-size:12px;color:var(--brown-light);padding:0 4px;">기간</span>
+        <input type="date" id="fFilterFrom" onchange="onFuneralFilterDateChange()">
+        <span style="padding:0 2px;color:var(--brown-light);">~</span>
+        <input type="date" id="fFilterTo" onchange="onFuneralFilterDateChange()">
       </div>
       <div class="venue-cat-filter" id="fVenueCatFilter">
         <button type="button" class="venue-cat-btn active" data-cat="all" onclick="setFuneralCategory('all')">전체</button>
@@ -15372,13 +15378,20 @@ function setFuneralCategory(cat) {
 function renderFuneralList() {
   const filterDate = document.getElementById('fFilterDate').value;
   const filterType = document.getElementById('fFilterDateType').value;
+  const fromDate = document.getElementById('fFilterFrom') ? document.getElementById('fFilterFrom').value : '';
+  const toDate = document.getElementById('fFilterTo') ? document.getElementById('fFilterTo').value : '';
   const search = document.getElementById('fSearchInput').value.trim().toLowerCase();
   const deceasedInput = document.getElementById('fDeceasedSearchInput');
   const deceasedSearch = deceasedInput ? deceasedInput.value.trim().toLowerCase() : '';
 
   let filtered = funeralOrders.filter(o => {
     let matchDate = true;
-    if (filterDate) {
+    if (fromDate || toDate) {
+      // 기간 검색은 항상 배송일 기준 (정산용)
+      const d = normalizeDateStr(String(o.deliveryDate||''));
+      if (fromDate && d < fromDate) matchDate = false;
+      if (toDate && d > toDate) matchDate = false;
+    } else if (filterDate) {
       if (filterType === 'delivery') {
         matchDate = normalizeDateStr(String(o.deliveryDate||'')) === filterDate;
       } else {
@@ -15400,7 +15413,9 @@ function renderFuneralList() {
 
   const resultBar = document.getElementById('fFilterResultBar');
   const activeFilters = [];
-  if (filterDate) {
+  if (fromDate || toDate) {
+    activeFilters.push('📦 ' + (fromDate||'처음') + ' ~ ' + (toDate||'끝'));
+  } else if (filterDate) {
     const typeLabel = filterType === 'delivery' ? '📦 배송일' : '📋 접수일';
     activeFilters.push(typeLabel + ' ' + filterDate);
   }
@@ -16076,10 +16091,58 @@ async function downloadChungdaeExcel() {
   }
 }
 
+// 골라둔 날짜가 최근 N일보다 오래됐으면(=평소엔 메모리에 없는 날짜) 자동으로
+// 전체를 불러온 뒤 필터링 — 개인목록의 onFilterDateChange()와 동일한 패턴
+// (2026-09-29, 월말 정산 때 과거 날짜가 안 보이던 문제 수정)
+function onFuneralFilterDateChange() {
+  const val = document.getElementById('fFilterDate').value;
+  const fromVal = document.getElementById('fFilterFrom') ? document.getElementById('fFilterFrom').value : '';
+  const toVal = document.getElementById('fFilterTo') ? document.getElementById('fFilterTo').value : '';
+  const earliest = [val, fromVal].filter(Boolean).sort()[0] || '';
+  if (!earliest) { renderFuneralList(); return; }
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - ORDERS_RECENT_DAYS);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  if (earliest < cutoffStr && !_funeralFullLoaded) {
+    loadAllFuneralOrdersFromSheet().then(() => renderFuneralList());
+  } else {
+    renderFuneralList();
+  }
+}
+
+// 이미 전체를 불러왔으면 다시 안 불러오게 기억
+let _funeralFullLoaded = false;
+
+// 장례식장은 평소엔 최근 N일치만 메모리에 있어서(속도 때문), "전체보기"를
+// 눌러도 예전엔 그냥 화면 필터만 지우고 다시 그렸을 뿐 서버에서 옛날
+// 데이터를 새로 받아오지 않았음 — 그래서 다른 컴퓨터에서 이번 달 초처럼
+// 최근 N일보다 오래된 날짜가 하나도 안 보이는 버그가 있었음.
+// 이제는 "전체보기"를 누르면 실제로 서버에서 전체 기간을 다시 받아오게 함
+// (2026-09-29 수정 — 월말 정산 때 앞부분 날짜가 안 보이던 문제)
+function loadAllFuneralOrdersFromSheet() {
+  if (!gasUrl) return Promise.resolve();
+  if (_funeralFullLoaded) return Promise.resolve();
+  if (funeralOrders.length === 0) showLoading(true); else showToast('🔄 전체 불러오는 중...', '');
+  return gasFuneralGet({ action: 'getOrders' })  // days 없이 = 전체
+    .then(data => {
+      if (data.success) {
+        funeralOrders = data.orders || [];
+        _cacheTs.funeral = Date.now();
+        _funeralFullLoaded = true;
+      } else {
+        showToast('⚠️ 전체 불러오기 실패 - 기존 목록 유지', 'error');
+      }
+    })
+    .catch(() => { showToast('❌ 시트 연결 실패 - 기존 목록 유지', 'error'); })
+    .finally(() => { showLoading(false); });
+}
+
 function clearFuneralFilter() {
   document.getElementById('fFilterDate').value = '';
   document.getElementById('fSearchInput').value = '';
   document.getElementById('fFilterDateType').value = 'delivery';
+  const fFrom = document.getElementById('fFilterFrom'); if (fFrom) fFrom.value = '';
+  const fTo = document.getElementById('fFilterTo'); if (fTo) fTo.value = '';
   const dInput = document.getElementById('fDeceasedSearchInput');
   if (dInput) dInput.value = '';
   funeralCategoryFilter = 'all';
@@ -16088,7 +16151,9 @@ function clearFuneralFilter() {
     if (b.dataset.cat === 'all') b.classList.add('active');
     else b.classList.remove('active');
   });
-  renderFuneralList();
+  // 전체보기는 옛날 주문까지 봐야 하므로 전체를 불러온 뒤 렌더 (개인목록의
+  // clearFilter()와 동일한 패턴 — 2026-09-29)
+  loadAllFuneralOrdersFromSheet().then(() => { updateFuneralStats(); renderFuneralList(); });
 }
 
 // 수정 모달용 장례식장 거래처 옵션 동적 생성
@@ -17976,6 +18041,28 @@ function loadWeddingOrdersFromSheet(silent, force, skipLocalSkip) {
     }).catch(() => { if (!silent) showToast('❌ 웨딩홀 시트 연결 실패', 'error'); });
 }
 
+// 웨딩홀도 평소엔 최근 N일치만 메모리에 있어서, 기간별 검색(과거 날짜 포함)을
+// 쓸 때는 전체를 한 번 받아와야 함 — 장례식장과 동일한 패턴 (2026-09-29)
+let _weddingFullLoaded = false;
+function loadAllWeddingOrdersFromSheet() {
+  if (!gasUrl) return Promise.resolve();
+  if (_weddingFullLoaded) return Promise.resolve();
+  if (weddingOrders.length === 0) showLoading(true); else showToast('🔄 전체 불러오는 중...', '');
+  return gasGet({ action: 'getOrders', sheet: 'wedding' })  // days 없이 = 전체
+    .then(data => {
+      if (data.success) {
+        weddingOrders = data.orders || [];
+        _cacheTs.wedding = Date.now();
+        localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
+        _weddingFullLoaded = true;
+      } else {
+        showToast('⚠️ 전체 불러오기 실패 - 기존 목록 유지', 'error');
+      }
+    })
+    .catch(() => { showToast('❌ 시트 연결 실패 - 기존 목록 유지', 'error'); })
+    .finally(() => { showLoading(false); });
+}
+
 function updateWeddingStats() {
   const nowStr = new Date().toLocaleDateString('ko-KR');
   const createdToday = weddingOrders.filter(o => String(o.createdAt||'').startsWith(nowStr));
@@ -19000,6 +19087,26 @@ function sendToOtherSheet(order) {
   // 예전엔 저장 실패하면 화면에서 지워버렸음 — 접수/수정과 동일하게
   // 큐 방식으로 통일 (2026-09-13)
   if (gasUrl) queueForSync('other', order);
+}
+
+// 기타업체도 평소엔 최근 N일치만 메모리에 있어서, 기간별 검색(과거 날짜 포함)을
+// 쓸 때는 전체를 한 번 받아와야 함 — 장례식장/웨딩홀과 동일한 패턴 (2026-09-29)
+let _otherFullLoaded = false;
+function loadAllOtherOrdersFromSheet() {
+  if (!gasUrl) return Promise.resolve();
+  if (_otherFullLoaded) return Promise.resolve();
+  if (otherOrders.length === 0) showLoading(true); else showToast('🔄 전체 불러오는 중...', '');
+  return gasGet({ action: 'getOrders', sheet: 'other' })  // days 없이 = 전체
+    .then(data => {
+      if (data.success && data.orders) {
+        otherOrders = data.orders;
+        _otherFullLoaded = true;
+      } else {
+        showToast('⚠️ 전체 불러오기 실패 - 기존 목록 유지', 'error');
+      }
+    })
+    .catch(() => { showToast('❌ 시트 연결 실패 - 기존 목록 유지', 'error'); })
+    .finally(() => { showLoading(false); });
 }
 
 function loadOtherOrdersFromSheet(silent, force) {
