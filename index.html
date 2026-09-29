@@ -750,6 +750,131 @@ function forceRefreshApp() {
     .stat-value { font-size: 20px; }
   }
 
+  /* ===== MOBILE OPTIMIZATION (추가) ===== */
+  @media (max-width: 640px) {
+    /* 입력할때 iOS에서 자동으로 확대되는거 방지 + 손가락으로 누르기 편하게 */
+    input, select, textarea {
+      font-size: 16px;
+      padding: 12px 14px;
+      min-height: 44px;
+    }
+    textarea { min-height: 90px; }
+    .form-group label { font-size: 13.5px; }
+
+    /* 헤더 - 작은 화면에서 로고/시계 겹치지 않게 */
+    .header-inner {
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 12px;
+    }
+    .logo { font-size: 17px; gap: 6px; }
+    .logo-icon { font-size: 20px; }
+    .header-meta { font-size: 11px; text-align: left; }
+    .live-clock { font-size: 15px; }
+
+    /* 탭 - 가로 스크롤로 전환 (겹치거나 잘리지 않게) */
+    .tabs {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      justify-content: flex-start;
+      padding: 0 8px;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-group { flex-shrink: 0; padding: 0 6px; }
+    .tab-btn {
+      padding: 9px 12px;
+      font-size: 13px;
+      min-height: 40px;
+    }
+
+    .main { padding: 12px 8px; }
+
+    /* 입력 폼 카드 */
+    .form-card { padding: 16px 14px; border-radius: 12px; }
+    .form-card h2 { font-size: 17px; margin-bottom: 16px; }
+    .form-grid { gap: 12px 0; }
+
+    /* 떡 목록/추가 줄 - 세로로 쌓이게 */
+    .tteok-add-row-inputs { flex-direction: column; align-items: stretch; }
+    .tteok-add-row-inputs select,
+    .tteok-add-row-inputs input { min-width: 0; width: 100%; }
+    .btn-add-tteok { width: 100%; padding: 12px 16px; min-height: 44px; }
+    .tteok-item { flex-wrap: wrap; }
+    .tteok-item-name { min-width: 100%; }
+    .tteok-item-qty { text-align: left; }
+
+    /* 결제수단 버튼 - 터치하기 편하게 */
+    .pay-btn {
+      padding: 11px 16px;
+      font-size: 14px;
+      flex: 1 1 auto;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .btn-submit { padding: 15px; font-size: 16px; min-height: 50px; }
+
+    /* 목록 상단 검색/필터 줄 - 세로로 쌓이고 꽉 채우기 */
+    .list-controls { flex-direction: column; align-items: stretch; gap: 8px; }
+    .list-controls > * { width: 100%; }
+    .search-input, .deceased-search-input { min-width: 0; width: 100%; }
+    .filter-date-group {
+      flex-wrap: wrap;
+      width: 100%;
+      padding: 8px 10px;
+    }
+    .filter-date-group select,
+    .filter-date-group input[type="date"] {
+      font-size: 14px;
+      min-height: 38px;
+      flex: 1;
+      min-width: 0;
+    }
+    .venue-cat-filter { flex-wrap: wrap; width: 100%; }
+    .venue-cat-btn { padding: 9px 12px; min-height: 38px; }
+    .btn-small { padding: 11px 16px; font-size: 14px; min-height: 44px; width: 100%; }
+    /* 목록 위 버튼들이 나란히 있는 경우(예: 엑셀다운/전체보기)는 2열로 */
+    .list-controls .btn-small { width: auto; flex: 1 1 auto; }
+
+    /* 주문 목록 표 - 가로 스크롤 유지, 셀 여백만 조정, 폰트 살짝 축소 */
+    .table-wrap { border-radius: 10px; }
+    thead th { padding: 10px 10px; font-size: 11px; }
+    tbody td { padding: 10px 10px; font-size: 12.5px; }
+
+    /* 통계 카드 */
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+    .stat-card { padding: 12px 14px; }
+    .stat-value { font-size: 18px; }
+    .stat-label { font-size: 11px; }
+
+    /* 상세보기/수정 모달 - 화면 꽉 채워서 쓰기 편하게 */
+    .modal-overlay { align-items: flex-end; }
+    .modal {
+      width: 100%;
+      max-width: 100%;
+      max-height: 92vh;
+      border-radius: 16px 16px 0 0;
+      padding: 20px 16px 24px;
+    }
+    .modal h3 { font-size: 16px; margin-bottom: 14px; }
+    .modal-detail-row { flex-direction: column; gap: 4px; align-items: flex-start; }
+    .modal-detail-value { text-align: left; }
+    .modal-actions { flex-wrap: wrap; }
+    .modal-actions button { flex: 1 1 auto; min-height: 44px; }
+    .edit-row input, .edit-row select, .edit-row textarea { font-size: 16px; min-height: 44px; }
+    .edit-add-row { flex-direction: column; align-items: stretch; }
+    .edit-add-row select, .edit-add-row input { min-width: 0; width: 100%; }
+
+    /* 토스트 - 화면 폭에 맞게 */
+    .toast {
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      text-align: center;
+    }
+  }
+
   .no-orders { display: none; }
 
   /* GOOGLE SHEET URL INPUT */
