@@ -1059,7 +1059,15 @@ function handleAction(action, id, val, el, ev){
 }
 
 // ── OT / Absence ──
-function getOT(eid,mo,day){ return ((S.ot[eid]||{})[mo]||{})[p2(day)]||{ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false}; }
+function normOT(d){
+  // 휴일대체(대체휴무 적립) 날에 예전 방식으로 저장된 '휴일 8h 초과(2.0)'를 '연장(1.5)'으로 바꿔 읽음
+  if(d && isCompAccrual(d) && (d.holExcess||0)>0){
+    var c={}; for(var k in d) c[k]=d[k];
+    c.ext=Math.round(((c.ext||0)+c.holExcess)*10)/10; c.holExcess=0; return c;
+  }
+  return d;
+}
+function getOT(eid,mo,day){ return normOT(((S.ot[eid]||{})[mo]||{})[p2(day)])||{ext:0,night:0,nightOnly:0,holiday:0,holExcess:0,holNight:0,early:0,lateH:0,earlyH:0,extH:0,holidayWork:false,holidayMode:'',compUse:false}; }
 // 휴일근무 총시간 (8h까지 + 8h초과 + 대체휴무 적립분). 새벽(야간)시간은 이 안에 포함된 시간이라 따로 더하지 않음
 function holTot(t){ return Math.round(((t.holiday||0)+(t.holExcess||0)+(t.compAccrueH||0))*10)/10; }
 // 연장근무 총시간 (일반 연장 + 야간 연장). 야간 연장시간은 이 안에 포함
@@ -1070,11 +1078,11 @@ function getMonthOT(eid,mo){
   var days=(S.ot[eid]||{})[mo]||{}, ext=0,night=0,nightOnly=0,hol=0,holExcess=0,holNight=0,early=0,compH=0;
   var ks=Object.keys(days);
   for(var i=0;i<ks.length;i++){
-    var d=days[ks[i]];
+    var d=normOT(days[ks[i]]);
     ext+=d.ext||0;night+=d.night||0;nightOnly+=Math.max(0,d.nightOnly||0);hol+=d.holiday||0;
     holExcess+=d.holExcess||0;holNight+=d.holNight||0;early+=d.compUse?0:(d.early||0);
-    if(isCompAccrual(d)) compH+=d.compAccrueH||0;
-    else if(d.holidayWork&&d.holidayMode==='comp'&&d.compAccrueH>0) hol+=d.compAccrueH; // 예전 8h 미만 적립 기록 → 휴일수당
+    if(!isCompAccrual(d)&&d.holidayWork&&d.holidayMode==='comp'&&d.compAccrueH>0) hol+=d.compAccrueH; // 예전 8h 미만 적립 기록 → 휴일수당
+    // 대체휴무 적립분(8h)은 쉬는 날 하루로 대체 — 휴일할증 차액(0.5배) 지급 안 함
   }
   return {ext:ext,night:night,nightOnly:nightOnly,holiday:hol,holExcess:holExcess,holNight:holNight,early:early,compH:compH};
 }
@@ -1200,7 +1208,6 @@ function otDayChips(ot,ab,eid,dateStr){
     if(isCompAccrual(ot)){
       var _use=_cp&&_cp.byAccrue[dateStr];
       c.push("<span class='ot-chip chip-abs'>└ "+ot.compAccrueH+"시간 → 대체휴무 "+(_use?"("+mdLabel(_use)+" 사용)":"(아직 미사용)")+"</span>");
-      c.push("<span class='ot-chip chip-hol'>└ 휴일할증 차액 지급 (하루 휴무로 못 채운 0.5배분)</span>");
     }
     if(ot.holExcess>0) c.push("<span class='ot-chip chip-hol'>└ 그중 8시간 초과 "+ot.holExcess+"시간</span>");
     if(ot.holNight>0) c.push("<span class='ot-chip chip-nightonly'>└ 그중 야간 "+ot.holNight+"시간</span>");
@@ -1351,7 +1358,7 @@ function toggleOTDay(eid,mo,key,alignRight){
       }
       if(comp.nightOnly>0) parts.push("야간가산 +"+comp.nightOnly+"h(0.5, 스케줄보다 야간근무 증가)");
       if(holTot(comp)>0){
-        parts.push("휴일근무 총 "+holTot(comp)+"h ("+(breakH>0?"휴게 "+breakH+"h 제외":"휴게 없음")+")"+(comp.compAccrueH>0?" → 8h분은 대체휴무 1일 + 휴일할증 차액(0.5배분)은 돈으로":(holidayMode==='comp'?" × 1.5배 (8시간 미만이라 적립 불가 → 수당정산)":" × 1.5배")));
+        parts.push("휴일근무 총 "+holTot(comp)+"h ("+(breakH>0?"휴게 "+breakH+"h 제외":"휴게 없음")+")"+(comp.compAccrueH>0?" → 8h분은 대체휴무 1일로 대체 (초과분은 연장 1.5배)":(holidayMode==='comp'?" × 1.5배 (8시간 미만이라 적립 불가 → 수당정산)":" × 1.5배")));
         if(comp.holExcess>0) parts.push("그중 8h 초과 "+comp.holExcess+"h는 2.0배");
         if(comp.holNight>0) parts.push("그중 야간(22~06시) "+comp.holNight+"h는 +0.5배 추가");
       }
@@ -1658,11 +1665,12 @@ function computeDayFields(schedDay,isPubHol,actualStart,actualEnd,holidayWork,ho
     var nightMin=nightMinutesIn(aS,aE); // 야간시간 판정은 휴게시간과 무관하게 실제 출퇴근 구간 기준
     var isComp=holidayMode==='comp' && baseMin>=COMP_MIN_H*60; // 8시간 미만은 적립 불가 → 수당정산
     return {
-      ext:0,night:0,nightOnly:0,
+      // 휴일대체(대체휴무 적립): 이날은 평범한 근무일로 바뀌므로 8h 초과분은 휴일초과(2.0)가 아니라 연장(1.5)
+      ext:isComp?Math.round(excessMin/60*10)/10:0,night:0,nightOnly:0,
       // 대체휴무 적립은 "하루 8시간(기본 1.5배분)"까지만 대체휴무 1일로 교환됨.
       // 8시간을 초과한 연장분(2.0배)과 야간가산(+0.5배)은 적립 대상이 아니라 항상 현금으로 지급 (그렇지 않으면 초과근무가 그냥 사라져버림)
       holiday:isComp?0:Math.round(baseMin/60*10)/10,
-      holExcess:Math.round(excessMin/60*10)/10,
+      holExcess:isComp?0:Math.round(excessMin/60*10)/10,
       holNight:Math.round(nightMin/60*10)/10,
       compAccrueH:isComp?Math.round(baseMin/60*10)/10:0,
       early:0,lateH:0,earlyH:0
@@ -2796,7 +2804,7 @@ function getAttendanceDayInfo(emp,mo,d){
     if(holTot(ot)>0) tags.push("휴일근무 "+holTot(ot)+"h"+(ot.holExcess>0?"(8h초과 "+ot.holExcess+"h)":"")+(ot.holNight>0?" · 그중 야간 "+ot.holNight+"h":""));
     if(ot.noLunch) tags.push("점심X");
     if(ot.compUse){ var _f2=_cpA.byUse[dateStr]; tags.unshift("대체휴무 사용"+(_f2?" ("+mdLabel(_f2)+" 근무분)":"")+" 중 불려 나와 근무"); }
-    if(isCompAccrual(ot)){ var _u=_cpA.byAccrue[dateStr]; tags.push("8h → 대체휴무 "+(_u?"("+mdLabel(_u)+" 사용)":"(아직 미사용)")+" · 휴일할증 차액 지급"); }
+    if(isCompAccrual(ot)){ var _u=_cpA.byAccrue[dateStr]; tags.push("8h → 대체휴무 "+(_u?"("+mdLabel(_u)+" 사용)":"(아직 미사용)")+""); }
     else if(ot.holidayWork && holTot(ot)>0) tags.push("수당정산");
     note=tags.join(" · ")||"정상출근";
   } else if(ds){
@@ -3599,6 +3607,7 @@ function attXlsDay(emp,mo,d){
       if(nH>0) notes.push("야간휴일"+n1(nH));
       if(totH-nH>0) notes.push("휴일"+n1(totH-nH));
       if(ot.compUse){ var _fx2=_cpX.byUse[dateStr]; notes.unshift("대체휴무"+(_fx2?"("+mdLabel(_fx2)+"분)":"")+" 중 근무"); }
+      if(ot.ext>0) notes.push("연장"+n1(ot.ext));
       if(isCompAccrual(ot)){ var _ux=_cpX.byAccrue[dateStr]; notes.push("대체휴무적립"+(_ux?"→"+mdLabel(_ux):"")); }
     } else {
       if(ot.night>0) notes.push("야간연장"+n1(ot.night));
