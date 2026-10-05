@@ -338,9 +338,10 @@ function setToday() {
   loadData(false);
 }
 
-function applyDay(data) {
+// fromCache=true: 이 기기에 저장해둔 예전 데이터 → 떡 설정은 덮어쓰지 않음 (서버 최신값만 반영)
+function applyDay(data, fromCache) {
   DAY = data;
-  if (data.productionSpecs && typeof data.productionSpecs === 'object') {
+  if (!fromCache && data.productionSpecs && typeof data.productionSpecs === 'object') {
     SPECS = data.productionSpecs;
     try { localStorage.setItem(SPEC_CACHE_KEY, JSON.stringify(SPECS)); } catch (e) {}
   }
@@ -356,7 +357,7 @@ function loadData(force) {
   // 이 기기에 저장해둔 그 날짜 데이터가 있으면 먼저 띄우고, 뒤에서 최신으로 덮어씀
   try {
     const cached = JSON.parse(localStorage.getItem(DAY_CACHE_PREFIX + date) || 'null');
-    if (cached && cached.date === date) { applyDay(cached); renderAll(); shown = true; }
+    if (cached && cached.date === date) { applyDay(cached, true); renderAll(); shown = true; }
   } catch (e) {}
 
   if (!shown) {
@@ -832,7 +833,7 @@ function knownNames() {
 function specDesc(raw) {
   const sp = specNorm(raw);
   const parts = [];
-  if (sp.perKg > 0) parts.push('1kg = ' + r1(sp.perKg) + '개');
+  if (sp.perKg > 0) parts.push('1kg = ' + r1(sp.perKg) + '개 (1개 ' + r1(1000 / sp.perKg) + 'g)');
   if (sp.prep === '당일' && sp.panKg > 0) parts.push('1판 = ' + r2(sp.panKg) + 'kg');
   let d = parts.length ? parts.join(' · ') : '기준 없음 · 주문 수량 그대로 표시';
   if (sp.memo) d += ' · ' + sp.memo;
@@ -893,6 +894,7 @@ function openEdit(name) {
 }
 
 function renderEditArea(prepOverride) {
+  if (!prepOverride) lastPerFrom = 'kg';
   const area = document.getElementById('editArea');
   if (!editingName) { area.innerHTML = ''; return; }
   const sp = specNorm(SPECS[editingName]) || { perKg: 0, panKg: 0, prep: '당일', memo: '' };
@@ -910,14 +912,15 @@ function renderEditArea(prepOverride) {
       '<div class="edit-full"><label>준비 방식</label><select id="sp_prep" onchange="renderEditArea(this.value)">' +
         ['당일', '해동', '냉동'].map(p => '<option value="' + p + '"' + (prep === p ? ' selected' : '') + '>' + PREP_LABEL[p] + '</option>').join('') +
       '</select></div>' +
-      '<div class="edit-full"><label>1kg = 몇 개?</label><input type="number" id="sp_perkg" inputmode="decimal" min="0" step="1" value="' + perV + '" placeholder="예: 10"></div>' +
+      '<div><label>1kg = 몇 개?</label><input type="number" id="sp_perkg" inputmode="decimal" min="0" step="1" value="' + perV + '" placeholder="예: 50" oninput="syncPer(\'kg\')"></div>' +
+      '<div><label>1개 = 몇 g?</label><input type="number" id="sp_gper" inputmode="decimal" min="0" step="1" value="' + (perV ? r1(1000 / parseFloat(perV)) : '') + '" placeholder="예: 20" oninput="syncPer(\'g\')"></div>' +
       (prep === '당일'
         ? '<div class="edit-full"><label>1판 = 몇 kg? (판으로 찌는 떡만)</label><input type="number" id="sp_pankg" inputmode="decimal" min="0" step="0.1" value="' + panV + '" placeholder="예: 3.5"></div>'
         : '<input type="hidden" id="sp_pankg" value="">') +
       '<div class="edit-full"><label>메모</label><input type="text" id="sp_memo" value="' + esc(memoV) + '" placeholder="예: 시루 2개 사용"></div>' +
     '</div>' +
     '<div class="edit-help">' +
-      '1kg = 몇 개: 개수로 들어온 주문을 kg로 바꿀 때 써요. 비워두면 개수 그대로 보여줘요.<br>' +
+      '1kg 개수나 1개 무게 중 아는 걸 넣으면 다른 칸은 자동으로 채워져요. 개수로 들어온 주문을 kg로 바꿀 때 써요. 비워두면 개수 그대로 보여줘요.<br>' +
       (prep === '당일'
         ? '1판 = 몇 kg: 넣은 떡만 판 수를 계산해요. 모자라지 않게 올림하고, 남는 양은 판매용으로 표시해요. (예: 9kg ÷ 3.5kg → 3판, 1.5kg 남음)'
         : (prep === '해동' ? '내일 배송분 양을 오늘 "해동할 떡"에 보여줘요.' : '오늘 배송분 양을 "냉동재고 사용"에 보여줘요.')) +
@@ -929,6 +932,16 @@ function renderEditArea(prepOverride) {
     '</div></div>';
 }
 
+// 1kg 개수 ↔ 1개 무게(g) 자동 환산 (1kg = 50개 ↔ 1개 = 20g)
+let lastPerFrom = 'kg';
+function syncPer(from) {
+  lastPerFrom = from;
+  const kgEl = document.getElementById('sp_perkg'), gEl = document.getElementById('sp_gper');
+  if (!kgEl || !gEl) return;
+  if (from === 'kg') { const v = parseFloat(kgEl.value); gEl.value = v > 0 ? r1(1000 / v) : ''; }
+  else { const v = parseFloat(gEl.value); kgEl.value = v > 0 ? r1(1000 / v) : ''; }
+}
+
 function saveSpec(del) {
   const name = editingName;
   if (!name) return;
@@ -936,7 +949,9 @@ function saveSpec(del) {
   if (del) {
     if (!confirm('"' + name + '" 설정을 삭제할까요?')) return;
   } else {
-    const perKg = parseFloat(document.getElementById('sp_perkg').value) || 0;
+    const gIn = parseFloat(document.getElementById('sp_gper').value) || 0;
+    const kgIn = parseFloat(document.getElementById('sp_perkg').value) || 0;
+    const perKg = (lastPerFrom === 'g' && gIn > 0) ? 1000 / gIn : kgIn;
     const prep = document.getElementById('sp_prep').value;
     const panKg = prep === '당일' ? (parseFloat(document.getElementById('sp_pankg').value) || 0) : 0;
     const memo = document.getElementById('sp_memo').value.trim();
@@ -946,26 +961,15 @@ function saveSpec(del) {
   const btn = document.getElementById('spSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
-  // 다른 사람이 그 사이 저장한 것을 덮어쓰지 않도록 서버의 최신 수율을 먼저 받아서 합침
-  gasGet({ action: 'getTteokSettings' })
-    .then(function(d) {
-      if (d && d.success && d.data) {
-        const s = d.data.productionSpecs;
-        return (s && typeof s === 'object' && !Array.isArray(s)) ? s : {};
-      }
-      return Object.assign({}, SPECS);
-    })
-    .catch(function() { return Object.assign({}, SPECS); })
-    .then(function(latest) {
-      if (del) delete latest[name]; else latest[name] = obj;
-      return gasPost({ action: 'saveTteokSettings', data: { productionSpecs: latest } }).then(function(res) {
-        if (!res || !res.success) throw new Error('fail');
-        SPECS = latest;
-        try { localStorage.setItem(SPEC_CACHE_KEY, JSON.stringify(SPECS)); } catch (e) {}
-        editingName = null;
-        renderAll();
-        toast(del ? '🗑 삭제됐어요' : '✅ 저장됐어요');
-      });
+  // 서버가 최신 설정에 이 떡 하나만 합쳐서 저장함 (다른 떡 설정은 절대 안 건드림)
+  gasPost({ action: 'saveProductionSpec', name: name, spec: obj, del: !!del })
+    .then(function(res) {
+      if (!res || !res.success || !res.specs) throw new Error('fail');
+      SPECS = res.specs;
+      try { localStorage.setItem(SPEC_CACHE_KEY, JSON.stringify(SPECS)); } catch (e) {}
+      editingName = null;
+      renderAll();
+      toast(del ? '🗑 삭제됐어요' : '✅ 저장됐어요');
     })
     .catch(function() {
       if (btn) { btn.disabled = false; btn.textContent = '💾 저장'; }
