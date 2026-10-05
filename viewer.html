@@ -262,14 +262,15 @@ function gasGetOnce(params, timeoutMs) {
 }
 
 // 첫 시도는 10초만 기다리고, 실패하면 여유시간을 늘려가며 재시도 (모바일 데이터 대비)
-function gasGet(params, retriesLeft, timeoutMs) {
+function gasGet(params, retriesLeft, timeoutMs, onRetry) {
   if (retriesLeft === undefined) retriesLeft = 2;
   if (timeoutMs === undefined) timeoutMs = 10000;
   return gasGetOnce(params, timeoutMs).catch(function(err) {
     if (retriesLeft > 0) {
       var nextTimeout = Math.min(timeoutMs + 8000, 28000);
+      if (onRetry) onRetry(3 - retriesLeft + 1);
       return new Promise(function(res) { setTimeout(res, 500); })
-        .then(function() { return gasGet(params, retriesLeft - 1, nextTimeout); });
+        .then(function() { return gasGet(params, retriesLeft - 1, nextTimeout, onRetry); });
     }
     throw err;
   });
@@ -369,16 +370,25 @@ function loadData(force) {
 
   const params = { action: 'getProductionDay', date: date };
   if (force) params.force = 1;
-  gasGet(params)
+  const onRetry = function(n) {
+    if (shown || document.getElementById('dateInput').value !== date) return;
+    document.getElementById('planSection').innerHTML = '<div class="loading">서버 응답이 늦어서 다시 시도 중... (' + n + '/2)</div>';
+  };
+  gasGet(params, 2, 10000, onRetry)
     .then(function(data) {
       if (document.getElementById('dateInput').value !== date) return; // 그 사이 날짜를 바꿨으면 무시
-      if (!data || !data.success) { if (!shown) showError(); return; }
+      if (!data || !data.success) { if (!shown) showError('서버 오류: ' + ((data && data.error) || '응답 없음')); return; }
       applyDay(data);
+      try {
+        renderAll();
+      } catch (e) {
+        showError('화면 그리기 오류: ' + (e && e.message || e));
+        return;
+      }
       try { localStorage.setItem(DAY_CACHE_PREFIX + date, JSON.stringify(data)); } catch (e) {}
       cleanOldDayCache();
-      renderAll();
     })
-    .catch(function() { if (!shown) showError(); });
+    .catch(function() { if (!shown) showError('서버 연결 실패 (응답 시간 초과)'); });
 }
 
 // 이 기기에 저장된 날짜별 데이터가 너무 쌓이지 않게 최근 10개만 남김
@@ -393,13 +403,15 @@ function cleanOldDayCache() {
   } catch (e) {}
 }
 
-function showError() {
-  document.getElementById('planSection').innerHTML = '<div class="empty"><div class="icon">❌</div><p>서버 연결 실패. 🔄을 다시 눌러주세요.</p></div>';
+function showError(msg) {
+  document.getElementById('planSection').innerHTML = '<div class="empty"><div class="icon">❌</div><p>' +
+    esc(msg || '서버 연결 실패') + '<br>🔄을 다시 눌러주세요.</p></div>';
 }
 
 // ============ 세트 → 낱개 떡 분해 (장부앱 decomposeSetItem과 동일) ============
 function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
-  const name = (itemName || '').trim();
+  const name = String(itemName == null ? '' : itemName).trim();
+  itemQty = (itemQty == null || itemQty === '') ? '' : String(itemQty);
 
   // 실제 주문 시점에 담긴 구성이 저장돼 있으면(프리셋/직접담기) 그걸 최우선
   if (itemsOverride && itemsOverride.length) {
@@ -416,13 +428,13 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
     let cs = null;
     if (csId) cs = window.CUSTOM_SETS.find(function(s){ return s.id === csId; });
     if (!cs) {
-      const sorted = window.CUSTOM_SETS.slice().sort(function(a,b){ return b.name.length - a.name.length; });
-      cs = sorted.find(function(s){ return name.indexOf(s.name + '(') === 0 || name === s.name; });
+      const sorted = window.CUSTOM_SETS.slice().sort(function(a,b){ return String((b&&b.name)||'').length - String((a&&a.name)||'').length; });
+      cs = sorted.find(function(s){ return s && s.name && (name.indexOf(s.name + '(') === 0 || name === s.name); });
     }
     if (cs) {
       const setQty = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
       return (cs.items || []).map(function(it) {
-        const num = it.qty * setQty;
+        const num = (parseFloat(it.qty) || 0) * setQty;
         const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
         return { name: it.name, qty: displayNum + (it.unit || '개') };
       });
@@ -491,7 +503,8 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
 
 // ============ 주문 → 생산용 떡 목록 ============
 function rawItems(o) {
-  if (Array.isArray(o.tteokItems) && o.tteokItems.length) return o.tteokItems;
+  if (!o) return [];
+  if (Array.isArray(o.tteokItems) && o.tteokItems.length) return o.tteokItems.filter(Boolean);
   if (!o.tteokType) return [];
   return String(o.tteokType).split(/[,\n]+/).map(s => s.trim()).filter(Boolean).map(s => {
     const m = s.match(/^(.+?)\s+([\d.]+\s*(?:말|되|개|박스|kg|k|g)?.*)$/i);
@@ -505,7 +518,8 @@ function prodParts(o, kind) {
     if (!t || !t.name) return;
     let name = String(t.name);
     if (kind === 'wedding') name = t.baseName || name.replace(/^\d+층\s*/, '');
-    decomposeSetItem(name, t.qty, t.csId, t.items).forEach(function(p) {
+    const items = Array.isArray(t.items) ? t.items.filter(Boolean) : null;
+    decomposeSetItem(name, t.qty, t.csId, items).forEach(function(p) {
       if (p && p.name) out.push({ name: String(p.name).trim(), qty: p.qty });
     });
   });
@@ -621,6 +635,10 @@ function renderPlan() {
 
   const nospecCount = steamInfo.filter(function(i) { return !i.spec; }).length;
   let html = '';
+
+  if (Array.isArray(DAY.errors) && DAY.errors.length) {
+    html += '<div class="nospec-banner" style="background:#fdecea;border-color:#e57373;color:#b71c1c">⚠️ 일부를 못 불러왔어요 — ' + esc(DAY.errors.join(' / ')) + '</div>';
+  }
 
   if (nospecCount > 0) {
     html += '<div class="nospec-banner" onclick="switchTab(\'spec\')">⚠️ 수율 미입력 ' + nospecCount + '종 — 눌러서 수율 설정하기</div>';
