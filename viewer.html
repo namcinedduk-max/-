@@ -236,7 +236,7 @@
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbweHz9OiFlJo2d7OV-etlf2snEVWhvL8PleG8ljoHYtmJ-OMjZyEqorL-tKUSYQkaZz0g/exec';
 const DAY_CACHE_PREFIX = 'prodDay_v1_';
 const SPEC_CACHE_KEY = 'prodSpecs_v1';
-const PREP_LABEL = { '당일': '당일 생산', '해동': '전날 해동', '냉동': '냉동재고' };
+const PREP_LABEL = { '당일': '찌는 떡', '해동': '전날 해동', '냉동': '냉동재고' };
 
 let DAY = null;            // 서버에서 받은 그 날짜 데이터
 let SPECS = {};            // 떡별 수율 { 이름: {pcs, kg, prep, memo} }
@@ -866,23 +866,44 @@ function openEdit(name) {
   window.scrollTo(0, 0);
 }
 
-function renderEditArea() {
+function renderEditArea(prepOverride) {
   const area = document.getElementById('editArea');
   if (!editingName) { area.innerHTML = ''; return; }
   const sp = SPECS[editingName] || { pcs: '', kg: '', gPer: '', prep: '당일', memo: '' };
+  // 준비 방식만 바꿨을 땐 입력 중인 값 유지
+  const cur = function(id, def) { const el = document.getElementById(id); return el ? el.value : def; };
+  const prep = prepOverride || sp.prep || '당일';
+  const pcsV = prepOverride ? cur('sp_pcs', sp.pcs || '') : (sp.pcs || '');
+  const kgV  = prepOverride ? cur('sp_kg', sp.kg || '') : (sp.kg || '');
+  const gV   = prepOverride ? cur('sp_gper', sp.gPer || '') : (sp.gPer || '');
+  const memoV = prepOverride ? cur('sp_memo', sp.memo || '') : (sp.memo || '');
   const n = esc(editingName);
+
+  let fields;
+  if (prep === '당일') {
+    fields =
+      '<div class="edit-full" style="font-size:13px;font-weight:700;color:#7c2d12;">1판을 찌면 몇 개 / 몇 kg 나와요? (아는 것만)</div>' +
+      '<div><label>1판 = 개</label><input type="number" id="sp_pcs" inputmode="decimal" min="0" step="1" value="' + pcsV + '" placeholder="예: 35"></div>' +
+      '<div><label>1판 = kg</label><input type="number" id="sp_kg" inputmode="decimal" min="0" step="0.1" value="' + kgV + '" placeholder="예: 3.5"></div>' +
+      '<input type="hidden" id="sp_gper" value="">';
+  } else {
+    fields =
+      '<div class="edit-full"><label>1개 = 몇 g? (kg로 보고 싶을 때만, 개수로 볼 거면 비워두기)</label><input type="number" id="sp_gper" inputmode="decimal" min="0" step="1" value="' + gV + '" placeholder="예: 20"></div>' +
+      '<input type="hidden" id="sp_pcs" value=""><input type="hidden" id="sp_kg" value="">';
+  }
+
   area.innerHTML = '<div class="edit-box">' +
     '<div class="edit-title">✏️ ' + n + (SPECS[editingName] ? ' 수정' : ' 새로 입력') + '</div>' +
     '<div class="edit-grid">' +
-      '<div><label>1판 개수</label><input type="number" id="sp_pcs" inputmode="decimal" min="0" step="1" value="' + (sp.pcs || '') + '" placeholder="예: 35"></div>' +
-      '<div><label>1판 kg</label><input type="number" id="sp_kg" inputmode="decimal" min="0" step="0.1" value="' + (sp.kg || '') + '" placeholder="예: 3.5"></div>' +
-      '<div class="edit-full"><label>준비 방식</label><select id="sp_prep">' +
-        ['당일', '해동', '냉동'].map(p => '<option value="' + p + '"' + ((sp.prep || '당일') === p ? ' selected' : '') + '>' + PREP_LABEL[p] + '</option>').join('') +
+      '<div class="edit-full"><label>준비 방식</label><select id="sp_prep" onchange="renderEditArea(this.value)">' +
+        ['당일', '해동', '냉동'].map(p => '<option value="' + p + '"' + (prep === p ? ' selected' : '') + '>' + PREP_LABEL[p] + '</option>').join('') +
       '</select></div>' +
-      '<div class="edit-full"><label>1개 무게(g) — 해동·냉동 떡을 kg로 보고 싶을 때만</label><input type="number" id="sp_gper" inputmode="decimal" min="0" step="1" value="' + (sp.gPer || '') + '" placeholder="예: 꿀떡 20"></div>' +
-      '<div class="edit-full"><label>메모</label><input type="text" id="sp_memo" value="' + esc(sp.memo || '') + '" placeholder="예: 시루 2개 사용"></div>' +
+      fields +
+      '<div class="edit-full"><label>메모</label><input type="text" id="sp_memo" value="' + esc(memoV) + '" placeholder="예: 시루 2개 사용"></div>' +
     '</div>' +
-    '<div class="edit-help">당일 생산은 1판 개수나 kg 중 아는 것 하나만 넣어도 돼요. 주문이 개로 들어오면 개수로, kg로 들어오면 kg로 나눠서 판 수를 계산해요.<br>전날 해동·냉동재고는 판 수를 계산하지 않고 수량만 보여줘요. 1개 무게를 넣으면 개수를 kg로 바꿔서 보여줘요.</div>' +
+    '<div class="edit-help">' + (prep === '당일'
+      ? '주문이 개로 들어오면 개수로, kg로 들어오면 kg로 나눠서 몇 판 찔지 계산해요.'
+      : (prep === '해동' ? '내일 배송분 양을 오늘 "해동할 떡"에 보여줘요.' : '오늘 배송분 양을 "냉동재고 사용"에 보여줘요.') + ' 판 수는 계산하지 않아요.') + '</div>' +
     '<div class="edit-actions">' +
       (SPECS[editingName] ? '<button class="btn btn-del" onclick="saveSpec(true)">삭제</button>' : '') +
       '<button class="btn btn-cancel" onclick="editingName=null;renderEditArea();">취소</button>' +
@@ -902,7 +923,7 @@ function saveSpec(del) {
     const prep = document.getElementById('sp_prep').value;
     const memo = document.getElementById('sp_memo').value.trim();
     const gPer = parseFloat(document.getElementById('sp_gper').value) || 0;
-    if (prep === '당일' && !pcs && !kg) { toast('1판 개수나 kg 중 하나는 넣어주세요'); return; }
+    if (prep === '당일' && !pcs && !kg) { toast('1판 = 개 또는 kg 중 하나는 넣어주세요'); return; }
     obj = { pcs: pcs, kg: kg, prep: prep, memo: memo };
     if (gPer > 0) obj.gPer = gPer;
   }
