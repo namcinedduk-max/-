@@ -35,39 +35,48 @@
     border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap;
   }
 
+  .main-tabs { display:flex; gap:6px; margin-top:10px; }
+  .main-tab {
+    flex:1; padding:9px; border:none; border-radius:10px; cursor:pointer;
+    font-size:14px; font-weight:800; background:rgba(255,255,255,0.12); color:#FAF6EF;
+  }
+  .main-tab.active { background:#FAF6EF; color:#3D2314; }
+
   .container { padding:12px; }
 
-  /* 합계 섹션 */
   .section-title {
     font-size:14px; font-weight:800; color:#3D2314;
-    margin:0 0 8px 2px;
-    display:flex; align-items:center; gap:6px;
+    margin:14px 0 8px 2px;
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
   }
+  .section-title:first-child { margin-top:0; }
+  .section-sub { font-size:12px; font-weight:600; color:#8a6a50; }
   .count-pill {
     background:#c2410c; color:#fff;
     border-radius:20px; padding:2px 10px; font-size:12px; font-weight:700;
   }
 
-  .summary-grid {
-    display:grid; grid-template-columns: repeat(2, 1fr); gap:8px;
-    margin-bottom:16px;
+  /* 생산 카드 */
+  .plan-list { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+  .plan-row {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 14px; border-top:1px solid #f0e6da;
   }
-  .summary-card {
-    background:#fff; border-radius:14px;
-    padding:14px 14px 12px;
-    border-left:5px solid #c2410c;
-    box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  .plan-row:first-child { border-top:none; }
+  .plan-name { font-size:15px; font-weight:800; color:#2C1810; }
+  .plan-sub { font-size:12px; color:#8a6a50; margin-top:3px; line-height:1.4; }
+  .plan-left { font-size:11px; color:#b45309; margin-top:3px; font-weight:700; }
+  .plan-pan { font-size:26px; font-weight:900; color:#c2410c; white-space:nowrap; }
+  .plan-pan small { font-size:14px; font-weight:800; }
+  .plan-qty { font-size:16px; font-weight:800; color:#2C1810; white-space:nowrap; }
+  .badge-nospec {
+    background:#fef3c7; color:#92400e; border-radius:20px; padding:3px 10px;
+    font-size:11px; font-weight:800; white-space:nowrap;
   }
-  .summary-card .s-name {
-    font-size:13px; font-weight:700; color:#3D2314;
-    margin-bottom:6px; line-height:1.3;
-  }
-  .summary-card .s-qty {
-    font-size:24px; font-weight:900; color:#c2410c; line-height:1;
-  }
-  .s-source {
-    font-size:11px; color:#b45309; font-weight:600;
-    margin-top:4px; line-height:1.4;
+  .plan-empty { padding:16px; text-align:center; color:#aaa; font-size:13px; }
+  .nospec-banner {
+    background:#fef3c7; color:#92400e; border-radius:12px; padding:10px 14px;
+    font-size:13px; font-weight:700; margin-bottom:4px; cursor:pointer;
   }
 
   /* 주문 카드 */
@@ -79,7 +88,7 @@
   .order-card-header {
     background:#3D2314; color:#FAF6EF;
     padding:10px 14px;
-    display:flex; align-items:center; justify-content:space-between;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
   }
   .order-card-header .no { font-size:12px; color:#c4a882; font-weight:700; }
   .order-card-header .time { font-size:13px; font-weight:800; }
@@ -97,34 +106,75 @@
   .card-value.memo { color:#c2410c; font-size:13px; }
   .card-value.addr { font-size:12px; color:#666; font-weight:500; }
 
-  .pay-badge {
-    display:inline-block; padding:3px 10px; border-radius:20px;
-    font-size:12px; font-weight:700;
-  }
+  .pay-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; }
   .pay-done { background:#dcfce7; color:#166534; }
   .pay-wait { background:#ffedd5; color:#c2410c; }
   .pay-gray { background:#f3f4f6; color:#6b7280; }
 
-  .empty { text-align:center; padding:50px 20px; color:#aaa; }
-  .empty .icon { font-size:48px; margin-bottom:12px; }
-  .empty p { font-size:15px; }
+  .empty { text-align:center; padding:40px 20px; color:#aaa; }
+  .empty .icon { font-size:40px; margin-bottom:10px; }
+  .empty p { font-size:14px; }
+  .loading { text-align:center; padding:30px; color:#888; font-size:15px; }
 
-  .loading { text-align:center; padding:40px; color:#888; font-size:15px; }
-
-  .sort-row {
-    display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;
-  }
+  .sort-row { display:flex; gap:6px; margin:4px 0 10px; flex-wrap:wrap; }
   .sort-btn {
-    padding:6px 12px; border:none; border-radius:20px;
+    padding:6px 12px; border:1px solid #d9c4a8; border-radius:20px;
     font-size:12px; font-weight:700; cursor:pointer;
-    background:rgba(255,255,255,0.15); color:#FAF6EF;
+    background:#fff; color:#7B4A2D;
   }
-  .sort-btn.active {
-    background:#c2410c; color:#fff;
+  .sort-btn.active { background:#c2410c; color:#fff; border-color:#c2410c; }
+
+  /* 수율 설정 */
+  .set-box { background:#fff; border-radius:14px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,0.08); margin-bottom:12px; }
+  .set-search { position:relative; }
+  .set-search input {
+    width:100%; padding:11px 12px; border:1.5px solid #d9c4a8; border-radius:10px; font-size:15px;
+  }
+  .dropdown {
+    position:absolute; top:100%; left:0; right:0; z-index:50; background:#fff;
+    border:1.5px solid #d9c4a8; border-radius:10px; margin-top:4px; max-height:240px; overflow-y:auto;
+    box-shadow:0 6px 16px rgba(0,0,0,0.12); display:none;
+  }
+  .dropdown div { padding:10px 12px; font-size:14px; border-bottom:1px solid #f3ece3; cursor:pointer; display:flex; justify-content:space-between; }
+  .dropdown div:active { background:#faf3ea; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .chip {
+    padding:6px 12px; border-radius:20px; border:1.5px solid #f59e0b; background:#fffbeb;
+    color:#92400e; font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .spec-row { padding:12px 2px; border-top:1px solid #f0e6da; cursor:pointer; }
+  .spec-row:first-child { border-top:none; }
+  .spec-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .spec-name { font-size:15px; font-weight:800; }
+  .spec-desc { font-size:12px; color:#8a6a50; margin-top:3px; }
+  .prep-pill { font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+  .prep-당일 { background:#ffedd5; color:#9a3412; }
+  .prep-해동 { background:#dbeafe; color:#1e40af; }
+  .prep-냉동 { background:#e5e7eb; color:#374151; }
+
+  .edit-box { background:#fffbeb; border:2px solid #f59e0b; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .edit-title { font-size:16px; font-weight:900; color:#92400e; margin-bottom:10px; }
+  .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .edit-grid label { font-size:12px; font-weight:700; color:#7B4A2D; display:block; margin-bottom:4px; }
+  .edit-grid input, .edit-grid select {
+    width:100%; padding:10px; border:1.5px solid #d9c4a8; border-radius:10px; font-size:15px; background:#fff;
+  }
+  .edit-full { grid-column:1/-1; }
+  .edit-help { font-size:11px; color:#8a6a50; margin-top:8px; line-height:1.5; }
+  .edit-actions { display:flex; gap:8px; margin-top:12px; }
+  .btn { padding:11px 14px; border:none; border-radius:10px; font-size:14px; font-weight:800; cursor:pointer; }
+  .btn-save { flex:1; background:#3D2314; color:#fff; }
+  .btn-del { background:#fee2e2; color:#b91c1c; }
+  .btn-cancel { background:#f3f4f6; color:#555; }
+
+  .toast {
+    position:fixed; left:16px; right:16px; bottom:20px; z-index:300;
+    background:#3D2314; color:#fff; padding:12px 16px; border-radius:12px;
+    font-size:14px; font-weight:700; text-align:center; display:none;
   }
 
   @media print {
-    .header input, .btn-today, .btn-refresh { display:none !important; }
+    .header input, .btn-today, .btn-refresh, .main-tabs { display:none !important; }
   }
 </style>
 </head>
@@ -138,54 +188,67 @@
   <div class="date-row">
     <input type="date" id="dateInput">
     <button class="btn-today" onclick="setToday()">오늘</button>
-    <button class="btn-refresh" onclick="loadData()">🔄</button>
+    <button class="btn-refresh" onclick="loadData(true)" title="최신으로 다시 불러오기">🔄</button>
   </div>
-  <div class="sort-row">
-    <button class="sort-btn active" id="sort-time" onclick="setSort('time')">⏰ 시간순</button>
-    <button class="sort-btn" id="sort-tteok" onclick="setSort('tteok')">🍡 떡종류순</button>
-    <button class="sort-btn" id="sort-method" onclick="setSort('method')">🚚 배송방법순</button>
+  <div class="main-tabs">
+    <button class="main-tab active" id="tabbtn-plan" onclick="switchTab('plan')">🍡 생산계획</button>
+    <button class="main-tab" id="tabbtn-spec" onclick="switchTab('spec')">⚙️ 수율 설정</button>
   </div>
 </div>
 
 <div class="container">
-  <div class="section-title">
-    🍡 떡 합계
-    <span class="count-pill" id="summaryCount">0종</span>
-  </div>
-  <div id="venueSection" style="margin-bottom:4px;"></div>
+  <!-- ===== 생산계획 탭 ===== -->
+  <div id="tab-plan">
+    <div id="planSection"><div class="loading">불러오는 중...</div></div>
 
-  <div class="section-title">
-    📋 주문 목록
-    <span class="count-pill" id="orderCount">0건</span>
-  </div>
-  <div class="order-cards" id="orderCards">
-    <div class="loading">불러오는 중...</div>
+    <div class="section-title">📋 주문 목록 <span class="count-pill" id="orderCount">0건</span></div>
+    <div class="sort-row">
+      <button class="sort-btn active" id="sort-time" onclick="setSort('time')">⏰ 시간순</button>
+      <button class="sort-btn" id="sort-tteok" onclick="setSort('tteok')">🍡 떡종류순</button>
+      <button class="sort-btn" id="sort-method" onclick="setSort('method')">🚚 배송방법순</button>
+    </div>
+    <div id="venueSection"></div>
+    <div class="order-cards" id="orderCards"></div>
   </div>
 
-  <div class="section-title" style="margin-top:16px;">
-    🍡 떡 합계
-    <span class="count-pill" id="summaryCount">0종</span>
-  </div>
-  <div class="summary-grid" id="summaryGrid">
-    <div class="loading">불러오는 중...</div>
+  <!-- ===== 수율 설정 탭 ===== -->
+  <div id="tab-spec" style="display:none;">
+    <div id="editArea"></div>
+
+    <div class="set-box">
+      <div class="set-search">
+        <input type="text" id="specSearch" placeholder="🔍 떡 이름 검색해서 추가·수정" autocomplete="off"
+          oninput="renderDropdown()" onfocus="renderDropdown()"
+          onblur="setTimeout(function(){document.getElementById('specDropdown').style.display='none';},200)">
+        <div class="dropdown" id="specDropdown"></div>
+      </div>
+      <div id="nospecChips"></div>
+    </div>
+
+    <div class="section-title">📒 입력된 수율 <span class="count-pill" id="specCount">0종</span></div>
+    <div class="set-box" id="specList"></div>
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbweHz9OiFlJo2d7OV-etlf2snEVWhvL8PleG8ljoHYtmJ-OMjZyEqorL-tKUSYQkaZz0g/exec';
-let allOrders = [];
-let allWeddingOrders = [];
-let allOtherOrders = [];
-let allFuneralOrders = [];
+const DAY_CACHE_PREFIX = 'prodDay_v1_';
+const SPEC_CACHE_KEY = 'prodSpecs_v1';
+const PREP_LABEL = { '당일': '당일 생산', '해동': '전날 해동', '냉동': '냉동재고' };
+
+let DAY = null;            // 서버에서 받은 그 날짜 데이터
+let SPECS = {};            // 떡별 수율 { 이름: {pcs, kg, prep, memo} }
+let TTEOK_NAMES = [];      // 떡단가표의 떡 이름 목록
+window.CUSTOM_SETS = [];   // 장부앱에서 만든 세트 구성 (세트 분해용)
 let currentSort = 'time';
+let currentTab = 'plan';
+let editingName = null;
 
-function setSort(type) {
-  currentSort = type;
-  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('sort-' + type).classList.add('active');
-  render(document.getElementById('dateInput').value);
-}
+try { SPECS = JSON.parse(localStorage.getItem(SPEC_CACHE_KEY) || '{}') || {}; } catch (e) { SPECS = {}; }
 
+// ============ 서버 통신 ============
 function gasGetOnce(params, timeoutMs) {
   return new Promise(function(resolve, reject) {
     const cb = 'cb' + Date.now() + Math.floor(Math.random()*9999);
@@ -198,9 +261,7 @@ function gasGetOnce(params, timeoutMs) {
   });
 }
 
-// 첫 시도는 짧게(10초)만 기다려서 막히면 빨리 포기하고 재시도 — 모바일 데이터에서
-// 첫 연결이 유독 느리거나 멈추는 경우, 28초 꽉 채워 기다리지 않고 빠르게 다음 시도로 넘어감.
-// 재시도할수록 여유시간을 늘려 마지막엔 28초까지(정말 서버가 느린 경우 대비 안전장치).
+// 첫 시도는 10초만 기다리고, 실패하면 여유시간을 늘려가며 재시도 (모바일 데이터 대비)
 function gasGet(params, retriesLeft, timeoutMs) {
   if (retriesLeft === undefined) retriesLeft = 2;
   if (timeoutMs === undefined) timeoutMs = 10000;
@@ -214,20 +275,51 @@ function gasGet(params, retriesLeft, timeoutMs) {
   });
 }
 
-function setToday() {
-  const d = new Date();
-  document.getElementById('dateInput').value =
-    d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  loadData();
+function gasPost(body) {
+  return fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); });
 }
 
+// ============ 공통 유틸 ============
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function r1(n) { return Math.round(n * 10) / 10; }
+function r2(n) { return Math.round(n * 100) / 100; }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() { t.style.display = 'none'; }, 2500);
+}
+
+function normDate(str) {
+  if (!str) return '';
+  const m = String(str).match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
+  return m ? m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0') : String(str);
+}
+
+function shortDate(d) {
+  const m = String(d || '').match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return m ? parseInt(m[1]) + '/' + parseInt(m[2]) : d;
+}
+
+function normalizeTimeStr(val) {
+  if (!val) return '';
+  const s = String(val).trim().replace(/^'+/, '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return '';
+  return s;
+}
 
 function timeToMinutes(timeStr) {
   if (!timeStr) return 9999;
-  if (timeStr === '오전중') return 719;  // 오전 중 제일 뒤
-  if (timeStr === '오후중') return 1439; // 오후 중 제일 뒤
-  // ~ 앞부분만 사용
-  const start = timeStr.split('~')[0];
+  if (timeStr === '오전중') return 719;
+  if (timeStr === '오후중') return 1439;
+  const start = String(timeStr).split('~')[0];
   const m = start.match(/(오전|오후)\s*(\d+)\s*시?\s*(\d+)?\s*분?/);
   if (!m) return 9999;
   let h = parseInt(m[2]);
@@ -237,339 +329,589 @@ function timeToMinutes(timeStr) {
   return h * 60 + min;
 }
 
-function normalizeTimeStr(val) {
-  if (!val) return '';
-  const s = String(val).trim();
-  // ISO 날짜 형식(1899, 2026 등) 이면 빈값 반환
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return '';
-  return s;
+// ============ 데이터 불러오기 ============
+function setToday() {
+  const d = new Date();
+  document.getElementById('dateInput').value =
+    d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  loadData(false);
 }
 
-function getOrderNo(order, allOrders) {
-  if (order.seqNo) return order.seqNo; // 장부앱에서 고정한 번호가 있으면 그대로 씀
-  const date = normDate(String(order.deliveryDate || ''));
-  if (!date) return '-';
-  // 장부앱과 동일: 전체 주문(택배 포함) 기준, 오래된 순(reverse)
-  const sameDay = allOrders
-    .filter(o => normDate(String(o.deliveryDate || '')) === date)
-    .slice().reverse();
-  const idx = sameDay.findIndex(o => String(o.id) === String(order.id));
-  return idx >= 0 ? idx + 1 : '-';
+function applyDay(data) {
+  DAY = data;
+  if (data.productionSpecs && typeof data.productionSpecs === 'object') {
+    SPECS = data.productionSpecs;
+    try { localStorage.setItem(SPEC_CACHE_KEY, JSON.stringify(SPECS)); } catch (e) {}
+  }
+  TTEOK_NAMES = Array.isArray(data.tteokNames) ? data.tteokNames : [];
+  window.CUSTOM_SETS = Array.isArray(data.customSets) ? data.customSets : [];
 }
 
-function normDate(str) {
-  if (!str) return '';
-  const m = str.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
-  return m ? m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0') : str;
-}
+function loadData(force) {
+  const date = document.getElementById('dateInput').value;
+  if (!date) return;
+  let shown = false;
 
-const VIEWER_CACHE_KEY = 'viewerCache_v1';
-let _shownFromCache = false; // 이전 캐시로 화면을 이미 띄웠는지 (실패해도 화면을 지우지 않기 위함)
-
-function loadData() {
-  _shownFromCache = false;
-
-  // 마지막으로 성공했던 데이터가 있으면 즉시 그걸로 화면부터 띄우고,
-  // 뒤에서 최신 데이터를 조용히 받아와서 덮어씀 → 체감상 거의 즉시 뜨는 것처럼 느껴짐
+  // 이 기기에 저장해둔 그 날짜 데이터가 있으면 먼저 띄우고, 뒤에서 최신으로 덮어씀
   try {
-    const cached = JSON.parse(localStorage.getItem(VIEWER_CACHE_KEY) || 'null');
-    if (cached) {
-      allOrders = cached.allOrders || [];
-      allWeddingOrders = cached.allWeddingOrders || [];
-      allOtherOrders = cached.allOtherOrders || [];
-      allFuneralOrders = cached.allFuneralOrders || [];
-      render(document.getElementById('dateInput').value);
-      _shownFromCache = true;
-    }
+    const cached = JSON.parse(localStorage.getItem(DAY_CACHE_PREFIX + date) || 'null');
+    if (cached && cached.date === date) { applyDay(cached); renderAll(); shown = true; }
   } catch (e) {}
 
-  if (!_shownFromCache) {
-    document.getElementById('summaryGrid').innerHTML = '<div class="loading">불러오는 중...</div>';
-    document.getElementById('orderCards').innerHTML = '<div class="loading">불러오는 중...</div>';
-    document.getElementById('venueSection').innerHTML = '<div class="loading">불러오는 중...</div>';
+  if (!shown) {
+    DAY = null;
+    document.getElementById('planSection').innerHTML = '<div class="loading">불러오는 중...</div>';
+    document.getElementById('orderCards').innerHTML = '';
+    document.getElementById('venueSection').innerHTML = '';
+  } else if (force) {
+    toast('🔄 최신으로 불러오는 중...');
   }
 
-  // 개인/장례/웨딩/기타 4개 시트를 GAS getAllData 한 번의 요청으로 통합 로드 (예전엔 4번 순차 호출).
-  // 구버전 GAS(아직 getAllData를 모름)면 success:false가 오므로 예전 방식(개별 4회 호출)으로 자동 대체 — 안전장치.
-  gasGet({ action: 'getAllData', days: 30 })
+  const params = { action: 'getProductionDay', date: date };
+  if (force) params.force = 1;
+  gasGet(params)
     .then(function(data) {
-      if (!data.success) { return loadDataLegacyFallback(); }
-      allOrders = data.orders || [];
-      allWeddingOrders = data.weddingOrders || [];
-      allOtherOrders = data.otherOrders || [];
-      allFuneralOrders = data.funeralOrders || [];
-      saveViewerCache();
-      render(document.getElementById('dateInput').value);
+      if (document.getElementById('dateInput').value !== date) return; // 그 사이 날짜를 바꿨으면 무시
+      if (!data || !data.success) { if (!shown) showError(); return; }
+      applyDay(data);
+      try { localStorage.setItem(DAY_CACHE_PREFIX + date, JSON.stringify(data)); } catch (e) {}
+      cleanOldDayCache();
+      renderAll();
     })
-    .catch(function() { return loadDataLegacyFallback(); });
+    .catch(function() { if (!shown) showError(); });
 }
 
-function saveViewerCache() {
+// 이 기기에 저장된 날짜별 데이터가 너무 쌓이지 않게 최근 10개만 남김
+function cleanOldDayCache() {
   try {
-    localStorage.setItem(VIEWER_CACHE_KEY, JSON.stringify({
-      allOrders: allOrders, allWeddingOrders: allWeddingOrders,
-      allOtherOrders: allOtherOrders, allFuneralOrders: allFuneralOrders
-    }));
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf(DAY_CACHE_PREFIX) === 0) keys.push(k);
+    }
+    keys.sort().reverse().slice(10).forEach(function(k) { localStorage.removeItem(k); });
   } catch (e) {}
 }
 
-// getAllData를 모르는 구버전 GAS가 배포돼 있을 때를 위한 예전 방식(개별 4회 호출) 대체 경로
-function loadDataLegacyFallback() {
-  gasGet({ action: 'getOrders', days: 30 })
-    .then(function(data) {
-      if (!data.success) { if (!_shownFromCache) showError(); return Promise.reject(new Error('stop')); }
-      allOrders = data.orders || [];
-      return gasGet({ action: 'getOrders', sheet: 'wedding', days: 30 });
-    })
-    .then(function(wData) {
-      allWeddingOrders = wData.success ? (wData.orders || []) : [];
-      return gasGet({ action: 'getOrders', sheet: 'other', days: 30 });
-    })
-    .then(function(oData) {
-      allOtherOrders = oData.success ? (oData.orders || []) : [];
-      return gasGet({ action: 'getOrders', sheet: 'funeral', days: 30 });
-    })
-    .then(function(fData) {
-      allFuneralOrders = fData.success ? (fData.orders || []) : [];
-      saveViewerCache();
-      render(document.getElementById('dateInput').value);
-    })
-    .catch(function(err) {
-      if (err && err.message === 'stop') return; // 이미 처리됨
-      if (!_shownFromCache) showError(); // 캐시로 이미 뭔가 보여준 상태면 화면을 지우지 않음
-    });
+function showError() {
+  document.getElementById('planSection').innerHTML = '<div class="empty"><div class="icon">❌</div><p>서버 연결 실패. 🔄을 다시 눌러주세요.</p></div>';
 }
 
-function parseTteokItems(o) {
-  if (o.tteokItems && o.tteokItems.length > 0) return o.tteokItems;
+// ============ 세트 → 낱개 떡 분해 (장부앱 decomposeSetItem과 동일) ============
+function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
+  const name = (itemName || '').trim();
+
+  // 실제 주문 시점에 담긴 구성이 저장돼 있으면(프리셋/직접담기) 그걸 최우선
+  if (itemsOverride && itemsOverride.length) {
+    const setQtyOv = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
+    return itemsOverride.map(function(it) {
+      const num = (parseFloat(it.qty) || 0) * setQtyOv;
+      const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+      return { name: it.name, qty: displayNum + (it.unit || '개') };
+    });
+  }
+
+  // 내가 만든 커스텀 세트
+  if (window.CUSTOM_SETS && window.CUSTOM_SETS.length) {
+    let cs = null;
+    if (csId) cs = window.CUSTOM_SETS.find(function(s){ return s.id === csId; });
+    if (!cs) {
+      const sorted = window.CUSTOM_SETS.slice().sort(function(a,b){ return b.name.length - a.name.length; });
+      cs = sorted.find(function(s){ return name.indexOf(s.name + '(') === 0 || name === s.name; });
+    }
+    if (cs) {
+      const setQty = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
+      return (cs.items || []).map(function(it) {
+        const num = it.qty * setQty;
+        const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+        return { name: it.name, qty: displayNum + (it.unit || '개') };
+      });
+    }
+  }
+
+  // 덕세트 / 덕6구세트 / 추석세트 / 이바지
+  const setHeaderMatch = name.match(/^(덕세트|덕6구세트|추석1호|추석2호|추석3호|추석3호반반|이바지大|이바지小)\((.+)\)$/);
+  if (setHeaderMatch) {
+    const setQtyStr = (itemQty || '1세트').replace(/세트$/, '').trim();
+    const multiplier = parseFloat(setQtyStr) || 1;
+    const innerStr = setHeaderMatch[2];
+    const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+    const result = [];
+    parts.forEach(part => {
+      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)?$/);
+      if (m) {
+        const num = parseFloat(m[2]) * multiplier;
+        const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
+        result.push({ name: m[1].trim(), qty: displayNum + (m[3] || '개') });
+        return;
+      }
+      const rangeMatch = part.match(/^(.+?)\s+([\d.]+)\s*(g|kg)?\s*~\s*([\d.]+)\s*(g|kg)?$/);
+      if (rangeMatch) {
+        const unit2 = rangeMatch[5] || rangeMatch[3] || 'kg';
+        const unit1 = rangeMatch[3] || unit2;
+        const toKg = function(n, u) { return u === 'g' ? n / 1000 : n; };
+        const v1 = toKg(parseFloat(rangeMatch[2]), unit1);
+        const v2 = toKg(parseFloat(rangeMatch[4]), unit2);
+        const higherKg = Math.max(v1, v2) * multiplier;
+        result.push({ name: rangeMatch[1].trim(), qty: (Math.round(higherKg * 100) / 100) + 'kg' });
+        return;
+      }
+      result.push({ name: part, qty: multiplier > 1 ? String(multiplier) + '개' : '' });
+    });
+    return result;
+  }
+
+  // 코리아 / 쿠키상자
+  const koreaMatch = name.match(/^(코리아\([대소]\)|쿠키상자\([대소]\))\((.+)\)$/);
+  if (koreaMatch) {
+    const parts = koreaMatch[2].split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+    return parts.map(part => {
+      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉)?$/);
+      return m ? { name: m[1].trim(), qty: m[2] + (m[3] || '개') } : { name: part, qty: '' };
+    });
+  }
+
+  // 분홍세트 / 은혜세트 — 세트 수만큼 구성 떡이 각각 들어감
+  const pinkEhyeMatch = name.match(/^(분홍세트|은혜세트)\((.+)\)$/);
+  if (pinkEhyeMatch) {
+    const parts = pinkEhyeMatch[2].split('/').map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return [{ name: name, qty: itemQty }];
+    const totalM = (itemQty || '').match(/^([\d.]+)\s*(개|kg|g|말|되)?$/);
+    if (totalM) {
+      const totalNum = parseFloat(totalM[1]);
+      const unit = totalM[2] || '개';
+      const perDisplay = Number.isInteger(totalNum) ? totalNum : Math.round(totalNum * 10) / 10;
+      return parts.map(p => ({ name: p, qty: perDisplay + unit }));
+    }
+    return parts.map(p => ({ name: p, qty: itemQty || '' }));
+  }
+
+  return [{ name: name, qty: itemQty || '' }];
+}
+
+// ============ 주문 → 생산용 떡 목록 ============
+function rawItems(o) {
+  if (Array.isArray(o.tteokItems) && o.tteokItems.length) return o.tteokItems;
   if (!o.tteokType) return [];
-  return o.tteokType.split(/[,\n]+/).map(s => s.trim()).filter(Boolean).map(s => {
+  return String(o.tteokType).split(/[,\n]+/).map(s => s.trim()).filter(Boolean).map(s => {
     const m = s.match(/^(.+?)\s+([\d.]+\s*(?:말|되|개|박스|kg|k|g)?.*)$/i);
     return m ? { name: m[1].trim(), qty: m[2].trim() } : { name: s, qty: '' };
   });
 }
 
-// 합계 계산용: 세트(괄호안 재료)를 각각 분해해서 반환
-// 예) {name:'분홍(약식/호설/깨끼/완두)', qty:'68개'}
-//   → [{name:'약식',qty:'68개'}, {name:'호설',qty:'68개'}, ...]
-function expandTteokItemsForSummary(items) {
-  const result = [];
-  items.forEach(function(t) {
-    const setMatch = t.name.match(/^(.+?)\(([^)]+)\)$/);
-    if (setMatch) {
-      const subNames = setMatch[2].split(/[\/·,.]+/).map(function(n){ return n.trim(); }).filter(Boolean);
-      subNames.forEach(function(sub) {
-        result.push({ name: sub, qty: t.qty });
-      });
-    } else {
-      result.push(t);
-    }
+function prodParts(o, kind) {
+  const out = [];
+  rawItems(o).forEach(function(t) {
+    if (!t || !t.name) return;
+    let name = String(t.name);
+    if (kind === 'wedding') name = t.baseName || name.replace(/^\d+층\s*/, '');
+    decomposeSetItem(name, t.qty, t.csId, t.items).forEach(function(p) {
+      if (p && p.name) out.push({ name: String(p.name).trim(), qty: p.qty });
+    });
   });
-  return result;
+  return out;
 }
 
-function parseQty(qty) {
-  if (!qty) return { val: 0, unit: '개' };
-  const m = String(qty).match(/([\d.]+)\s*(말|되|개|박스|kg|k|g)?/i);
-  return m ? { val: parseFloat(m[1]), unit: (m[2]||'개').toLowerCase() } : { val: 0, unit: '개' };
+// 수량 문자열 → 개/kg/되/기타로 구분
+function parseQtyP(q) {
+  let s = String(q == null ? '' : q).replace(/,/g, '').trim();
+  const paren = s.match(/\(([\d.]+)\s*(kg|g|개)\)/);   // "2박스(100개)" → 100개
+  if (paren) s = paren[1] + paren[2];
+  if (!s) return { other: { '수량없음': 1 } };
+  const md = s.match(/^(?:([\d.]+)\s*말)?\s*(?:([\d.]+)\s*되)?$/);
+  if (md && (md[1] || md[2])) return { doe: parseFloat(md[1] || 0) * 10 + parseFloat(md[2] || 0) };
+  const m = s.match(/^([\d.]+)\s*(kg|키로|k|g|개|구|입|알|세트|박스|판|봉)?/i);
+  if (!m) return { other: { [s]: 1 } };
+  const n = parseFloat(m[1]);
+  const u = (m[2] || '개').toLowerCase();
+  if (u === 'kg' || u === '키로' || u === 'k') return { kg: n };
+  if (u === 'g') return { kg: n / 1000 };
+  if (u === '개' || u === '구' || u === '입' || u === '알') return { pcs: n };
+  return { other: { [u]: n } };
 }
 
-function render(date) {
-  const filtered = allOrders.filter(o =>
-    o.deliveryMethod !== '택배' && normDate(String(o.deliveryDate||'')) === date
-  ).sort((a,b) => {
-    if (currentSort === 'tteok') {
-      return String(a.tteokType||'').localeCompare(String(b.tteokType||''), 'ko');
-    } else if (currentSort === 'method') {
-      const ma = a.deliveryMethod||''; const mb = b.deliveryMethod||'';
-      if (ma !== mb) return ma.localeCompare(mb);
-      return timeToMinutes(String(a.deliveryTime||'')) - timeToMinutes(String(b.deliveryTime||''));
-    }
-    // 기본: 시간순 (숫자 변환 후 비교)
-    return timeToMinutes(String(a.deliveryTime||'')) - timeToMinutes(String(b.deliveryTime||''));
+function aggregate(bucket) {
+  const agg = {};
+  if (!bucket) return agg;
+  const add = function(o, kind) {
+    prodParts(o, kind).forEach(function(p) {
+      const a = agg[p.name] || (agg[p.name] = { pcs: 0, kg: 0, doe: 0, other: {} });
+      const q = parseQtyP(p.qty);
+      if (q.pcs) a.pcs += q.pcs;
+      if (q.kg) a.kg += q.kg;
+      if (q.doe) a.doe += q.doe;
+      if (q.other) Object.keys(q.other).forEach(function(u) { a.other[u] = (a.other[u] || 0) + q.other[u]; });
+    });
+  };
+  (bucket.orders || []).forEach(o => add(o, 'order'));
+  (bucket.weddingOrders || []).forEach(o => add(o, 'wedding'));
+  (bucket.otherOrders || []).forEach(o => add(o, 'other'));
+  (bucket.funeralOrders || []).forEach(o => add(o, 'funeral'));
+  return agg;
+}
+
+function doeText(d) {
+  const mal = Math.floor(d / 10);
+  const doe = r1(d - mal * 10);
+  if (mal && doe) return mal + '말 ' + doe + '되';
+  if (mal) return mal + '말';
+  return doe + '되';
+}
+
+function qtyText(a) {
+  const parts = [];
+  if (a.pcs) parts.push(r1(a.pcs) + '개');
+  if (a.kg) parts.push(r2(a.kg) + 'kg');
+  if (a.doe) parts.push(doeText(a.doe));
+  Object.keys(a.other).forEach(function(u) {
+    parts.push(u === '수량없음' ? '수량없음 ' + a.other[u] + '건' : r1(a.other[u]) + u);
+  });
+  return parts.join(' + ') || '-';
+}
+
+// 판 수 계산 — 개는 "1판 개수"로, kg는 "1판 kg"로 나눔. 못 나누는 건 따로 표시
+function calcPan(a, spec) {
+  let pans = 0;
+  const left = [];
+  if (a.pcs) { if (spec.pcs > 0) pans += a.pcs / spec.pcs; else left.push(r1(a.pcs) + '개'); }
+  if (a.kg)  { if (spec.kg > 0)  pans += a.kg / spec.kg;   else left.push(r2(a.kg) + 'kg'); }
+  if (a.doe) left.push(doeText(a.doe));
+  Object.keys(a.other).forEach(function(u) { left.push(u === '수량없음' ? '수량없음 ' + a.other[u] + '건' : r1(a.other[u]) + u); });
+  return { exact: pans, rounded: Math.round(pans), left: left };
+}
+
+function prepOf(name) {
+  const sp = SPECS[name];
+  return sp ? (sp.prep || '당일') : null;
+}
+
+// ============ 렌더링 ============
+function renderAll() {
+  renderPlan();
+  renderOrders();
+  renderSpecTab();
+}
+
+function renderPlan() {
+  const el = document.getElementById('planSection');
+  if (!DAY) return;
+  const todayAgg = aggregate(DAY.today);
+  const nextAgg = aggregate(DAY.next);
+  const steam = [], frozen = [], thaw = [];
+
+  Object.keys(todayAgg).forEach(function(name) {
+    const prep = prepOf(name);
+    if (prep === '냉동') frozen.push(name);
+    else if (prep === '해동') { /* 어제 해동 목록에 이미 나옴 */ }
+    else steam.push(name);
+  });
+  Object.keys(nextAgg).forEach(function(name) {
+    if (prepOf(name) === '해동') thaw.push(name);
   });
 
-  document.getElementById('orderCount').textContent = filtered.length + '건';
+  const steamInfo = steam.map(function(name) {
+    const a = todayAgg[name];
+    const sp = SPECS[name];
+    return { name: name, a: a, spec: sp, pan: sp ? calcPan(a, sp) : null };
+  }).sort(function(x, y) {
+    if (!!x.spec !== !!y.spec) return x.spec ? -1 : 1;
+    if (x.spec && y.spec) return y.pan.exact - x.pan.exact;
+    return x.name.localeCompare(y.name, 'ko');
+  });
 
-  // ── 웨딩홀 / 기타업체 섹션 ──────────────────────
-  const todayWedding = allWeddingOrders.filter(o => normDate(String(o.deliveryDate||'')) === date);
-  const todayOther   = allOtherOrders.filter(o => normDate(String(o.deliveryDate||'')) === date);
-  // 충대식당 = 장례 시트 주문 중 '장례식장'이 아닌 것 (식당류)
-  const todayChungdae = allFuneralOrders.filter(o =>
-    normDate(String(o.deliveryDate||'')) === date && !String(o.funeralName||'').includes('장례식장')
-  );
+  const nospecCount = steamInfo.filter(function(i) { return !i.spec; }).length;
+  let html = '';
 
-  const venueEl = document.getElementById('venueSection');
-  if (todayWedding.length === 0 && todayOther.length === 0 && todayChungdae.length === 0) {
-    venueEl.innerHTML = '';
-  } else {
-    let html = '';
-
-    if (todayWedding.length > 0) {
-      html += '<div class="section-title" style="margin-top:0;">💒 웨딩홀 발주 <span class="count-pill">'+todayWedding.length+'건</span></div>';
-      html += '<div class="order-cards" style="margin-bottom:16px;">';
-      todayWedding.forEach(function(o) {
-        const items = (o.tteokItems && o.tteokItems.length)
-          ? o.tteokItems.map(t => (t.floor?'<span style="background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;font-size:11px;margin-right:3px;">'+t.floor+'</span>':'') + t.name + (t.qty?' <strong>'+t.qty+'</strong>':'')).join('<br>')
-          : (o.tteokType||'-');
-        const time = normalizeTimeStr(o.deliveryTime) || '시간미정';
-        html += '<div class="order-card">'
-          + '<div class="order-card-header" style="background:#1d4ed8;">'
-          + '<span class="no">💒 '+( o.weddingName||o.hallName||'-')+'</span>'
-          + '<span class="time">'+time+'</span>'
-          + '</div>'
-          + '<div class="order-card-body">'
-          + '<div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">'+items+'</span></div>'
-          + (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ '+o.memo+'</span></div>' : '')
-          + '</div></div>';
-      });
-      html += '</div>';
-    }
-
-    if (todayOther.length > 0) {
-      html += '<div class="section-title" style="margin-top:0;">🏢 기타업체 발주 <span class="count-pill">'+todayOther.length+'건</span></div>';
-      html += '<div class="order-cards" style="margin-bottom:16px;">';
-      todayOther.forEach(function(o) {
-        const items = (o.tteokItems && o.tteokItems.length)
-          ? o.tteokItems.map(t => t.name + (t.qty?' <strong>'+t.qty+'</strong>':'')).join('<br>')
-          : (o.tteokType||'-');
-        const time = normalizeTimeStr(o.deliveryTime) || '시간미정';
-        html += '<div class="order-card">'
-          + '<div class="order-card-header" style="background:#0891b2;">'
-          + '<span class="no">🏢 '+(o.venueName||'-')+'</span>'
-          + '<span class="time">'+time+'</span>'
-          + '</div>'
-          + '<div class="order-card-body">'
-          + '<div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">'+items+'</span></div>'
-          + (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ '+o.memo+'</span></div>' : '')
-          + '</div></div>';
-      });
-      html += '</div>';
-    }
-
-    if (todayChungdae.length > 0) {
-      html += '<div class="section-title" style="margin-top:0;">🍽️ 충대식당 발주 <span class="count-pill">'+todayChungdae.length+'건</span></div>';
-      html += '<div class="order-cards" style="margin-bottom:16px;">';
-      todayChungdae.forEach(function(o) {
-        const items = (o.tteokItems && o.tteokItems.length)
-          ? o.tteokItems.map(t => t.name + (t.qty?' <strong>'+t.qty+'</strong>':'')).join('<br>')
-          : (o.tteokType||'-');
-        const time = normalizeTimeStr(o.deliveryTime) || '시간미정';
-        html += '<div class="order-card">'
-          + '<div class="order-card-header" style="background:#15803d;">'
-          + '<span class="no">🍽️ '+(o.funeralName||'-')+'</span>'
-          + '<span class="time">'+time+'</span>'
-          + '</div>'
-          + '<div class="order-card-body">'
-          + '<div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">'+items+'</span></div>'
-          + (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ '+o.memo+'</span></div>' : '')
-          + '</div></div>';
-      });
-      html += '</div>';
-    }
-
-    venueEl.innerHTML = html;
+  if (nospecCount > 0) {
+    html += '<div class="nospec-banner" onclick="switchTab(\'spec\')">⚠️ 수율 미입력 ' + nospecCount + '종 — 눌러서 수율 설정하기</div>';
   }
 
-  // 합계
-  const totals = {};
-  const sources = {}; // 각 떡종류별 출처(세트명) 기록
-  filtered.forEach(function(o) {
-    parseTteokItems(o).forEach(function(t) {
-      const setMatch = t.name.match(/^(.+?)\(([^)]+)\)$/);
-      if (setMatch) {
-        const setName = setMatch[1].trim();
-        const subNames = setMatch[2].split(/[\/·,.]+/).map(function(n){ return n.trim(); }).filter(Boolean);
-        const { val, unit } = parseQty(t.qty);
-        subNames.forEach(function(sub) {
-          if (!sources[sub]) sources[sub] = [];
-          sources[sub].push(setName + ' ' + val + unit);
-        });
+  html += '<div class="section-title">🔥 찔 떡 <span class="section-sub">' + shortDate(DAY.date) + ' 배송분</span></div>';
+  if (!steamInfo.length) {
+    html += '<div class="plan-list"><div class="plan-empty">찔 떡이 없어요</div></div>';
+  } else {
+    html += '<div class="plan-list">' + steamInfo.map(function(i) {
+      if (!i.spec) {
+        return '<div class="plan-row"><div><div class="plan-name">' + esc(i.name) + '</div>' +
+          '<div class="plan-sub">' + esc(qtyText(i.a)) + '</div></div>' +
+          '<span class="badge-nospec" onclick="openEditFromPlan(\'' + esc(i.name).replace(/'/g, "\\'") + '\')">수율 미입력</span></div>';
       }
-    });
-    expandTteokItemsForSummary(parseTteokItems(o)).forEach(function(t) {
-      if (!totals[t.name]) totals[t.name] = {};
-      const { val, unit } = parseQty(t.qty);
-      totals[t.name][unit] = (totals[t.name][unit] || 0) + val;
-    });
-  });
-  const keys = Object.keys(totals);
-  document.getElementById('summaryCount').textContent = keys.length + '종';
-
-  if (keys.length === 0) {
-    document.getElementById('summaryGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#aaa;">해당 날짜 주문 없음</div>';
-  } else {
-    document.getElementById('summaryGrid').innerHTML = keys.map(function(name) {
-      const qtyStr = Object.entries(totals[name]).map(function([u,v]){ return v+u; }).join(' + ');
-      const srcStr = sources[name] ? '(' + sources[name].join(', ') + ')' : '';
-      return `<div class="summary-card">
-        <div class="s-name">${name}</div>
-        <div class="s-qty">${qtyStr}</div>
-        ${srcStr ? `<div class="s-source">${srcStr}</div>` : ''}
-      </div>`;
-    }).join('');
+      const p = i.pan;
+      const sub = esc(qtyText(i.a)) + (p.exact > 0 ? ' · 실제 ' + r1(p.exact) + '판' : '');
+      return '<div class="plan-row"><div><div class="plan-name">' + esc(i.name) + '</div>' +
+        '<div class="plan-sub">' + sub + '</div>' +
+        (p.left.length ? '<div class="plan-left">판 계산 안 된 수량: ' + esc(p.left.join(', ')) + '</div>' : '') +
+        '</div><span class="plan-pan">' + (p.exact > 0 ? p.rounded + '<small>판</small>' : '-') + '</span></div>';
+    }).join('') + '</div>';
   }
 
-  // 주문 카드
-  if (filtered.length === 0) {
-    document.getElementById('orderCards').innerHTML =
-      '<div class="empty"><div class="icon">📭</div><p>해당 날짜 주문 없음</p></div>';
+  html += '<div class="section-title">❄️ 해동할 떡 <span class="section-sub">' + shortDate(DAY.nextDate) + ' 배송분 · 오늘 해동</span></div>';
+  html += simpleList(thaw, nextAgg, '해동할 떡이 없어요');
+
+  html += '<div class="section-title">🧊 냉동재고 사용 <span class="section-sub">' + shortDate(DAY.date) + ' 배송분</span></div>';
+  html += simpleList(frozen, todayAgg, '냉동재고로 나가는 떡이 없어요');
+
+  el.innerHTML = html;
+}
+
+function simpleList(names, agg, emptyMsg) {
+  if (!names.length) return '<div class="plan-list"><div class="plan-empty">' + emptyMsg + '</div></div>';
+  return '<div class="plan-list">' + names.sort(function(a, b) { return a.localeCompare(b, 'ko'); }).map(function(name) {
+    return '<div class="plan-row"><div class="plan-name">' + esc(name) + '</div>' +
+      '<span class="plan-qty">' + esc(qtyText(agg[name])) + '</span></div>';
+  }).join('') + '</div>';
+}
+
+function setSort(type) {
+  currentSort = type;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sort-' + type).classList.add('active');
+  renderOrders();
+}
+
+function itemsHtml(o, kind) {
+  const items = rawItems(o);
+  if (!items.length) return esc(o.tteokType || '-');
+  return items.map(function(t) {
+    const floor = kind === 'wedding' && t.floor
+      ? '<span style="background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;font-size:11px;margin-right:3px;">' + esc(t.floor) + '</span>' : '';
+    const nm = kind === 'wedding' ? (t.baseName || String(t.name).replace(/^\d+층\s*/, '')) : t.name;
+    return floor + esc(t.displayName || nm) + (t.qty ? ' <strong>' + esc(t.qty) + '</strong>' : '');
+  }).join('<br>');
+}
+
+function venueCard(title, color, o, kind) {
+  const time = normalizeTimeStr(o.deliveryTime) || '시간미정';
+  return '<div class="order-card"><div class="order-card-header" style="background:' + color + ';">' +
+    '<span class="no">' + title + '</span><span class="time">' + esc(time) + '</span></div>' +
+    '<div class="order-card-body"><div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">' + itemsHtml(o, kind) + '</span></div>' +
+    (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ ' + esc(o.memo) + '</span></div>' : '') +
+    '</div></div>';
+}
+
+function renderOrders() {
+  if (!DAY) return;
+  const t = DAY.today || {};
+  const wedding = t.weddingOrders || [], other = t.otherOrders || [], funeral = t.funeralOrders || [];
+
+  let vh = '';
+  if (wedding.length) {
+    vh += '<div class="section-title">💒 웨딩홀 발주 <span class="count-pill">' + wedding.length + '건</span></div><div class="order-cards" style="margin-bottom:12px;">' +
+      wedding.map(o => venueCard('💒 ' + esc(o.weddingName || '-'), '#1d4ed8', o, 'wedding')).join('') + '</div>';
+  }
+  if (other.length) {
+    vh += '<div class="section-title">🏢 기타업체 발주 <span class="count-pill">' + other.length + '건</span></div><div class="order-cards" style="margin-bottom:12px;">' +
+      other.map(o => venueCard('🏢 ' + esc(o.venueName || '-'), '#0891b2', o, 'other')).join('') + '</div>';
+  }
+  if (funeral.length) {
+    vh += '<div class="section-title">🍽️ 충대식당 발주 <span class="count-pill">' + funeral.length + '건</span></div><div class="order-cards" style="margin-bottom:12px;">' +
+      funeral.map(o => venueCard('🍽️ ' + esc(o.funeralName || '-'), '#15803d', o, 'funeral')).join('') + '</div>';
+  }
+  if (vh) vh += '<div class="section-title">👤 개인 주문</div>';
+  document.getElementById('venueSection').innerHTML = vh;
+
+  const list = (t.orders || []).slice().sort(function(a, b) {
+    if (currentSort === 'tteok') return String(a.tteokType || '').localeCompare(String(b.tteokType || ''), 'ko');
+    if (currentSort === 'method') {
+      const ma = a.deliveryMethod || '', mb = b.deliveryMethod || '';
+      if (ma !== mb) return ma.localeCompare(mb);
+    }
+    return timeToMinutes(normalizeTimeStr(a.deliveryTime)) - timeToMinutes(normalizeTimeStr(b.deliveryTime));
+  });
+
+  document.getElementById('orderCount').textContent = (list.length + wedding.length + other.length + funeral.length) + '건';
+
+  if (!list.length) {
+    document.getElementById('orderCards').innerHTML = '<div class="empty"><div class="icon">📭</div><p>개인 주문 없음</p></div>';
     return;
   }
 
-  document.getElementById('orderCards').innerHTML = filtered.map((o, i) => {
-    const items = parseTteokItems(o);
-    const tteokHtml = items.length > 0
-      ? items.map(t => t.name + (t.qty ? ' <strong>'+t.qty+'</strong>' : '')).join('<br>')
-      : String(o.tteokType||'-');
-    const addr = [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ') || '';
-    const isPickup = o.deliveryMethod === '픽업';
+  document.getElementById('orderCards').innerHTML = list.map(function(o) {
+    const addr = [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ');
+    const method = o.deliveryMethod || '배송';
+    const methodClass = method === '픽업' ? 'method-pickup' : method === '택배' ? 'method-parcel' : 'method-delivery';
+    const methodLabel = method === '픽업' ? '🏪 픽업' : method === '택배' ? '📦 택배' : '🚚 배송';
     const payClass = o.payStatus === '결제완료' ? 'pay-done' : o.payStatus === '입금대기' ? 'pay-wait' : 'pay-gray';
-    const methodClass = isPickup ? 'method-pickup' : 'method-delivery';
-    const methodLabel = isPickup ? '🏪 픽업' : '🚚 배송';
-
-    return `<div class="order-card">
-      <div class="order-card-header">
-        <span class="no">#${getOrderNo(o, allOrders)}</span>
-        <span class="time">${normalizeTimeStr(o.deliveryTime) || '시간미정'}</span>
-        <span class="method ${methodClass}">${methodLabel}</span>
-      </div>
-      <div class="order-card-body">
-        <div class="card-row">
-          <span class="card-label">받는분</span>
-          <span class="card-value">${o.receiverName||'-'}</span>
-          <span class="pay-badge ${payClass}">${o.payStatus}</span>
-        </div>
-        <div class="card-row">
-          <span class="card-label">떡종류</span>
-          <span class="card-value tteok">${tteokHtml}</span>
-        </div>
-        ${addr && !isPickup ? `<div class="card-row">
-          <span class="card-label">주소</span>
-          <span class="card-value addr">${addr}</span>
-        </div>` : ''}
-        ${o.memo ? `<div class="card-row">
-          <span class="card-label">메모</span>
-          <span class="card-value memo">⚠️ ${o.memo}</span>
-        </div>` : ''}
-      </div>
-    </div>`;
+    return '<div class="order-card"><div class="order-card-header">' +
+      '<span class="no">#' + esc(o.seqNo || '-') + '</span>' +
+      '<span class="time">' + esc(normalizeTimeStr(o.deliveryTime) || '시간미정') + '</span>' +
+      '<span class="method ' + methodClass + '">' + methodLabel + '</span></div>' +
+      '<div class="order-card-body">' +
+      '<div class="card-row"><span class="card-label">받는분</span><span class="card-value">' + esc(o.receiverName || '-') + '</span>' +
+      '<span class="pay-badge ' + payClass + '">' + esc(o.payStatus || '') + '</span></div>' +
+      '<div class="card-row"><span class="card-label">떡종류</span><span class="card-value tteok">' + itemsHtml(o, 'order') + '</span></div>' +
+      (addr && method !== '픽업' ? '<div class="card-row"><span class="card-label">주소</span><span class="card-value addr">' + esc(addr) + '</span></div>' : '') +
+      (o.memo ? '<div class="card-row"><span class="card-label">메모</span><span class="card-value memo">⚠️ ' + esc(o.memo) + '</span></div>' : '') +
+      '</div></div>';
   }).join('');
 }
 
-function showError() {
-  document.getElementById('summaryGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#c2410c;">❌ 연결 실패</div>';
-  document.getElementById('orderCards').innerHTML = '<div class="empty"><div class="icon">❌</div><p>GAS 연결 실패</p></div>';
+// ============ 탭 ============
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-plan').style.display = tab === 'plan' ? '' : 'none';
+  document.getElementById('tab-spec').style.display = tab === 'spec' ? '' : 'none';
+  document.getElementById('tabbtn-plan').classList.toggle('active', tab === 'plan');
+  document.getElementById('tabbtn-spec').classList.toggle('active', tab === 'spec');
+  if (tab === 'spec') renderSpecTab();
+  window.scrollTo(0, 0);
 }
 
-// 시계
-setInterval(() => {
+// ============ 수율 설정 탭 ============
+function orderNames() {
+  const s = new Set();
+  if (DAY) {
+    Object.keys(aggregate(DAY.today)).forEach(n => s.add(n));
+    Object.keys(aggregate(DAY.next)).forEach(n => s.add(n));
+  }
+  return s;
+}
+
+function knownNames() {
+  const s = new Set(TTEOK_NAMES);
+  Object.keys(SPECS).forEach(n => s.add(n));
+  orderNames().forEach(n => s.add(n));
+  return Array.from(s).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'));
+}
+
+function specDesc(sp) {
+  const parts = [];
+  if (sp.pcs > 0) parts.push(sp.pcs + '개');
+  if (sp.kg > 0) parts.push(sp.kg + 'kg');
+  let d = parts.length ? '1판 = ' + parts.join(' · ') : (sp.prep === '당일' ? '1판 수율 없음' : '판 수 계산 안 함 · 수량만 표시');
+  if (sp.memo) d += ' · ' + sp.memo;
+  return d;
+}
+
+function renderSpecTab() {
+  // 오늘·내일 주문 중 수율 미입력 떡
+  const missing = Array.from(orderNames()).filter(n => !SPECS[n]).sort((a, b) => a.localeCompare(b, 'ko'));
+  document.getElementById('nospecChips').innerHTML = missing.length
+    ? '<div style="font-size:12px;font-weight:700;color:#92400e;margin-top:10px;">이번 주문 중 수율 미입력 (눌러서 입력)</div><div class="chips">' +
+      missing.map(n => '<span class="chip" onclick="openEdit(\'' + esc(n).replace(/'/g, "\\'") + '\')">' + esc(n) + '</span>').join('') + '</div>'
+    : '';
+
+  const names = Object.keys(SPECS).sort((a, b) => a.localeCompare(b, 'ko'));
+  document.getElementById('specCount').textContent = names.length + '종';
+  document.getElementById('specList').innerHTML = names.length
+    ? names.map(function(n) {
+        const sp = SPECS[n];
+        const prep = sp.prep || '당일';
+        return '<div class="spec-row" onclick="openEdit(\'' + esc(n).replace(/'/g, "\\'") + '\')">' +
+          '<div class="spec-head"><span class="spec-name">' + esc(n) + '</span>' +
+          '<span class="prep-pill prep-' + prep + '">' + PREP_LABEL[prep] + '</span></div>' +
+          '<div class="spec-desc">' + esc(specDesc(sp)) + '</div></div>';
+      }).join('')
+    : '<div class="plan-empty">아직 입력된 수율이 없어요. 위에서 떡을 검색해 추가해주세요.</div>';
+
+  renderEditArea();
+}
+
+function renderDropdown() {
+  const q = document.getElementById('specSearch').value.trim();
+  const dd = document.getElementById('specDropdown');
+  const list = knownNames().filter(n => !q || n.indexOf(q) !== -1).slice(0, 60);
+  const exact = q && list.indexOf(q) !== -1;
+  let html = list.map(function(n) {
+    return '<div onmousedown="openEdit(\'' + esc(n).replace(/'/g, "\\'") + '\')"><span>' + esc(n) + '</span>' +
+      (SPECS[n] ? '<span class="prep-pill prep-' + (SPECS[n].prep || '당일') + '">입력됨</span>' : '') + '</div>';
+  }).join('');
+  if (q && !exact) {
+    html += '<div onmousedown="openEdit(\'' + esc(q).replace(/'/g, "\\'") + '\')" style="color:#c2410c;font-weight:700;">+ "' + esc(q) + '" 새로 추가</div>';
+  }
+  dd.innerHTML = html || '<div style="color:#aaa;">검색 결과 없음</div>';
+  dd.style.display = 'block';
+}
+
+function openEditFromPlan(name) {
+  switchTab('spec');
+  openEdit(name);
+}
+
+function openEdit(name) {
+  editingName = name;
+  document.getElementById('specSearch').value = '';
+  document.getElementById('specDropdown').style.display = 'none';
+  renderEditArea();
+  window.scrollTo(0, 0);
+}
+
+function renderEditArea() {
+  const area = document.getElementById('editArea');
+  if (!editingName) { area.innerHTML = ''; return; }
+  const sp = SPECS[editingName] || { pcs: '', kg: '', prep: '당일', memo: '' };
+  const n = esc(editingName);
+  area.innerHTML = '<div class="edit-box">' +
+    '<div class="edit-title">✏️ ' + n + (SPECS[editingName] ? ' 수정' : ' 새로 입력') + '</div>' +
+    '<div class="edit-grid">' +
+      '<div><label>1판 개수</label><input type="number" id="sp_pcs" inputmode="decimal" min="0" step="1" value="' + (sp.pcs || '') + '" placeholder="예: 35"></div>' +
+      '<div><label>1판 kg</label><input type="number" id="sp_kg" inputmode="decimal" min="0" step="0.1" value="' + (sp.kg || '') + '" placeholder="예: 3.5"></div>' +
+      '<div class="edit-full"><label>준비 방식</label><select id="sp_prep">' +
+        ['당일', '해동', '냉동'].map(p => '<option value="' + p + '"' + ((sp.prep || '당일') === p ? ' selected' : '') + '>' + PREP_LABEL[p] + '</option>').join('') +
+      '</select></div>' +
+      '<div class="edit-full"><label>메모</label><input type="text" id="sp_memo" value="' + esc(sp.memo || '') + '" placeholder="예: 시루 2개 사용"></div>' +
+    '</div>' +
+    '<div class="edit-help">당일 생산은 1판 개수나 kg 중 아는 것 하나만 넣어도 돼요. 주문이 개로 들어오면 개수로, kg로 들어오면 kg로 나눠서 판 수를 계산해요.<br>전날 해동·냉동재고는 판 수를 계산하지 않고 수량만 보여줘요.</div>' +
+    '<div class="edit-actions">' +
+      (SPECS[editingName] ? '<button class="btn btn-del" onclick="saveSpec(true)">삭제</button>' : '') +
+      '<button class="btn btn-cancel" onclick="editingName=null;renderEditArea();">취소</button>' +
+      '<button class="btn btn-save" id="spSaveBtn" onclick="saveSpec(false)">💾 저장</button>' +
+    '</div></div>';
+}
+
+function saveSpec(del) {
+  const name = editingName;
+  if (!name) return;
+  let obj = null;
+  if (del) {
+    if (!confirm('"' + name + '" 수율을 삭제할까요?')) return;
+  } else {
+    const pcs = parseFloat(document.getElementById('sp_pcs').value) || 0;
+    const kg = parseFloat(document.getElementById('sp_kg').value) || 0;
+    const prep = document.getElementById('sp_prep').value;
+    const memo = document.getElementById('sp_memo').value.trim();
+    if (prep === '당일' && !pcs && !kg) { toast('1판 개수나 kg 중 하나는 넣어주세요'); return; }
+    obj = { pcs: pcs, kg: kg, prep: prep, memo: memo };
+  }
+
+  const btn = document.getElementById('spSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+
+  // 다른 사람이 그 사이 저장한 것을 덮어쓰지 않도록 서버의 최신 수율을 먼저 받아서 합침
+  gasGet({ action: 'getTteokSettings' })
+    .then(function(d) {
+      if (d && d.success && d.data) {
+        const s = d.data.productionSpecs;
+        return (s && typeof s === 'object' && !Array.isArray(s)) ? s : {};
+      }
+      return Object.assign({}, SPECS);
+    })
+    .catch(function() { return Object.assign({}, SPECS); })
+    .then(function(latest) {
+      if (del) delete latest[name]; else latest[name] = obj;
+      return gasPost({ action: 'saveTteokSettings', data: { productionSpecs: latest } }).then(function(res) {
+        if (!res || !res.success) throw new Error('fail');
+        SPECS = latest;
+        try { localStorage.setItem(SPEC_CACHE_KEY, JSON.stringify(SPECS)); } catch (e) {}
+        editingName = null;
+        renderAll();
+        toast(del ? '🗑 삭제됐어요' : '✅ 저장됐어요');
+      });
+    })
+    .catch(function() {
+      if (btn) { btn.disabled = false; btn.textContent = '💾 저장'; }
+      toast('❌ 저장 실패. 다시 눌러주세요');
+    });
+}
+
+// ============ 시작 ============
+setInterval(function() {
   document.getElementById('clockDisplay').textContent =
-    new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+    new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 }, 1000);
 
-// 자동 새로고침 제거 (수동 새로고침만 사용)
-document.getElementById('dateInput').addEventListener('change', () => loadData());
+// 자동 새로고침 없음 (수동 🔄만)
+document.getElementById('dateInput').addEventListener('change', function() { loadData(false); });
 
 setToday();
 </script>
