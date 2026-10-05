@@ -672,11 +672,22 @@ function renderPlan() {
   el.innerHTML = html;
 }
 
+// 해동·냉동 목록: "1개 무게(g)"가 설정된 떡은 개수를 kg로 바꿔서 총 kg를 크게 보여줌
+//   예) 꿀떡 120개, 1개 20g → 2.4kg
 function simpleList(names, agg, emptyMsg) {
   if (!names.length) return '<div class="plan-list"><div class="plan-empty">' + emptyMsg + '</div></div>';
   return '<div class="plan-list">' + names.sort(function(a, b) { return a.localeCompare(b, 'ko'); }).map(function(name) {
+    const a = agg[name];
+    const sp = SPECS[name] || {};
+    const g = parseFloat(sp.gPer) || 0;
+    if (g > 0 && a.pcs > 0) {
+      const totalKg = a.pcs * g / 1000 + (a.kg || 0);
+      return '<div class="plan-row"><div><div class="plan-name">' + esc(name) + '</div>' +
+        '<div class="plan-sub">' + esc(qtyText(a)) + ' · 1개 ' + g + 'g 기준</div></div>' +
+        '<span class="plan-qty">' + r2(totalKg) + 'kg</span></div>';
+    }
     return '<div class="plan-row"><div class="plan-name">' + esc(name) + '</div>' +
-      '<span class="plan-qty">' + esc(qtyText(agg[name])) + '</span></div>';
+      '<span class="plan-qty">' + esc(qtyText(a)) + '</span></div>';
   }).join('') + '</div>';
 }
 
@@ -797,6 +808,7 @@ function specDesc(sp) {
   if (sp.pcs > 0) parts.push(sp.pcs + '개');
   if (sp.kg > 0) parts.push(sp.kg + 'kg');
   let d = parts.length ? '1판 = ' + parts.join(' · ') : (sp.prep === '당일' ? '1판 수율 없음' : '판 수 계산 안 함 · 수량만 표시');
+  if (sp.gPer > 0) d += ' · 1개 ' + sp.gPer + 'g (kg로 환산)';
   if (sp.memo) d += ' · ' + sp.memo;
   return d;
 }
@@ -857,7 +869,7 @@ function openEdit(name) {
 function renderEditArea() {
   const area = document.getElementById('editArea');
   if (!editingName) { area.innerHTML = ''; return; }
-  const sp = SPECS[editingName] || { pcs: '', kg: '', prep: '당일', memo: '' };
+  const sp = SPECS[editingName] || { pcs: '', kg: '', gPer: '', prep: '당일', memo: '' };
   const n = esc(editingName);
   area.innerHTML = '<div class="edit-box">' +
     '<div class="edit-title">✏️ ' + n + (SPECS[editingName] ? ' 수정' : ' 새로 입력') + '</div>' +
@@ -867,9 +879,10 @@ function renderEditArea() {
       '<div class="edit-full"><label>준비 방식</label><select id="sp_prep">' +
         ['당일', '해동', '냉동'].map(p => '<option value="' + p + '"' + ((sp.prep || '당일') === p ? ' selected' : '') + '>' + PREP_LABEL[p] + '</option>').join('') +
       '</select></div>' +
+      '<div class="edit-full"><label>1개 무게(g) — 해동·냉동 떡을 kg로 보고 싶을 때만</label><input type="number" id="sp_gper" inputmode="decimal" min="0" step="1" value="' + (sp.gPer || '') + '" placeholder="예: 꿀떡 20"></div>' +
       '<div class="edit-full"><label>메모</label><input type="text" id="sp_memo" value="' + esc(sp.memo || '') + '" placeholder="예: 시루 2개 사용"></div>' +
     '</div>' +
-    '<div class="edit-help">당일 생산은 1판 개수나 kg 중 아는 것 하나만 넣어도 돼요. 주문이 개로 들어오면 개수로, kg로 들어오면 kg로 나눠서 판 수를 계산해요.<br>전날 해동·냉동재고는 판 수를 계산하지 않고 수량만 보여줘요.</div>' +
+    '<div class="edit-help">당일 생산은 1판 개수나 kg 중 아는 것 하나만 넣어도 돼요. 주문이 개로 들어오면 개수로, kg로 들어오면 kg로 나눠서 판 수를 계산해요.<br>전날 해동·냉동재고는 판 수를 계산하지 않고 수량만 보여줘요. 1개 무게를 넣으면 개수를 kg로 바꿔서 보여줘요.</div>' +
     '<div class="edit-actions">' +
       (SPECS[editingName] ? '<button class="btn btn-del" onclick="saveSpec(true)">삭제</button>' : '') +
       '<button class="btn btn-cancel" onclick="editingName=null;renderEditArea();">취소</button>' +
@@ -888,8 +901,10 @@ function saveSpec(del) {
     const kg = parseFloat(document.getElementById('sp_kg').value) || 0;
     const prep = document.getElementById('sp_prep').value;
     const memo = document.getElementById('sp_memo').value.trim();
+    const gPer = parseFloat(document.getElementById('sp_gper').value) || 0;
     if (prep === '당일' && !pcs && !kg) { toast('1판 개수나 kg 중 하나는 넣어주세요'); return; }
     obj = { pcs: pcs, kg: kg, prep: prep, memo: memo };
+    if (gPer > 0) obj.gPer = gPer;
   }
 
   const btn = document.getElementById('spSaveBtn');
