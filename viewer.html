@@ -961,19 +961,29 @@ function saveSpec(del) {
   const btn = document.getElementById('spSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
-  // 서버가 최신 설정에 이 떡 하나만 합쳐서 저장함 (다른 떡 설정은 절대 안 건드림)
-  gasPost({ action: 'saveProductionSpec', name: name, spec: obj, del: !!del })
-    .then(function(res) {
-      if (!res || !res.success || !res.specs) throw new Error('fail');
-      SPECS = res.specs;
+  // 서버의 최신 설정을 먼저 받아서 이 떡 하나만 바꿔 저장 (다른 떡 설정은 그대로 유지)
+  // 최신 설정을 못 받아오면 저장하지 않음 → 다른 떡 설정이 지워질 위험 없음
+  gasGet({ action: 'getTteokSettings' })
+    .then(function(d) {
+      if (!d || !d.success || !d.data) throw new Error('read');
+      const cur = d.data.productionSpecs;
+      const latest = (cur && typeof cur === 'object' && !Array.isArray(cur)) ? cur : {};
+      if (del) delete latest[name]; else latest[name] = obj;
+      return gasPost({ action: 'saveTteokSettings', data: { productionSpecs: latest } }).then(function(res) {
+        if (!res || !res.success) throw new Error('save');
+        return latest;
+      });
+    })
+    .then(function(latest) {
+      SPECS = latest;
       try { localStorage.setItem(SPEC_CACHE_KEY, JSON.stringify(SPECS)); } catch (e) {}
       editingName = null;
       renderAll();
       toast(del ? '🗑 삭제됐어요' : '✅ 저장됐어요');
     })
-    .catch(function() {
+    .catch(function(err) {
       if (btn) { btn.disabled = false; btn.textContent = '💾 저장'; }
-      toast('❌ 저장 실패. 다시 눌러주세요');
+      toast(err && err.message === 'read' ? '❌ 서버 응답이 늦어요. 잠시 후 다시 눌러주세요' : '❌ 저장 실패. 다시 눌러주세요');
     });
 }
 
