@@ -66,6 +66,8 @@
   .plan-name { font-size:15px; font-weight:800; color:#2C1810; }
   .plan-sub { font-size:12px; color:#8a6a50; margin-top:3px; line-height:1.4; }
   .plan-left { font-size:11px; color:#b45309; margin-top:3px; font-weight:700; }
+  .plan-tag { display:inline-block; font-size:12px; color:#6d28d9; background:#f3e8ff; border-radius:8px; padding:2px 8px; margin-top:4px; font-weight:600; }
+  .plan-tag b { font-weight:900; }
   .plan-pan { font-size:26px; font-weight:900; color:#c2410c; white-space:nowrap; }
   .plan-pan small { font-size:14px; font-weight:800; }
   .plan-qty { font-size:16px; font-weight:800; color:#2C1810; white-space:nowrap; }
@@ -476,7 +478,7 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
     const setQtyStr = (itemQty || '1세트').replace(/세트$/, '').trim();
     const multiplier = parseFloat(setQtyStr) || 1;
     const innerStr = setHeaderMatch[2];
-    const parts = innerStr.split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+    const parts = splitTop(innerStr, [',', '/']);
     const result = [];
     parts.forEach(part => {
       const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)?$/);
@@ -505,7 +507,7 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
   // 코리아 / 쿠키상자
   const koreaMatch = name.match(/^(코리아\([대소]\)|쿠키상자\([대소]\))\((.+)\)$/);
   if (koreaMatch) {
-    const parts = koreaMatch[2].split(/,\s*|\//).map(s => s.trim()).filter(Boolean);
+    const parts = splitTop(koreaMatch[2], [',', '/']);
     return parts.map(part => {
       const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉)?$/);
       return m ? { name: m[1].trim(), qty: m[2] + (m[3] || '개') } : { name: part, qty: '' };
@@ -515,7 +517,7 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
   // 분홍세트 / 은혜세트 — 세트 수만큼 구성 떡이 각각 들어감
   const pinkEhyeMatch = name.match(/^(분홍세트|은혜세트)\((.+)\)$/);
   if (pinkEhyeMatch) {
-    const parts = pinkEhyeMatch[2].split('/').map(s => s.trim()).filter(Boolean);
+    const parts = splitTop(pinkEhyeMatch[2], ['/']);
     if (!parts.length) return [{ name: name, qty: itemQty }];
     const totalM = (itemQty || '').match(/^([\d.]+)\s*(개|kg|g|말|되)?$/);
     if (totalM) {
@@ -530,15 +532,56 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
   return [{ name: name, qty: itemQty || '' }];
 }
 
+// 괄호 안의 쉼표·슬래시는 자르지 않고 나누기 — "모찌(흰,쑥) 20개, 꿀떡 30개" → 2개
+function splitTop(str, seps) {
+  const out = []; let depth = 0, cur = '';
+  for (const ch of String(str)) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth = Math.max(0, depth - 1);
+    if (depth === 0 && seps.indexOf(ch) !== -1) { out.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  out.push(cur);
+  return out.map(x => x.trim()).filter(Boolean);
+}
+
+// 모찌(흰쑥) / 모찌(흰,쑥) → 흰모찌 + 쑥모찌 로 나눠서 각각 합산
+//   수량은 반씩: 모찌(흰쑥) 20개 → 흰모찌 10개 + 쑥모찌 10개 (홀수면 올림: 15개 → 8 + 8)
+function expandMix(p) {
+  const m = String(p.name).match(/^모찌\s*\((.+)\)$/);
+  if (!m) return [p];
+  let kinds = m[1].split(/[,\/·\s]+/).filter(Boolean);
+  if (kinds.length === 1) kinds = kinds[0].match(/호박|흰|쑥/g) || kinds;   // "흰쑥" → 흰, 쑥
+  if (kinds.length < 2) return [p];
+  const q = String(p.qty == null ? '' : p.qty).match(/^\s*([\d.]+)\s*(.*)$/);
+  return kinds.map(function(k) {
+    const name = /모찌$/.test(k) ? k : k + '모찌';
+    if (!q) return { name: name, qty: p.qty };
+    const unit = q[2] || '개';
+    const raw = parseFloat(q[1]) / kinds.length;
+    // 개 단위는 반개가 없으니 올림 (모자라지 않게) — 15개 → 흰 8 + 쑥 8. kg 등은 그대로 나눔
+    const n = /^(개|구|입|알)?$/.test(unit.trim()) ? Math.ceil(raw - 1e-9) : Math.round(raw * 100) / 100;
+    return { name: name, qty: n + unit };
+  });
+}
+
 // ============ 주문 → 생산용 떡 목록 ============
 function rawItems(o) {
   if (!o) return [];
   if (Array.isArray(o.tteokItems) && o.tteokItems.length) return o.tteokItems.filter(Boolean);
   if (!o.tteokType) return [];
-  return String(o.tteokType).split(/[,\n]+/).map(s => s.trim()).filter(Boolean).map(s => {
+  return splitTop(o.tteokType, [',', '\n']).map(s => {
     const m = s.match(/^(.+?)\s+([\d.]+\s*(?:말|되|개|박스|kg|k|g)?.*)$/i);
     return m ? { name: m[1].trim(), qty: m[2].trim() } : { name: s, qty: '' };
   });
+}
+
+// 자르는 방식이 달라서 따로 표시할 세트 — 떡별로 "은혜용 30개", "이바지大용 3kg"처럼 보여줌
+function setTagOf(name) {
+  const n = String(name || '').trim();
+  if (/^은혜세트/.test(n)) return '은혜용';
+  if (/^이바지大/.test(n)) return '이바지大용';
+  return '';
 }
 
 function prodParts(o, kind) {
@@ -546,10 +589,12 @@ function prodParts(o, kind) {
   rawItems(o).forEach(function(t) {
     if (!t || !t.name) return;
     let name = String(t.name);
+    const tag = setTagOf(name);
     if (kind === 'wedding') name = t.baseName || name.replace(/^\d+층\s*/, '');
     const items = Array.isArray(t.items) ? t.items.filter(Boolean) : null;
     decomposeSetItem(name, t.qty, t.csId, items).forEach(function(p) {
-      if (p && p.name) out.push({ name: String(p.name).trim(), qty: p.qty });
+      if (!p || !p.name) return;
+      expandMix({ name: String(p.name).trim(), qty: p.qty }).forEach(function(x) { x.tag = tag; out.push(x); });
     });
   });
   return out;
@@ -580,10 +625,17 @@ function aggregate(bucket) {
     prodParts(o, kind).forEach(function(p) {
       const a = agg[p.name] || (agg[p.name] = { pcs: 0, kg: 0, doe: 0, other: {} });
       const q = parseQtyP(p.qty);
-      if (q.pcs) a.pcs += q.pcs;
-      if (q.kg) a.kg += q.kg;
-      if (q.doe) a.doe += q.doe;
-      if (q.other) Object.keys(q.other).forEach(function(u) { a.other[u] = (a.other[u] || 0) + q.other[u]; });
+      const addQ = function(t) {
+        if (q.pcs) t.pcs += q.pcs;
+        if (q.kg) t.kg += q.kg;
+        if (q.doe) t.doe += q.doe;
+        if (q.other) Object.keys(q.other).forEach(function(u) { t.other[u] = (t.other[u] || 0) + q.other[u]; });
+      };
+      addQ(a);
+      if (p.tag) {
+        a.tags = a.tags || {};
+        addQ(a.tags[p.tag] || (a.tags[p.tag] = { pcs: 0, kg: 0, doe: 0, other: {} }));
+      }
     });
   };
   (bucket.orders || []).forEach(o => add(o, 'order'));
@@ -646,6 +698,13 @@ function renderAll() {
   renderPlan();
   renderOrders();
   renderSpecTab();
+}
+
+// "은혜용 30개 · 이바지大용 3kg" 표시줄
+function tagLine(a) {
+  if (!a || !a.tags) return '';
+  const parts = Object.keys(a.tags).map(function(t) { return '<b>' + esc(t) + '</b> ' + esc(qtyText(a.tags[t])); });
+  return parts.length ? '<div class="plan-tag">✂️ ' + parts.join(' · ') + '</div>' : '';
 }
 
 function editLink(name, label) {
@@ -714,7 +773,7 @@ function renderPlan() {
       if (!i.sp) extra += '<div style="margin-top:4px;">' + editLink(i.name, '설정 없음') + '</div>';
       else if (i.a.pcs && !(i.sp.perKg > 0)) extra += '<div style="margin-top:4px;">' + editLink(i.name, '1kg 개수 미입력') + '</div>';
       return '<div class="plan-row"><div><div class="plan-name">' + esc(i.name) + '</div>' +
-        (sub ? '<div class="plan-sub">' + sub + '</div>' : '') + extra + '</div>' + right + '</div>';
+        (sub ? '<div class="plan-sub">' + sub + '</div>' : '') + tagLine(i.a) + extra + '</div>' + right + '</div>';
     }).join('') + '</div>';
   }
 
@@ -737,11 +796,11 @@ function simpleList(names, agg, emptyMsg) {
     if (sp && sp.perKg > 0 && a.pcs > 0) {
       const c = calcKg(a, sp);
       return '<div class="plan-row"><div><div class="plan-name">' + esc(name) + '</div>' +
-        '<div class="plan-sub">주문 ' + esc(qtyText(a)) + '</div>' +
+        '<div class="plan-sub">주문 ' + esc(qtyText(a)) + '</div>' + tagLine(a) +
         (c.left.length ? '<div class="plan-left">kg로 못 바꾼 수량: ' + esc(c.left.join(', ')) + '</div>' : '') + '</div>' +
         '<span class="plan-qty">' + r2(c.kg) + 'kg</span></div>';
     }
-    return '<div class="plan-row"><div class="plan-name">' + esc(name) + '</div>' +
+    return '<div class="plan-row"><div><div class="plan-name">' + esc(name) + '</div>' + tagLine(a) + '</div>' +
       '<span class="plan-qty">' + esc(qtyText(a)) + '</span></div>';
   }).join('') + '</div>';
 }
