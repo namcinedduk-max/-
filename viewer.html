@@ -547,7 +547,35 @@ function splitTop(str, seps) {
 
 // 모찌(흰쑥) / 모찌(흰,쑥) → 흰모찌 + 쑥모찌 로 나눠서 각각 합산
 //   수량은 반씩: 모찌(흰쑥) 20개 → 흰모찌 10개 + 쑥모찌 10개 (홀수면 올림: 15개 → 8 + 8)
+// 앙금절편: 그냥 "앙금절편"은 흰·쑥 반반 (1박스 110개 = 흰 55 + 쑥 55)
+//   앙금절편(쑥만) → 쑥만, 앙금절편(흰색만) → 흰만. 박스로 들어오면 1박스 = 110개로 바꿈
+//   결과 이름: 앙금절편(흰) / 앙금절편(쑥)
+function expandJeolpyeon(p) {
+  const m = String(p.name).match(/^앙금절편\s*(?:\((.*)\))?$/);
+  if (!m) return null;
+  const inner = m[1] || '';
+  const hasSsuk = /쑥/.test(inner), hasHuin = /흰/.test(inner);
+  const kinds = (hasSsuk && !hasHuin) ? ['쑥'] : (hasHuin && !hasSsuk) ? ['흰'] : ['흰', '쑥'];
+  let q = String(p.qty == null ? '' : p.qty).replace(/,/g, '').trim();
+  const paren = q.match(/\(([\d.]+)\s*개\)/);
+  let pcs = null;
+  if (paren) pcs = parseFloat(paren[1]);
+  else {
+    const bm = q.match(/^([\d.]+)\s*(박스|box|상자)$/i);
+    const cm = q.match(/^([\d.]+)\s*(개)?$/);
+    if (bm) pcs = parseFloat(bm[1]) * 110;
+    else if (cm) pcs = parseFloat(cm[1]);
+  }
+  return kinds.map(function(k) {
+    const name = '앙금절편(' + k + ')';
+    if (pcs == null) return { name: name, qty: p.qty };
+    return { name: name, qty: Math.ceil(pcs / kinds.length - 1e-9) + '개' };
+  });
+}
+
 function expandMix(p) {
+  const jp = expandJeolpyeon(p);
+  if (jp) return jp;
   const m = String(p.name).match(/^모찌\s*\((.+)\)$/);
   if (!m) return [p];
   let kinds = m[1].split(/[,\/·\s]+/).filter(Boolean);
@@ -590,11 +618,19 @@ function prodParts(o, kind) {
     if (!t || !t.name) return;
     let name = String(t.name);
     const tag = setTagOf(name);
+    const isPinkEhye = /^(은혜세트|분홍세트)/.test(name.trim());
     if (kind === 'wedding') name = t.baseName || name.replace(/^\d+층\s*/, '');
     const items = Array.isArray(t.items) ? t.items.filter(Boolean) : null;
     decomposeSetItem(name, t.qty, t.csId, items).forEach(function(p) {
       if (!p || !p.name) return;
-      expandMix({ name: String(p.name).trim(), qty: p.qty }).forEach(function(x) { x.tag = tag; out.push(x); });
+      const pn = String(p.name).trim();
+      let pq = p.qty;
+      // 은혜·분홍세트 안의 앙금절편은 세트 1개에 2개(흰1 + 쑥1) → 세트 30개면 흰 30 + 쑥 30
+      if (isPinkEhye && pn === '앙금절편') {
+        const qm = String(pq == null ? '' : pq).match(/^\s*([\d.]+)\s*(개)?\s*$/);
+        if (qm) pq = (parseFloat(qm[1]) * 2) + '개';
+      }
+      expandMix({ name: pn, qty: pq }).forEach(function(x) { x.tag = tag; out.push(x); });
     });
   });
   return out;
