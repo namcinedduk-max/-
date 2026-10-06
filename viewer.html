@@ -63,6 +63,10 @@
     padding:12px 14px; border-top:1px solid #f0e6da;
   }
   .plan-row:first-child { border-top:none; }
+  .plan-list > div[onclick] { border-top:1px solid #f0e6da; }
+  .plan-list > div[onclick]:first-child { border-top:none; }
+  .plan-src { background:#faf6ef; padding:8px 14px 10px; font-size:12px; color:#5b4636; line-height:1.7; }
+  .src-hint { font-size:11px; color:#c4a882; font-weight:600; }
   .plan-name { font-size:15px; font-weight:800; color:#2C1810; }
   .plan-sub { font-size:12px; color:#8a6a50; margin-top:3px; line-height:1.4; }
   .plan-left { font-size:11px; color:#b45309; margin-top:3px; font-weight:700; }
@@ -481,7 +485,8 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
     const parts = splitTop(innerStr, [',', '/']);
     const result = [];
     parts.forEach(part => {
-      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)?$/);
+      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)?$/) ||
+                part.match(/^(.+?[^\d.\s])([\d.]+)\s*(개|kg|키로|g|판|봉|말|되|세트)$/);
       if (m) {
         const num = parseFloat(m[2]) * multiplier;
         const displayNum = Number.isInteger(num) ? num : Math.round(num * 10) / 10;
@@ -505,12 +510,16 @@ function decomposeSetItem(itemName, itemQty, csId, itemsOverride) {
   }
 
   // 코리아 / 쿠키상자
-  const koreaMatch = name.match(/^(코리아\([대소]\)|쿠키상자\([대소]\))\((.+)\)$/);
+  const koreaMatch = name.match(/^(코리아\([대소]\)|쿠키상자\([대소]\)|코리아[大小]|쿠키상자[大小])\((.+)\)$/);
   if (koreaMatch) {
     const parts = splitTop(koreaMatch[2], [',', '/']);
     return parts.map(part => {
-      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉)?$/);
-      return m ? { name: m[1].trim(), qty: m[2] + (m[3] || '개') } : { name: part, qty: '' };
+      const m = part.match(/^(.+?)\s+([\d.]+)\s*(개|kg|키로|g|판|봉)?$/) ||
+                part.match(/^(.+?[^\d.\s])([\d.]+)\s*(개|kg|키로|g|판|봉)$/);
+      const setN = parseFloat(String(itemQty || '1').replace(/세트$/, '').trim()) || 1;
+      if (!m) return { name: part, qty: '' };
+      const num = Math.round(parseFloat(m[2]) * setN * 100) / 100;
+      return { name: m[1].trim(), qty: num + (m[3] || '개') };
     });
   }
 
@@ -623,7 +632,8 @@ function prodParts(o, kind) {
     const items = Array.isArray(t.items) ? t.items.filter(Boolean) : null;
     decomposeSetItem(name, t.qty, t.csId, items).forEach(function(p) {
       if (!p || !p.name) return;
-      const pn = String(p.name).trim();
+      let pn = String(p.name).trim();
+      if (isPinkEhye && /^앙금\s*2?$/.test(pn)) pn = '앙금절편';
       let pq = p.qty;
       // 은혜·분홍세트 안의 앙금절편은 세트 1개에 2개(흰1 + 쑥1) → 세트 30개면 흰 30 + 쑥 30
       if (isPinkEhye && pn === '앙금절편') {
@@ -658,6 +668,8 @@ function aggregate(bucket) {
   const agg = {};
   if (!bucket) return agg;
   const add = function(o, kind) {
+    const who = kind === 'order' ? ('#' + (o.seqNo || '-') + ' ' + (o.receiverName || ''))
+      : kind === 'wedding' ? ('💒 ' + (o.weddingName || '')) : kind === 'other' ? ('🏢 ' + (o.venueName || '')) : ('🍽️ ' + (o.funeralName || ''));
     prodParts(o, kind).forEach(function(p) {
       const a = agg[p.name] || (agg[p.name] = { pcs: 0, kg: 0, doe: 0, other: {} });
       const q = parseQtyP(p.qty);
@@ -668,6 +680,7 @@ function aggregate(bucket) {
         if (q.other) Object.keys(q.other).forEach(function(u) { t.other[u] = (t.other[u] || 0) + q.other[u]; });
       };
       addQ(a);
+      (a.src || (a.src = [])).push({ who: who, qty: String(p.qty == null ? '' : p.qty), tag: p.tag || '' });
       if (p.tag) {
         a.tags = a.tags || {};
         addQ(a.tags[p.tag] || (a.tags[p.tag] = { pcs: 0, kg: 0, doe: 0, other: {} }));
@@ -743,6 +756,21 @@ function tagLine(a) {
   return parts.length ? '<div class="plan-tag">✂️ ' + parts.join(' · ') + '</div>' : '';
 }
 
+// 행을 누르면 나오는 "어디서 왔나" 목록
+let srcSeq = 0;
+function srcBlock(a) {
+  if (!a || !a.src || !a.src.length) return { attr: '', html: '' };
+  const id = 'src' + (++srcSeq);
+  const html = '<div class="plan-src" id="' + id + '" style="display:none;">' +
+    a.src.map(function(x) { return '<div>' + esc(x.who) + (x.tag ? ' <span style="color:#6d28d9;">(' + esc(x.tag) + ')</span>' : '') + ' — <b>' + esc(x.qty || '수량없음') + '</b></div>'; }).join('') + '</div>';
+  return { attr: ' onclick="toggleSrc(event,\'' + id + '\')" style="cursor:pointer;"', html: html };
+}
+function toggleSrc(ev, id) {
+  if (ev && ev.target && ev.target.closest && ev.target.closest('.badge-nospec')) return;
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 function editLink(name, label) {
   return '<span class="badge-nospec" onclick="openEditFromPlan(\'' + esc(name).replace(/'/g, "\\'") + '\')">' + label + '</span>';
 }
@@ -751,17 +779,13 @@ function renderPlan() {
   const el = document.getElementById('planSection');
   if (!DAY) return;
   const todayAgg = aggregate(DAY.today);
-  const nextAgg = aggregate(DAY.next);
   const steam = [], frozen = [], thaw = [];
 
   Object.keys(todayAgg).forEach(function(name) {
     const prep = prepOf(name);
     if (prep === '냉동') frozen.push(name);
-    else if (prep === '해동') { /* 어제 해동 목록에 이미 나옴 */ }
+    else if (prep === '해동') thaw.push(name);   // 고른 날짜 배송분 — 전날 이 화면 보고 해동 준비
     else steam.push(name);
-  });
-  Object.keys(nextAgg).forEach(function(name) {
-    if (prepOf(name) === '해동') thaw.push(name);
   });
 
   const steamInfo = steam.map(function(name) {
@@ -808,13 +832,14 @@ function renderPlan() {
       if (i.left.length && i.kg > 0) extra = '<div class="plan-left">kg로 못 바꾼 수량: ' + esc(i.left.join(', ')) + '</div>';
       if (!i.sp) extra += '<div style="margin-top:4px;">' + editLink(i.name, '설정 없음') + '</div>';
       else if (i.a.pcs && !(i.sp.perKg > 0)) extra += '<div style="margin-top:4px;">' + editLink(i.name, '1kg 개수 미입력') + '</div>';
-      return '<div class="plan-row"><div><div class="plan-name">' + esc(i.name) + '</div>' +
-        (sub ? '<div class="plan-sub">' + sub + '</div>' : '') + tagLine(i.a) + extra + '</div>' + right + '</div>';
+      const sb = srcBlock(i.a);
+      return '<div' + sb.attr + '><div class="plan-row" style="border-top:none;"><div><div class="plan-name">' + esc(i.name) + ' <span class="src-hint">▾</span></div>' +
+        (sub ? '<div class="plan-sub">' + sub + '</div>' : '') + tagLine(i.a) + extra + '</div>' + right + '</div>' + sb.html + '</div>';
     }).join('') + '</div>';
   }
 
-  html += '<div class="section-title">❄️ 해동할 떡 <span class="section-sub">' + shortDate(DAY.nextDate) + ' 배송분 · 오늘 해동</span></div>';
-  html += simpleList(thaw, nextAgg, '해동할 떡이 없어요');
+  html += '<div class="section-title">❄️ 해동할 떡 <span class="section-sub">' + shortDate(DAY.date) + ' 배송분 · 전날 해동</span></div>';
+  html += simpleList(thaw, todayAgg, '해동할 떡이 없어요');
 
   html += '<div class="section-title">🧊 냉동재고 사용 <span class="section-sub">' + shortDate(DAY.date) + ' 배송분</span></div>';
   html += simpleList(frozen, todayAgg, '냉동재고로 나가는 떡이 없어요');
@@ -829,15 +854,16 @@ function simpleList(names, agg, emptyMsg) {
   return '<div class="plan-list">' + names.sort(function(a, b) { return a.localeCompare(b, 'ko'); }).map(function(name) {
     const a = agg[name];
     const sp = specNorm(SPECS[name]);
+    const sb = srcBlock(a);
     if (sp && sp.perKg > 0 && a.pcs > 0) {
       const c = calcKg(a, sp);
-      return '<div class="plan-row"><div><div class="plan-name">' + esc(name) + '</div>' +
+      return '<div' + sb.attr + '><div class="plan-row" style="border-top:none;"><div><div class="plan-name">' + esc(name) + ' <span class="src-hint">▾</span></div>' +
         '<div class="plan-sub">주문 ' + esc(qtyText(a)) + '</div>' + tagLine(a) +
         (c.left.length ? '<div class="plan-left">kg로 못 바꾼 수량: ' + esc(c.left.join(', ')) + '</div>' : '') + '</div>' +
-        '<span class="plan-qty">' + r2(c.kg) + 'kg</span></div>';
+        '<span class="plan-qty">' + r2(c.kg) + 'kg</span></div>' + sb.html + '</div>';
     }
-    return '<div class="plan-row"><div><div class="plan-name">' + esc(name) + '</div>' + tagLine(a) + '</div>' +
-      '<span class="plan-qty">' + esc(qtyText(a)) + '</span></div>';
+    return '<div' + sb.attr + '><div class="plan-row" style="border-top:none;"><div><div class="plan-name">' + esc(name) + ' <span class="src-hint">▾</span></div>' + tagLine(a) + '</div>' +
+      '<span class="plan-qty">' + esc(qtyText(a)) + '</span></div>' + sb.html + '</div>';
   }).join('') + '</div>';
 }
 
@@ -974,11 +1000,10 @@ function renderSpecTab() {
   if (DAY) {
     const tNames = Object.keys(aggregate(DAY.today));
     todayMissing = tNames.filter(n => !SPECS[n]).sort((a, b) => a.localeCompare(b, 'ko'));
-    nextMissing = Object.keys(aggregate(DAY.next)).filter(n => !SPECS[n] && tNames.indexOf(n) === -1).sort((a, b) => a.localeCompare(b, 'ko'));
+
   }
   document.getElementById('nospecChips').innerHTML =
-    chipRow(DAY ? shortDate(DAY.date) + ' 주문 중 설정 안 된 떡 (눌러서 입력)' : '', todayMissing) +
-    chipRow(DAY ? shortDate(DAY.nextDate) + ' 주문 중 설정 안 된 떡 (다음날 해동 확인용으로 같이 불러온 것)' : '', nextMissing);
+    chipRow(DAY ? shortDate(DAY.date) + ' 주문 중 설정 안 된 떡 (눌러서 입력)' : '', todayMissing);
 
   const names = Object.keys(SPECS).sort((a, b) => a.localeCompare(b, 'ko'));
   document.getElementById('specCount').textContent = names.length + '종';
@@ -1055,7 +1080,7 @@ function renderEditArea(prepOverride) {
       '1kg 개수나 1개 무게 중 아는 걸 넣으면 다른 칸은 자동으로 채워져요. 개수로 들어온 주문을 kg로 바꿀 때 써요. 비워두면 개수 그대로 보여줘요.<br>' +
       (prep === '당일'
         ? '1판 = 몇 kg: 넣은 떡만 판 수를 계산해요. 모자라지 않게 올림하고, 남는 양은 판매용으로 표시해요. (예: 9kg ÷ 3.5kg → 3판, 1.5kg 남음)'
-        : (prep === '해동' ? '내일 배송분 양을 오늘 "해동할 떡"에 보여줘요.' : '오늘 배송분 양을 "냉동재고 사용"에 보여줘요.')) +
+        : (prep === '해동' ? '그 날짜 배송분 양을 "해동할 떡"에 보여줘요. 전날 미리 그 날짜 화면을 보고 해동하면 돼요.' : '오늘 배송분 양을 "냉동재고 사용"에 보여줘요.')) +
     '</div>' +
     '<div class="edit-actions">' +
       (SPECS[editingName] ? '<button class="btn btn-del" onclick="saveSpec(true)">삭제</button>' : '') +
