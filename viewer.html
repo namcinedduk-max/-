@@ -373,9 +373,9 @@ function loadData(force) {
   if (force) params.force = 1;
   const onRetry = function(n) {
     if (shown || document.getElementById('dateInput').value !== date) return;
-    document.getElementById('planSection').innerHTML = '<div class="loading">서버 응답이 늦어서 다시 시도 중... (' + n + '/2)</div>';
+    document.getElementById('planSection').innerHTML = '<div class="loading">서버 응답이 없어 다시 시도 중... (' + n + '/1)</div>';
   };
-  gasGet(params, 2, 10000, onRetry)
+  gasGet(params, 1, 35000, onRetry)
     .then(function(data) {
       if (document.getElementById('dateInput').value !== date) return; // 그 사이 날짜를 바꿨으면 무시
       if (!data || !data.success) { if (!shown) showError('서버 오류: ' + ((data && data.error) || '응답 없음')); return; }
@@ -386,10 +386,38 @@ function loadData(force) {
         showError('화면 그리기 오류: ' + (e && e.message || e));
         return;
       }
+      data._savedAt = Date.now();
       try { localStorage.setItem(DAY_CACHE_PREFIX + date, JSON.stringify(data)); } catch (e) {}
       cleanOldDayCache();
+      prefetchAhead();
     })
     .catch(function() { if (!shown) showError('서버 연결 실패 (응답 시간 초과)'); });
+}
+
+// 오늘 기준 내일·모레 데이터를 뒤에서 조용히 받아둠 → 날짜 바꾸면 바로 뜸
+//   한 번에 하나씩 차례로 (서버에 동시에 몰리지 않게), 10분 안에 받은 건 다시 안 받음
+let prefetching = false;
+function prefetchAhead() {
+  if (prefetching) return;
+  const base = new Date();
+  const dates = [1, 2].map(function(k) {
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + k);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  });
+  prefetching = true;
+  dates.reduce(function(chain, d) {
+    return chain.then(function() {
+      try {
+        const c = JSON.parse(localStorage.getItem(DAY_CACHE_PREFIX + d) || 'null');
+        if (c && c._savedAt && Date.now() - c._savedAt < 10 * 60 * 1000) return;
+      } catch (e) {}
+      return gasGet({ action: 'getProductionDay', date: d }, 0, 40000).then(function(data) {
+        if (!data || !data.success) return;
+        data._savedAt = Date.now();
+        try { localStorage.setItem(DAY_CACHE_PREFIX + d, JSON.stringify(data)); } catch (e) {}
+      }).catch(function() {});
+    });
+  }, Promise.resolve()).then(function() { prefetching = false; cleanOldDayCache(); });
 }
 
 // 이 기기에 저장된 날짜별 데이터가 너무 쌓이지 않게 최근 10개만 남김
