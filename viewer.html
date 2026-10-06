@@ -724,7 +724,7 @@ function specNorm(sp) {
   if (!perKg && parseFloat(sp.gPer) > 0) perKg = 1000 / parseFloat(sp.gPer);
   if (!perKg && sp.pcs > 0 && sp.kg > 0) perKg = sp.pcs / sp.kg;
   if (!panKg && sp.kg > 0 && sp.perKg === undefined) panKg = parseFloat(sp.kg);
-  return { perKg: perKg, panKg: panKg, prep: sp.prep || '당일', memo: sp.memo || '' };
+  return { perKg: perKg, panKg: panKg, panPcs: parseFloat(sp.panPcs) || 0, prep: sp.prep || '당일', memo: sp.memo || '' };
 }
 
 // 총 kg 계산 — kg 주문은 그대로, 개수 주문은 1kg 개수로 나눠서 kg로. 못 바꾸는 건 따로
@@ -855,6 +855,19 @@ function simpleList(names, agg, emptyMsg) {
     const a = agg[name];
     const sp = specNorm(SPECS[name]);
     const sb = srcBlock(a);
+    // 냉동 판 단위 (예: 모찌 1판 48개) → 올림해서 몇 판 꺼낼지
+    if (sp && sp.panPcs > 0 && a.pcs > 0) {
+      const pans = Math.ceil(a.pcs / sp.panPcs - 1e-9);
+      const left = pans * sp.panPcs - a.pcs;
+      const others = calcKg({ pcs: 0, kg: a.kg, doe: a.doe, other: a.other }, sp);
+      const extraQty = [];
+      if (a.kg) extraQty.push(r2(a.kg) + 'kg');
+      others.left.forEach(function(x) { extraQty.push(x); });
+      return '<div' + sb.attr + '><div class="plan-row" style="border-top:none;"><div><div class="plan-name">' + esc(name) + ' <span class="src-hint">▾</span></div>' +
+        '<div class="plan-sub">주문 ' + esc(r1(a.pcs) + '개') + ' → ' + pans + '판(' + r1(pans * sp.panPcs) + '개)' + (left > 0.05 ? ' · ' + r1(left) + '개 남음' : ' · 딱 맞음') + '</div>' +
+        tagLine(a) + (extraQty.length ? '<div class="plan-left">판 계산 안 된 수량: ' + esc(extraQty.join(', ')) + '</div>' : '') + '</div>' +
+        '<span class="plan-pan">' + pans + '<small>판</small></span></div>' + sb.html + '</div>';
+    }
     if (sp && sp.perKg > 0 && a.pcs > 0) {
       const c = calcKg(a, sp);
       return '<div' + sb.attr + '><div class="plan-row" style="border-top:none;"><div><div class="plan-name">' + esc(name) + ' <span class="src-hint">▾</span></div>' +
@@ -984,6 +997,7 @@ function specDesc(raw) {
   const parts = [];
   if (sp.perKg > 0) parts.push('1kg = ' + r1(sp.perKg) + '개 (1개 ' + r1(1000 / sp.perKg) + 'g)');
   if (sp.prep === '당일' && sp.panKg > 0) parts.push('1판 = ' + r2(sp.panKg) + 'kg');
+  if (sp.prep !== '당일' && sp.panPcs > 0) parts.push('1판 = ' + sp.panPcs + '개');
   let d = parts.length ? parts.join(' · ') : '기준 없음 · 주문 수량 그대로 표시';
   if (sp.memo) d += ' · ' + sp.memo;
   return d;
@@ -1060,6 +1074,7 @@ function renderEditArea(prepOverride) {
   const prep = prepOverride || sp.prep || '당일';
   const perV = prepOverride ? cur('sp_perkg', '') : (sp.perKg ? r1(sp.perKg) : '');
   const panV = prepOverride ? cur('sp_pankg', '') : (sp.panKg ? r2(sp.panKg) : '');
+  const panPcsV = prepOverride ? cur('sp_panpcs', '') : (sp.panPcs ? sp.panPcs : '');
   const memoV = prepOverride ? cur('sp_memo', '') : (sp.memo || '');
   const n = esc(editingName);
 
@@ -1073,14 +1088,15 @@ function renderEditArea(prepOverride) {
       '<div><label>1개 = 몇 g?</label><input type="number" id="sp_gper" inputmode="decimal" min="0" step="1" value="' + (perV ? r1(1000 / parseFloat(perV)) : '') + '" placeholder="예: 20" oninput="syncPer(\'g\')"></div>' +
       (prep === '당일'
         ? '<div class="edit-full"><label>1판 = 몇 kg? (판으로 찌는 떡만)</label><input type="number" id="sp_pankg" inputmode="decimal" min="0" step="0.1" value="' + panV + '" placeholder="예: 3.5"></div>'
-        : '<input type="hidden" id="sp_pankg" value="">') +
+        : '<input type="hidden" id="sp_pankg" value="">' +
+          '<div class="edit-full"><label>1판 = 몇 개? (냉동에서 판 단위로 꺼내는 떡만)</label><input type="number" id="sp_panpcs" inputmode="decimal" min="0" step="1" value="' + panPcsV + '" placeholder="예: 모찌 48"></div>') +
       '<div class="edit-full"><label>메모</label><input type="text" id="sp_memo" value="' + esc(memoV) + '" placeholder="예: 시루 2개 사용"></div>' +
     '</div>' +
     '<div class="edit-help">' +
       '1kg 개수나 1개 무게 중 아는 걸 넣으면 다른 칸은 자동으로 채워져요. 개수로 들어온 주문을 kg로 바꿀 때 써요. 비워두면 개수 그대로 보여줘요.<br>' +
       (prep === '당일'
         ? '1판 = 몇 kg: 넣은 떡만 판 수를 계산해요. 모자라지 않게 올림하고, 남는 양은 판매용으로 표시해요. (예: 9kg ÷ 3.5kg → 3판, 1.5kg 남음)'
-        : (prep === '해동' ? '그 날짜 배송분 양을 "해동할 떡"에 보여줘요. 전날 미리 그 날짜 화면을 보고 해동하면 돼요.' : '오늘 배송분 양을 "냉동재고 사용"에 보여줘요.')) +
+        : (prep === '해동' ? '그 날짜 배송분 양을 "해동할 떡"에 보여줘요. 전날 미리 그 날짜 화면을 보고 해동하면 돼요. 1판 개수를 넣으면 몇 판 꺼낼지(올림) 보여줘요.' : '오늘 배송분 양을 "냉동재고 사용"에 보여줘요.')) +
     '</div>' +
     '<div class="edit-actions">' +
       (SPECS[editingName] ? '<button class="btn btn-del" onclick="saveSpec(true)">삭제</button>' : '') +
@@ -1111,8 +1127,11 @@ function saveSpec(del) {
     const perKg = (lastPerFrom === 'g' && gIn > 0) ? 1000 / gIn : kgIn;
     const prep = document.getElementById('sp_prep').value;
     const panKg = prep === '당일' ? (parseFloat(document.getElementById('sp_pankg').value) || 0) : 0;
+    const ppEl = document.getElementById('sp_panpcs');
+    const panPcs = (prep !== '당일' && ppEl) ? (parseFloat(ppEl.value) || 0) : 0;
     const memo = document.getElementById('sp_memo').value.trim();
     obj = { perKg: perKg, panKg: panKg, prep: prep, memo: memo };
+    if (panPcs > 0) obj.panPcs = panPcs;
   }
 
   const btn = document.getElementById('spSaveBtn');
