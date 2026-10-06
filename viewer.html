@@ -964,12 +964,21 @@ function specDesc(raw) {
 }
 
 function renderSpecTab() {
-  // 오늘·내일 주문 중 수율 미입력 떡
-  const missing = Array.from(orderNames()).filter(n => !SPECS[n]).sort((a, b) => a.localeCompare(b, 'ko'));
-  document.getElementById('nospecChips').innerHTML = missing.length
-    ? '<div style="font-size:12px;font-weight:700;color:#92400e;margin-top:10px;">이번 주문 중 설정 안 된 떡 (눌러서 입력)</div><div class="chips">' +
-      missing.map(n => '<span class="chip" onclick="openEdit(\'' + esc(n).replace(/'/g, "\\'") + '\')">' + esc(n) + '</span>').join('') + '</div>'
-    : '';
+  // 설정 안 된 떡 — 고른 날짜 주문과 다음날 주문(해동 확인용)을 나눠서 보여줌
+  const chipRow = function(title, names) {
+    if (!names.length) return '';
+    return '<div style="font-size:12px;font-weight:700;color:#92400e;margin-top:10px;">' + title + '</div><div class="chips">' +
+      names.map(n => '<span class="chip" onclick="openEdit(\'' + esc(n).replace(/'/g, "\\'") + '\')">' + esc(n) + '</span>').join('') + '</div>';
+  };
+  let todayMissing = [], nextMissing = [];
+  if (DAY) {
+    const tNames = Object.keys(aggregate(DAY.today));
+    todayMissing = tNames.filter(n => !SPECS[n]).sort((a, b) => a.localeCompare(b, 'ko'));
+    nextMissing = Object.keys(aggregate(DAY.next)).filter(n => !SPECS[n] && tNames.indexOf(n) === -1).sort((a, b) => a.localeCompare(b, 'ko'));
+  }
+  document.getElementById('nospecChips').innerHTML =
+    chipRow(DAY ? shortDate(DAY.date) + ' 주문 중 설정 안 된 떡 (눌러서 입력)' : '', todayMissing) +
+    chipRow(DAY ? shortDate(DAY.nextDate) + ' 주문 중 설정 안 된 떡 (다음날 해동 확인용으로 같이 불러온 것)' : '', nextMissing);
 
   const names = Object.keys(SPECS).sort((a, b) => a.localeCompare(b, 'ko'));
   document.getElementById('specCount').textContent = names.length + '종';
