@@ -15106,8 +15106,11 @@ function gasGetOnce(params, urlOverride) {
   const controller = new AbortController();
   const timeout = setTimeout(function(){ controller.abort(); }, 8000);
   const targetUrl = urlOverride || gasUrl;
-  const url = targetUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
-  return fetch(url, { signal: controller.signal })
+  // 특정 컴퓨터(브라우저/보안프로그램/프록시)가 같은 주소의 옛날 응답을 재사용해서
+  // 최신 주문이 안 보이는 경우를 막기 위해: 매 요청마다 주소를 달리하고(_nc),
+  // 브라우저 캐시를 쓰지 않도록(no-store) 지정 (2026-10-09)
+  const url = targetUrl + '?' + Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&') + '&_nc=' + Date.now();
+  return fetch(url, { signal: controller.signal, cache: 'no-store' })
     .then(function(r) {
       clearTimeout(timeout);
       return r.json();
