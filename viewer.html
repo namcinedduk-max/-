@@ -664,6 +664,9 @@ function parseQtyP(q) {
   return { other: { [u]: n } };
 }
 
+// 택배 주문은 생산계획·주문목록 모두에서 제외
+function isParcel(o) { return String((o && o.deliveryMethod) || '').trim() === '택배'; }
+
 function aggregate(bucket) {
   const agg = {};
   if (!bucket) return agg;
@@ -687,7 +690,7 @@ function aggregate(bucket) {
       }
     });
   };
-  (bucket.orders || []).forEach(o => add(o, 'order'));
+  (bucket.orders || []).filter(o => !isParcel(o)).forEach(o => add(o, 'order'));
   (bucket.weddingOrders || []).forEach(o => add(o, 'wedding'));
   (bucket.otherOrders || []).forEach(o => add(o, 'other'));
   (bucket.funeralOrders || []).forEach(o => add(o, 'funeral'));
@@ -928,7 +931,7 @@ function renderOrders() {
   if (vh) vh += '<div class="section-title">👤 개인 주문</div>';
   document.getElementById('venueSection').innerHTML = vh;
 
-  const list = (t.orders || []).slice().sort(function(a, b) {
+  const list = (t.orders || []).filter(o => !isParcel(o)).sort(function(a, b) {
     if (currentSort === 'tteok') return String(a.tteokType || '').localeCompare(String(b.tteokType || ''), 'ko');
     if (currentSort === 'method') {
       const ma = a.deliveryMethod || '', mb = b.deliveryMethod || '';
