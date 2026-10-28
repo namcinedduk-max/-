@@ -13041,12 +13041,12 @@ function renderList() {
           <th style="background:#0891b2;padding:8px 12px;border-radius:0 8px 0 0;text-align:right;"><button onclick="switchTab('otherList')" style="font-size:11px;padding:3px 10px;background:#fff;border:none;border-radius:6px;color:#0891b2;cursor:pointer;">목록 보기 →</button></th></tr></thead>
           <tbody>
           ${filteredOtherOrders.map(o => `
-            <tr style="border-bottom:${o.memo?'0':'1px solid var(--border)'};cursor:pointer;" onclick="openOtherModal('${o.id}')">
+            <tr style="border-bottom:${o.memo?'0':'1px solid var(--border)'};cursor:pointer;" onclick="openOtherDetail('${o.id}')">
               <td style="padding:8px 12px;font-weight:700;">${o.venueName||'-'}</td>
               <td style="padding:8px 12px;font-size:12px;">${o.tteokType||'-'}</td>
               <td style="padding:8px 12px;">${normalizeDateStr(String(o.deliveryDate||''))}</td>
               <td style="padding:8px 12px;text-align:right;font-weight:700;">${(Number(o.priceTotal)||0).toLocaleString()}원</td>
-            </tr>${o.memo ? `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openOtherModal('${o.id}')"><td colspan="4" style="padding:0 12px 8px;"><div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:5px 9px;font-size:12px;color:#92400e;line-height:1.4;">📝 ${o.memo}</div></td></tr>` : ''}`).join('')}
+            </tr>${o.memo ? `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openOtherDetail('${o.id}')"><td colspan="4" style="padding:0 12px 8px;"><div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:5px 9px;font-size:12px;color:#92400e;line-height:1.4;">📝 ${o.memo}</div></td></tr>` : ''}`).join('')}
           </tbody>
         </table>`;
     } else {
@@ -13997,6 +13997,9 @@ function closeModal() {
   if (editContent) { editContent.style.display = 'none'; editContent.innerHTML = ''; }
   document.getElementById('modalEditBtn').style.display = '';
   document.getElementById('modalSaveBtn').style.display = 'none';
+  // 장례식장/웨딩홀/기타업체 상세창이 바꿔놓은 버튼 동작을 개인주문 기본값으로 되돌림
+  document.getElementById('modalEditBtn').onclick = toggleEditMode;
+  document.getElementById('modalSaveBtn').onclick = saveEdit;
   currentModalType = 'order';
 }
 document.getElementById('detailModal').addEventListener('click', e => {
@@ -19511,7 +19514,7 @@ function renderOtherList() {
   }
   empty.style.display = 'none';
   tbody.innerHTML = list.map(o => `
-    <tr onclick="openOtherModal('${o.id}')" style="cursor:pointer;">
+    <tr onclick="openOtherDetail('${o.id}')" style="cursor:pointer;">
       <td>${o.deliveryDate || ''} ${o.deliveryTime || ''}</td>
       <td style="font-weight:700;">${o.venueName || ''}</td>
       <td style="font-size:12px;">${o.tteokType || ''}</td>
@@ -19552,6 +19555,46 @@ function clearOtherFilter() {
 // ── 기타업체 주문 수정 모달 (접수 로직 그대로 재사용) ──────────────
 let oeTteokItems = [];
 let oeOrderId = null;
+
+// 기타업체 상세 보기 — 장례식장/웨딩홀과 같은 "주문 상세 정보" 창.
+// 수정 버튼을 누르면 기존 기타업체 수정 창(openOtherModal)이 열림.
+function openOtherDetail(id) {
+  const o = (typeof otherOrders !== 'undefined' ? otherOrders : []).find(x => String(x.id) === String(id));
+  if (!o) { showToast('주문을 찾을 수 없어요.', 'error'); return; }
+  currentModalId = id;
+  currentModalType = 'other';
+  const delivDate = normalizeDateStr(String(o.deliveryDate || ''));
+  const items = (o.tteokItems && o.tteokItems.length)
+    ? o.tteokItems.map(t => t.name + (t.qty ? ' ' + t.qty : '')).join(', ')
+    : (o.tteokType || '-');
+  const pProduct = Number(o.priceProduct) || 0;
+  const pDelivery = Number(o.priceDelivery) || 0;
+  const pDiscount = Number(o.priceDiscount) || 0;
+
+  document.getElementById('modalContent').style.display = 'block';
+  document.getElementById('modalEditContent').style.display = 'none';
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-detail-row"><span class="modal-detail-label">접수 시각</span><span>${o.createdAt || '-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">업체명</span><span>${o.venueName || '-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">떡 종류</span><span>${items}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송 일자</span><span>${delivDate || '-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">배송 시간</span><span>${normalizeTimeStr(o.deliveryTime) || '-'}</span></div>
+    ${pProduct ? `<div class="modal-detail-row"><span class="modal-detail-label">상품 금액</span><span>${pProduct.toLocaleString()}원</span></div>` : ''}
+    ${pDelivery ? `<div class="modal-detail-row"><span class="modal-detail-label">배송비</span><span>${pDelivery.toLocaleString()}원</span></div>` : ''}
+    ${pDiscount ? `<div class="modal-detail-row"><span class="modal-detail-label">할인</span><span>-${pDiscount.toLocaleString()}원</span></div>` : ''}
+    <div class="modal-detail-row"><span class="modal-detail-label">총 금액</span><span style="font-size:18px;font-weight:800;color:var(--accent-red);">${(Number(o.priceTotal) || 0).toLocaleString()}원</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">메모</span><span style="${o.memo ? 'color:var(--accent-red);font-weight:700;' : ''}">${o.memo || '-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span><span>${o.payStatus || '-'}</span></div>
+    <div class="modal-detail-row"><span class="modal-detail-label">담당 직원</span><span>${o.staffName || '-'}</span></div>`;
+
+  document.getElementById('modalDeleteBtn').onclick = () => { closeModal(); deleteOtherOrder(String(id)); };
+  document.getElementById('modalEditBtn').style.display = '';
+  document.getElementById('modalEditBtn').onclick = () => { closeModal(); openOtherModal(id); };
+  document.getElementById('modalSaveBtn').style.display = 'none';
+  const smsBtn = document.getElementById('modalSmsBtn');
+  if (smsBtn) smsBtn.style.display = 'none';
+  document.getElementById('detailModal').classList.add('open');
+}
 
 function openOtherModal(id) {
   const o = (typeof otherOrders !== 'undefined' ? otherOrders : []).find(x => String(x.id) === String(id));
