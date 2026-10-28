@@ -14819,8 +14819,27 @@ async function printInvoice(order, orderType) {
     const looked = getItemPrice(lookupName, item.qty, orderType, venueName);
     return sum + (looked.amount || 0);
   }, 0);
-  const displayTotal = calcTotal > 0 ? calcTotal : totalAmount;
-  const blankRows = Array(Math.max(0, minRows - items.length)).fill(
+  // 기타거래처: 접수 화면 합계 = 상품금액 + 배송비 - 할인 이므로, 명세서에도
+  // 배송비·할인 줄을 넣고 합계에 반영함 (예전엔 품목 금액만 합쳐서 배송비가
+  // 빠진 합계가 찍혀 접수 합계와 안 맞았음 — 2026-10-28)
+  const otherDelivery = (orderType === 'other' && calcTotal > 0) ? (Number(order.priceDelivery) || 0) : 0;
+  const otherDiscount = (orderType === 'other' && calcTotal > 0) ? (Number(order.priceDiscount) || 0) : 0;
+  const extraFeeRows = (otherDelivery > 0 ? 1 : 0) + (otherDiscount > 0 ? 1 : 0);
+  const extraFeeRowsHtml =
+    (otherDelivery > 0 ? `<tr>
+      <td style="border:0.5px solid #999;padding:0;height:36px;font-size:16px;padding-left:4px;">배송비</td>
+      <td style="border:0.5px solid #999;text-align:center;font-size:16px;"></td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:16px;padding-right:3px;"></td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:16px;padding-right:3px;font-weight:bold;">${otherDelivery.toLocaleString()}</td>
+    </tr>` : '') +
+    (otherDiscount > 0 ? `<tr>
+      <td style="border:0.5px solid #999;padding:0;height:36px;font-size:16px;padding-left:4px;">할인</td>
+      <td style="border:0.5px solid #999;text-align:center;font-size:16px;"></td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:16px;padding-right:3px;"></td>
+      <td style="border:0.5px solid #999;text-align:right;font-size:16px;padding-right:3px;font-weight:bold;">-${otherDiscount.toLocaleString()}</td>
+    </tr>` : '');
+  const displayTotal = calcTotal > 0 ? (calcTotal + otherDelivery - otherDiscount) : totalAmount;
+  const blankRows = Array(Math.max(0, minRows - items.length - extraFeeRows)).fill(
     '<tr><td style="border:0.5px solid #999;height:36px;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td><td style="border:0.5px solid #999;"></td></tr>'
   ).join('');
 
@@ -14861,7 +14880,7 @@ async function printInvoice(order, orderType) {
           <th style="border:0.5px solid #999;padding:6px;font-size:15px;text-align:center;width:25%;">단 가</th>
           <th style="border:0.5px solid #999;padding:6px;font-size:15px;text-align:center;width:25%;">금 액</th>
         </tr></thead>
-        <tbody>${itemRows}${blankRows}</tbody>
+        <tbody>${itemRows}${extraFeeRowsHtml}${blankRows}</tbody>
         <tfoot><tr style="background:#f5f5f5;">
           <td colspan="3" style="border:0.5px solid #999;padding:6px 5px;text-align:right;font-weight:bold;font-size:16px;">합 계</td>
           <td style="border:0.5px solid #999;padding:6px 5px;text-align:right;font-weight:bold;font-size:16px;">${displayTotal.toLocaleString()}</td>
@@ -14974,7 +14993,7 @@ async function printInvoice(order, orderType) {
           <th style="border:0.5px solid #999;padding:6px;text-align:center;width:26%;font-size:15px;">단 가</th>
           <th style="border:0.5px solid #999;padding:6px;text-align:center;width:26%;font-size:15px;">금 액</th>
         </tr></thead>
-        <tbody>${itemRows}${blankRows}</tbody>
+        <tbody>${itemRows}${extraFeeRowsHtml}${blankRows}</tbody>
         <tfoot>
           <tr style="background:#f5f5f5;">
             <td colspan="3" style="border:0.5px solid #999;padding:6px 5px;text-align:right;font-weight:bold;font-size:15px;">합 계</td>
@@ -19492,7 +19511,7 @@ function renderOtherList() {
   }
   empty.style.display = 'none';
   tbody.innerHTML = list.map(o => `
-    <tr>
+    <tr onclick="openOtherModal('${o.id}')" style="cursor:pointer;">
       <td>${o.deliveryDate || ''} ${o.deliveryTime || ''}</td>
       <td style="font-weight:700;">${o.venueName || ''}</td>
       <td style="font-size:12px;">${o.tteokType || ''}</td>
@@ -19500,8 +19519,8 @@ function renderOtherList() {
       <td><span class="pay-badge ${o.payStatus === '완료' ? 'paid' : 'unpaid'}">${o.payStatus || ''}</span></td>
       <td>${o.staffName || ''}</td>
       <td>
-        <button onclick="printInvoice((otherOrders||[]).find(x=>String(x.id)===String('${o.id}')), 'other')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
-        <button class="btn-small btn-danger" onclick="deleteOtherOrder('${o.id}')">삭제</button>
+        <button onclick="event.stopPropagation();printInvoice((otherOrders||[]).find(x=>String(x.id)===String('${o.id}')), 'other')" style="background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px;">🖨️ 명세서</button>
+        <button class="btn-small btn-danger" onclick="event.stopPropagation();deleteOtherOrder('${o.id}')">삭제</button>
       </td>
     </tr>`).join('');
 }
