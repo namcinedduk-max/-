@@ -4201,8 +4201,10 @@ function loadTteokPriceSettings() {
       if (d.tteokOrder) window.TTEOK_ORDER = d.tteokOrder;
       if (d.purchaseVendorProducts) {
         try {
-          purchaseVendorProducts = d.purchaseVendorProducts;
+          const mv0 = purMergeVendorProducts(d.purchaseVendorProducts, purchaseVendorProducts);
+          purchaseVendorProducts = mv0.merged;
           localStorage.setItem('purchaseVendorProducts', JSON.stringify(purchaseVendorProducts));
+          if (mv0.localOnly) savePurchaseVendorProducts();
         } catch(e) {}
       }
       // ✅ 웨딩홀/장례식장 단가 구글 시트 동기화 (수정됨)
@@ -9610,7 +9612,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(function() {
       gasGet({ action: 'getPurchases' }).then(function(data) {
         if (data.success && data.records) {
-          purchaseRecords = data.records;
+          purchaseRecords = purApplyPending(data.records);
           purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
           localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
           if (typeof renderPurchaseTable === 'function') renderPurchaseTable();
@@ -16895,6 +16897,75 @@ function buildVendorProductsFromRecords() {
 }
 buildVendorProductsFromRecords();
 
+// ── 매입 저장/삭제 대기열 ──────────────────────────────────────────
+// 예전엔 저장·삭제 요청을 보내놓고 실패해도 조용히 무시했고, 나중에 서버 목록으로
+// 화면을 통째로 덮어써서 서버에 못 올라간 품목이 1~2개씩 사라지는 문제가 있었음.
+// 이제는 성공할 때까지 하나씩 순서대로 재전송하고(저장은 같은 id면 덮어쓰기라
+// 중복 안 생김), 서버 목록을 받아와도 아직 못 보낸 변경은 그대로 유지함. (2026-10-28)
+let _purPending = [];
+try { _purPending = JSON.parse(localStorage.getItem('purchasePending') || '[]'); } catch(e) { _purPending = []; }
+function _purSavePending() { try { localStorage.setItem('purchasePending', JSON.stringify(_purPending)); } catch(e) {} }
+function purQueue(op, id, data) {
+  _purPending = _purPending.filter(function(x) { return String(x.id) !== String(id); });
+  _purPending.push({ op: op, id: id, data: data || null, ts: Date.now() });
+  _purSavePending();
+  _purFlush();
+}
+let _purFlushing = false;
+function _purFlush() {
+  if (_purFlushing || !gasUrl || _purPending.length === 0) return;
+  _purFlushing = true;
+  const it = _purPending[0];
+  const body = it.op === 'save'
+    ? { action: 'save', sheet: 'purchase', data: it.data }
+    : { action: 'delete', sheet: 'purchase', id: it.id };
+  gasPost(body)
+    .then(function(res) {
+      if (res && res.success) {
+        // 그 사이 같은 id로 새 변경이 들어왔으면(ts가 다름) 그건 남겨둠
+        _purPending = _purPending.filter(function(x) { return !(String(x.id) === String(it.id) && x.ts === it.ts); });
+      } else if (_purPending.length > 1) {
+        _purPending.push(_purPending.shift());
+      }
+      _purSavePending();
+    })
+    .catch(function() {
+      if (_purPending.length > 1) { _purPending.push(_purPending.shift()); _purSavePending(); }
+    })
+    .finally(function() {
+      _purFlushing = false;
+      if (_purPending.length > 0) setTimeout(_purFlush, 2000);
+    });
+}
+setInterval(function() { if (_purPending.length > 0) _purFlush(); }, 20000);
+if (_purPending.length > 0) setTimeout(_purFlush, 3000);
+
+// 서버에서 받은 매입 목록에 "아직 서버에 못 올린 변경"을 다시 입혀서 돌려줌
+function purApplyPending(list) {
+  (_purPending || []).forEach(function(it) {
+    const idx = list.findIndex(function(r) { return String(r.id) === String(it.id); });
+    if (it.op === 'save' && it.data) {
+      if (idx > -1) list[idx] = it.data; else list.unshift(it.data);
+    } else if (it.op === 'delete' && idx > -1) {
+      list.splice(idx, 1);
+    }
+  });
+  return list;
+}
+
+// 거래처별 품목 목록: 서버 것과 이 컴퓨터 것을 합침(어느 한쪽에만 있는 품목도 안 사라지게)
+function purMergeVendorProducts(server, local) {
+  const out = JSON.parse(JSON.stringify(server || {}));
+  let localOnly = false;
+  Object.keys(local || {}).forEach(function(v) {
+    if (!out[v]) out[v] = [];
+    (local[v] || []).forEach(function(p) {
+      if (!out[v].find(function(x) { return x.name === p.name; })) { out[v].push(p); localOnly = true; }
+    });
+  });
+  return { merged: out, localOnly: localOnly };
+}
+
 function savePurchaseData() {
   localStorage.setItem('purchasePartners', JSON.stringify(purchasePartners));
   localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
@@ -17179,8 +17250,9 @@ function renderPartnerLedger() {
     return;
   }
 
-  const grandTotal = records.reduce(function(s, r) { return s + (r.amount||0); }, 0);
-  document.getElementById('ledger_totalLabel').textContent = '합계: ' + grandTotal.toLocaleString() + '원';
+  // 원장 합계도 부가세 포함 (공급가액 + 부가세)
+  const grandTotal = records.reduce(function(s, r) { return s + (Number(r.amount)||0) + (Number(r.vat)||0); }, 0);
+  document.getElementById('ledger_totalLabel').textContent = '합계(부가세 포함): ' + grandTotal.toLocaleString() + '원';
 
   // 월별 그룹화
   const byMonth = {};
@@ -17192,7 +17264,7 @@ function renderPartnerLedger() {
 
   body.innerHTML = Object.keys(byMonth).sort(function(a,b){ return b.localeCompare(a); }).map(function(ym) {
     const rows = byMonth[ym];
-    const monthTotal = rows.reduce(function(s, r){ return s + (r.amount||0); }, 0);
+    const monthTotal = rows.reduce(function(s, r){ return s + (Number(r.amount)||0) + (Number(r.vat)||0); }, 0);
     return '<div style="margin-bottom:16px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--cream);border-radius:6px;margin-bottom:6px;">' +
       '<span style="font-size:13px;font-weight:700;color:var(--brown-deep);">' + ym + '</span>' +
@@ -17202,7 +17274,7 @@ function renderPartnerLedger() {
       '<thead><tr style="font-size:11px;color:#888;">' +
       '<th style="text-align:left;padding:4px 8px;">날짜</th><th style="text-align:left;padding:4px 8px;">항목</th>' +
       '<th style="text-align:right;padding:4px 8px;">수량</th><th style="text-align:right;padding:4px 8px;">단가</th>' +
-      '<th style="text-align:right;padding:4px 8px;">금액</th><th style="text-align:left;padding:4px 8px;">메모</th>' +
+      '<th style="text-align:right;padding:4px 8px;">금액</th><th style="text-align:right;padding:4px 8px;">부가세</th><th style="text-align:left;padding:4px 8px;">메모</th>' +
       '</tr></thead><tbody>' +
       rows.map(function(r) {
         const dateDisplay = String(r.date||'').substring(0,10);
@@ -17214,6 +17286,7 @@ function renderPartnerLedger() {
           '<td style="padding:6px 8px;font-size:12px;text-align:right;">' + qtyStr + '</td>' +
           '<td style="padding:6px 8px;font-size:12px;text-align:right;color:#888;">' + upStr + '</td>' +
           '<td style="padding:6px 8px;font-size:13px;font-weight:700;text-align:right;">' + (r.amount||0).toLocaleString() + '원</td>' +
+          '<td style="padding:6px 8px;font-size:12px;text-align:right;color:#888;">' + (r.vat ? Number(r.vat).toLocaleString() + '원' : '-') + '</td>' +
           '<td style="padding:6px 8px;font-size:11px;color:#aaa;">' + (r.memo||'') + '</td>' +
           '</tr>';
       }).join('') +
@@ -17539,11 +17612,7 @@ function savePurAllItems() {
   renderPurchaseSummary();
   showToast('✅ 매입 ' + records.length + '건 저장됐어요!', 'success');
 
-  if (gasUrl) {
-    records.forEach(function(r) {
-      gasPost({ action: 'save', sheet: 'purchase', data: r }).catch(function(){});
-    });
-  }
+  records.forEach(function(r) { purQueue('save', r.id, r); });
 }
 
 // 기존 savePurchaseRecord는 제거 (다중 품목으로 대체됨)
@@ -17618,9 +17687,7 @@ function savePurchaseEdit() {
   renderPurchaseTable();
   renderPurchaseSummary();
   showToast('✅ 기록 수정됐어요!', 'success');
-  if (gasUrl) {
-    gasPost({ action: 'save', sheet: 'purchase', data: purchaseRecords[idx] }).catch(function(){});
-  }
+  purQueue('save', purchaseRecords[idx].id, purchaseRecords[idx]);
 }
 
 function deletePurchaseRecord(id) {
@@ -17630,9 +17697,7 @@ function deletePurchaseRecord(id) {
   renderPurchaseTable();
   renderPurchaseSummary();
   showToast('🗑 기록 삭제됐어요.', '');
-  if (gasUrl) {
-    gasPost({ action: 'delete', sheet: 'purchase', id: id }).catch(function(){});
-  }
+  purQueue('delete', id, null);
 }
 
 function renderVendorSummaryPanel() {
@@ -17736,9 +17801,11 @@ function renderPurchaseTable() {
     if (filterPartner && r.partner !== filterPartner) return false;
     return true;
   });
-  const total = filtered.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
+  // 합계는 부가세 포함 금액 (공급가액 + 부가세). 금액·부가세는 따로 보여줌
+  const totalSupply = filtered.reduce(function(s, r) { return s + (Number(r.amount) || 0); }, 0);
+  const totalVat = filtered.reduce(function(s, r) { return s + (Number(r.vat) || 0); }, 0);
   const labelEl = document.getElementById('pur_totalLabel');
-  if (labelEl) labelEl.textContent = '합계: ' + total.toLocaleString() + '원';
+  if (labelEl) labelEl.textContent = '합계: ' + (totalSupply + totalVat).toLocaleString() + '원 (공급가 ' + totalSupply.toLocaleString() + ' + 부가세 ' + totalVat.toLocaleString() + ')';
   renderVendorSummaryPanel();
   if (filtered.length === 0) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:#aaa;">기록이 없어요.</td></tr>';
@@ -17772,13 +17839,14 @@ function renderPurchaseSummary() {
   const now = new Date();
   const thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   const thisMonthRecords = purchaseRecords.filter(function(r) { return r.date && r.date.startsWith(thisMonth); });
-  const total = thisMonthRecords.reduce(function(s, r) { return s + (r.amount || 0); }, 0);
+  // 이번 달 매입도 부가세 포함 (공급가액 + 부가세)
+  const total = thisMonthRecords.reduce(function(s, r) { return s + (Number(r.amount) || 0) + (Number(r.vat) || 0); }, 0);
   const byType = {};
-  thisMonthRecords.forEach(function(r) { byType[r.type] = (byType[r.type] || 0) + (r.amount || 0); });
+  thisMonthRecords.forEach(function(r) { byType[r.type] = (byType[r.type] || 0) + (Number(r.amount) || 0) + (Number(r.vat) || 0); });
   const typeColors = { material: '#dbeafe', packaging: '#dcfce7', utility: '#fef9c3', delivery: '#ede9fe', etc: '#f3f4f6' };
   el.innerHTML = '<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--brown-mid);margin-bottom:4px;">📊 ' + thisMonth + ' 이번 달 매입 현황</div>' +
     '<div style="background:#fff7ed;border-radius:8px;padding:10px 14px;border:1.5px solid #fed7aa;">' +
-    '<div style="font-size:11px;color:#92400e;margin-bottom:4px;">총 매입</div>' +
+    '<div style="font-size:11px;color:#92400e;margin-bottom:4px;">총 매입 (부가세 포함)</div>' +
     '<div style="font-size:18px;font-weight:800;color:#c2410c;">' + total.toLocaleString() + '원</div></div>' +
     Object.entries(byType).map(function(entry) {
       return '<div style="background:' + (typeColors[entry[0]] || '#f3f4f6') + ';border-radius:8px;padding:10px 14px;">' +
@@ -17813,7 +17881,7 @@ function initPurchaseTab() {
 
     gasGet({ action: 'getPurchases' }).then(function(data) {
       if (data.success && data.records) {
-        purchaseRecords = data.records;
+        purchaseRecords = purApplyPending(data.records);
         purchaseRecords.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
         localStorage.setItem('purchaseRecords', JSON.stringify(purchaseRecords));
         // 새 기록 들어오면 제품 목록 자동 보완
@@ -17827,8 +17895,10 @@ function initPurchaseTab() {
     // purchaseVendorProducts 서버에서 로드
     gasGet({ action: 'getTteokSettings' }).then(function(data) {
       if (data.success && data.data && data.data.purchaseVendorProducts) {
-        purchaseVendorProducts = data.data.purchaseVendorProducts;
+        const mv = purMergeVendorProducts(data.data.purchaseVendorProducts, purchaseVendorProducts);
+        purchaseVendorProducts = mv.merged;
         localStorage.setItem('purchaseVendorProducts', JSON.stringify(purchaseVendorProducts));
+        if (mv.localOnly) savePurchaseVendorProducts(); // 이 컴퓨터에만 있던 품목은 서버에도 올림
       }
     }).catch(function(){});
   }
