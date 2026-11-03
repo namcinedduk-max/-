@@ -1144,6 +1144,7 @@ function forceRefreshApp() {
               <option value="계좌이체">계좌이체</option>
               <option value="카카오페이">카카오페이</option>
               <option value="네이버페이">네이버페이</option>
+              <option value="리더기">리더기</option>
               <option value="미수금">미수금</option>
             </select>
           </div>
@@ -1578,6 +1579,7 @@ function forceRefreshApp() {
             <button class="pay-btn" onclick="selectPay(this,'계좌이체')">🏦 계좌이체</button>
             <button class="pay-btn" onclick="selectPay(this,'카카오페이')">💛 카카오페이</button>
             <button class="pay-btn" onclick="selectPay(this,'네이버페이')">💚 네이버페이</button>
+            <button class="pay-btn" onclick="selectPay(this,'리더기')">📟 리더기</button>
             <button class="pay-btn" onclick="selectPay(this,'미수금')">⏳ 미수금</button>
           </div>
           <input type="hidden" id="payMethod">
@@ -4164,8 +4166,8 @@ function loadTteokPriceSettings() {
       } catch(e){} }
       if (d.quickSentIds && Array.isArray(d.quickSentIds) && typeof quickSentIds !== 'undefined') { try {
         // A·B 공유: 서버의 발송완료 목록을 로컬과 합침
-        d.quickSentIds.forEach(function(x){ quickSentIds.add(String(x)); });
-        localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+        if (typeof quickMergeFromServer === 'function') quickMergeFromServer(d.quickSentState, d.quickSentIds.map(String));
+        if (typeof _quickSaveLocal === 'function') _quickSaveLocal();
         if (typeof refreshQuickCells === 'function') refreshQuickCells();
         if (typeof checkQuickAlarms === 'function') checkQuickAlarms();
       } catch(e){} }
@@ -9689,29 +9691,71 @@ function getOrderCreatedMs(o) {
 
 function isQuickSent(o) { return quickSentIds.has(String(o && o.id)); }
 
+// ── 발송완료 상태 동기화 (2026-10-31) ──
+// 예전엔 "발송완료 id 목록"만 서로 합쳐(합집합) 저장해서, 한 컴퓨터에서 취소해도
+// 서버/다른 컴퓨터에 남아있던 id가 다시 합쳐져 금방 발송완료로 되돌아왔음.
+// 이제 id마다 "발송완료/취소 + 바꾼 시각"을 같이 저장하고, 합칠 때는 더 나중에
+// 바꾼 쪽이 이김 — 취소도 서버와 다른 컴퓨터에 그대로 전달됨.
+let quickSentState = {};
+try { quickSentState = JSON.parse(localStorage.getItem('quickSentState') || '{}') || {}; } catch(e) { quickSentState = {}; }
+quickSentIds.forEach(function(id) { if (!quickSentState[id]) quickSentState[id] = { v: 1, t: 0 }; });
+function _quickRecompute() {
+  quickSentIds = new Set(Object.keys(quickSentState).filter(function(id) { return quickSentState[id] && quickSentState[id].v === 1; }));
+}
+function _quickSaveLocal() {
+  try {
+    localStorage.setItem('quickSentState', JSON.stringify(quickSentState));
+    localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+  } catch(e) {}
+}
+function _quickSet(id, sent) {
+  quickSentState[String(id)] = { v: sent ? 1 : 0, t: Date.now() };
+  _quickRecompute();
+}
+// 서버 데이터를 합침. 바뀐 게 있으면 true
+function quickMergeFromServer(serverState, serverIds) {
+  let changed = false;
+  Object.keys(serverState || {}).forEach(function(id) {
+    const sv = serverState[id];
+    if (!sv) return;
+    const lv = quickSentState[id];
+    if (!lv || (Number(sv.t) || 0) > (Number(lv.t) || 0)) {
+      if (!lv || lv.v !== (sv.v ? 1 : 0)) changed = true;
+      quickSentState[id] = { v: sv.v ? 1 : 0, t: Number(sv.t) || 0 };
+    }
+  });
+  // 옛 방식(id 목록만 저장한 서버/컴퓨터) 호환: 상태 기록이 없는 id만 발송완료로 인정
+  (serverIds || []).forEach(function(x) {
+    const id = String(x);
+    if (!quickSentState[id]) { quickSentState[id] = { v: 1, t: 0 }; changed = true; }
+  });
+  _quickRecompute();
+  return changed;
+}
+
 function _persistQuickSent() {
   // 오래된(이틀 지난) 기록 정리
   const cutoff = Date.now() - 2 * 24 * 3600 * 1000;
-  quickSentIds = new Set([...quickSentIds].filter(x => {
+  Object.keys(quickSentState).forEach(function(x) {
     const n = Number(x);
-    return !(n > 1500000000000 && n < cutoff);
-  }));
-  localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
-  // A·B 공유: 저장 전에 서버 목록과 합쳐서 저장 (다른 컴퓨터가 표시한 건 안 지워지게)
+    if (n > 1500000000000 && n < cutoff) delete quickSentState[x];
+  });
+  _quickRecompute();
+  _quickSaveLocal();
+  // A·B 공유: 저장 전에 서버 내용과 합쳐서(나중에 바꾼 쪽이 이김) 저장
   if (typeof gasUrl !== 'undefined' && gasUrl && typeof gasPost === 'function') {
-    const localArr = [...quickSentIds];
+    const pushState = function() {
+      gasPost({ action: 'saveTteokSettings', data: { quickSentState: quickSentState, quickSentIds: [...quickSentIds] } }).catch(function(){});
+    };
     if (typeof gasGet === 'function') {
       gasGet({ action: 'getTteokSettings' }).then(function(data) {
-        const server = (data && data.data && Array.isArray(data.data.quickSentIds)) ? data.data.quickSentIds.map(String) : [];
-        const merged = Array.from(new Set(localArr.concat(server)));
-        merged.forEach(function(s){ quickSentIds.add(s); });
-        localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
-        gasPost({ action: 'saveTteokSettings', data: { quickSentIds: merged } }).catch(function(){});
-      }).catch(function() {
-        gasPost({ action: 'saveTteokSettings', data: { quickSentIds: localArr } }).catch(function(){});
-      });
+        const d = (data && data.data) || {};
+        quickMergeFromServer(d.quickSentState, Array.isArray(d.quickSentIds) ? d.quickSentIds.map(String) : []);
+        _quickSaveLocal();
+        pushState();
+      }).catch(pushState);
     } else {
-      gasPost({ action: 'saveTteokSettings', data: { quickSentIds: localArr } }).catch(function(){});
+      pushState();
     }
   }
 }
@@ -9719,8 +9763,8 @@ function _persistQuickSent() {
 // 목록의 "보냈어요 / 취소" 버튼
 function quickToggleSent(id) {
   id = String(id);
-  if (quickSentIds.has(id)) quickSentIds.delete(id);
-  else { quickSentIds.add(id); _quickBeeped.delete(id); }
+  if (quickSentIds.has(id)) _quickSet(id, false);
+  else { _quickSet(id, true); _quickBeeped.delete(id); }
   _persistQuickSent();
   if (typeof renderFuneralList === 'function') renderFuneralList();
   checkQuickAlarms();
@@ -9729,7 +9773,7 @@ function quickToggleSent(id) {
 // 배너에서 "보냈어요" 누름
 function quickMarkSentFromBanner(id) {
   id = String(id);
-  quickSentIds.add(id);
+  _quickSet(id, true);
   _persistQuickSent();
   if (typeof renderFuneralList === 'function') renderFuneralList();
   checkQuickAlarms();
@@ -9969,16 +10013,21 @@ function quickShareSelfTest() {
 function pullQuickSentFromServer() {
   if (typeof gasUrl === 'undefined' || !gasUrl || typeof gasGet !== 'function') return Promise.resolve();
   return gasGet({ action: 'getTteokSettings' }).then(function(data) {
-    if (data && data.success && data.data && Array.isArray(data.data.quickSentIds)) {
-      let changed = false;
-      data.data.quickSentIds.forEach(function(x) {
-        const s = String(x);
-        if (!quickSentIds.has(s)) { quickSentIds.add(s); changed = true; }
-      });
+    if (data && data.success && data.data) {
+      const d = data.data;
+      const changed = quickMergeFromServer(d.quickSentState, Array.isArray(d.quickSentIds) ? d.quickSentIds.map(String) : []);
       if (changed) {
-        localStorage.setItem('quickSentIds', JSON.stringify([...quickSentIds]));
+        _quickSaveLocal();
         if (typeof refreshQuickCells === 'function') refreshQuickCells();
       }
+      // 이 컴퓨터가 서버보다 더 최근에 바꾼 게 있으면(전송 실패했던 것) 다시 올림
+      const srv = d.quickSentState || {};
+      const needPush = Object.keys(quickSentState).some(function(id) {
+        const lv = quickSentState[id];
+        const sv = srv[id];
+        return (Number(lv.t) || 0) > 0 && (!sv || (Number(lv.t) || 0) > (Number(sv.t) || 0));
+      });
+      if (needPush) _persistQuickSent();
     }
   }).catch(function(){});
 }
@@ -13109,7 +13158,7 @@ function quickSetPayStatus(id, newStatus) {
 function getMethodBadge(method) {
   const map = {
     '현금':'badge-green','카드':'badge-blue','계좌이체':'badge-purple',
-    '카카오페이':'badge-orange','네이버페이':'badge-green','미수금':'badge-gray'
+    '카카오페이':'badge-orange','네이버페이':'badge-green','리더기':'badge-blue','미수금':'badge-gray'
   };
   return `<span class="badge ${map[method]||'badge-gray'}">${method||'-'}</span>`;
 }
@@ -13791,7 +13840,7 @@ function renderModalEdit(o) {
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">결제 방법</span>
         <select id="e_payMethod" style="flex:1;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-          ${['현금','카드','계좌이체','카카오페이','네이버페이','미수금'].map(m=>`<option ${o.payMethod===m?'selected':''}>${m}</option>`).join('')}
+          ${['현금','카드','계좌이체','카카오페이','네이버페이','리더기','미수금'].map(m=>`<option ${o.payMethod===m?'selected':''}>${m}</option>`).join('')}
         </select>
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span>
@@ -15291,6 +15340,19 @@ function _removeFromSyncQueue(sheetType, id) {
   renderSyncBadge();
 }
 
+// 서버에서 목록을 받아왔을 때, 아직 시트에 못 올라간(대기 중) 수정/접수를 다시 입혀줌.
+// 이게 없으면 저장 직후(또는 저장 전송이 느려 재시도 중일 때) 주기적 새로고침이
+// 서버의 옛날 내용으로 화면을 덮어써서 "수정한 내용이 원래대로 돌아간" 것처럼 보였음 (2026-10-31)
+function applyPendingSync(sheetType, list) {
+  if (!Array.isArray(list)) return list;
+  _syncQueue.forEach(function(q) {
+    if (q.sheet !== sheetType || !q.data) return;
+    const idx = list.findIndex(function(o) { return String(o.id) === String(q.id); });
+    if (idx > -1) list[idx] = q.data; else list.unshift(q.data);
+  });
+  return list;
+}
+
 function isPendingSync(sheetType, id) {
   return _syncQueue.some(function(q) { return q.sheet === sheetType && String(q.id) === String(id); });
 }
@@ -15391,7 +15453,7 @@ function loadOrdersFromSheet(silent, force, skipLocalSkip) {
   return gasGet(_params)
     .then(data => {
       if (data.success) {
-        orders = data.orders || [];
+        orders = applyPendingSync('order', data.orders || []);
         _cacheTs.orders = Date.now();
         _ordersFullLoaded = false; // 최근 것만 불러온 상태
         migrateOrderSeqNos();  // 서버에서 받은 데이터에도 seqNo 부여
@@ -15429,7 +15491,7 @@ function loadAllDataOnStartup() {
       // 임베디드 섹션이 있는데, 예전엔 orders만 채우고 바로 renderList()를
       // 불러서 그 섹션들이 아직 비어있던(이전 값 그대로인) 배열로 그려짐 →
       // 새로고침 직후엔 그 섹션들이 빠진 것처럼 보이는 버그였음 (2026-09-18 수정)
-      orders = data.orders || [];
+      orders = applyPendingSync('order', data.orders || []);
       _cacheTs.orders = Date.now();
       _ordersFullLoaded = false;
       migrateOrderSeqNos();
@@ -15437,15 +15499,15 @@ function loadAllDataOnStartup() {
         _prevPendingIds = new Set(orders.filter(o => o.orderType === '고객신청').map(o => String(o.id)));
       }
 
-      funeralOrders = data.funeralOrders || [];
+      funeralOrders = applyPendingSync('funeral', data.funeralOrders || []);
       _cacheTs.funeral = Date.now();
 
-      weddingOrders = data.weddingOrders || [];
+      weddingOrders = applyPendingSync('wedding', data.weddingOrders || []);
       _cacheTs.wedding = Date.now();
       localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
 
       if (data.otherOrders) {
-        otherOrders = data.otherOrders;
+        otherOrders = applyPendingSync('other', data.otherOrders);
       }
 
       updateStats(); renderList();
@@ -15465,7 +15527,7 @@ function loadAllOrdersFromSheet() {
   return gasGet({ action: 'getOrders' })  // days 없이 = 전체
     .then(data => {
       if (data.success) {
-        orders = data.orders || [];
+        orders = applyPendingSync('order', data.orders || []);
         _cacheTs.orders = Date.now();
         _ordersFullLoaded = true;
         migrateOrderSeqNos();
@@ -16369,7 +16431,7 @@ function loadAllFuneralOrdersFromSheet() {
   return gasFuneralGet({ action: 'getOrders' })  // days 없이 = 전체
     .then(data => {
       if (data.success) {
-        funeralOrders = data.orders || [];
+        funeralOrders = applyPendingSync('funeral', data.orders || []);
         _cacheTs.funeral = Date.now();
         _funeralFullLoaded = true;
       } else {
@@ -16807,7 +16869,7 @@ function loadFuneralOrdersFromSheet(silent, force, skipLocalSkip) {
   return gasFuneralGet(_paramsF)
     .then(data => {
       if (data.success) {
-        funeralOrders = data.orders || [];
+        funeralOrders = applyPendingSync('funeral', data.orders || []);
         _cacheTs.funeral = Date.now();
         if (!silent) { updateFuneralStats(); renderFuneralList(); }
       }
@@ -16841,33 +16903,51 @@ function sendToFuneralSheet(order) {
 function sendToSheet(order) {
   resetForm();
 
-  const doSave = function() {
-    orders.unshift(order);
-    updateStats(); renderList();
-    showToast('✅ 주문 접수 완료!', 'success');
+  // ── 접수 버튼을 누르면 즉시 목록에 반영하고 "접수 완료"를 보여줌 ──
+  // 예전엔 서버에서 접수번호를 받아온 뒤에야 목록에 넣고 알림을 띄웠음. 서버가 느리면
+  // (몇 초~20초 넘게) 그동안 입력칸은 비워졌는데 아무 반응도 없어서 접수가 안 된 것으로
+  // 보였고, 그래서 여러 번 다시 접수하는 일이 생겼음 (2026-11-03).
+  // 접수번호는 일단 화면 기준으로 임시 부여 → 서버 최댓값 확인되면 보정해서 시트로 전송.
+  assignOrderSeqNo(order);
+  orders.unshift(order);
+  updateStats(); renderList();
+
+  // 지금 목록이 다른 배송일로 걸러져 있으면 방금 접수한 주문이 안 보이므로, 그걸 알려줌
+  let hiddenNote = '';
+  try {
+    const fd = getFilterDateValue();
+    const ft = document.getElementById('filterDateType').value;
+    const od = normalizeDateStr(String(order.deliveryDate || ''));
+    if (fd && ft === 'delivery' && od && od !== fd) {
+      hiddenNote = ' (배송일 ' + od + ' — 지금 목록은 ' + fd + ' 기준이라 안 보여요)';
+    }
+  } catch (e) {}
+  showToast('✅ 주문 접수 완료!' + hiddenNote, 'success');
+
+  let finalized = false;
+  const finalize = function(serverMax) {
+    if (finalized) return;
+    finalized = true;
+    if (serverMax !== null && serverMax !== undefined) {
+      // 서버가 알려준 최댓값 다음 번호로 보정 (여러 컴퓨터에서 동시에 접수해도 번호가 안 겹치게)
+      const n = serverMax + 1;
+      if (n > (order.seqNo || 0)) order.seqNo = n;
+    }
+    renderList();
     // 큐에 넣어두면 뒤에서 알아서(성공할 때까지 재시도) 구글 시트로 보내짐.
     // 응답을 못 받아도 화면에서 절대 안 지움 (2026-09-13)
     if (gasUrl) queueForSync('order', order);
   };
 
-  // 예전엔 접수번호(seqNo) 중복 방지를 위해 저장 전에 전체 주문목록을 통째로
-  // 다시 불러왔음(느림 — 숫자 하나 때문에 수천 건을 다 읽어옴). 이제는 해당
-  // 배송일의 접수번호 최댓값만 가볍게 서버에 물어봐서 훨씬 빠르게 처리함
-  // (실패하면 지금 화면에 있는 데이터 기준으로라도 안전하게 부여) — 2026-09-13
+  // 접수번호 확인이 4초 안에 안 오면 기다리지 않고 임시 번호 그대로 저장 진행
   const dateForSeq = normalizeDateStr(String(order.deliveryDate || ''));
-  if (gasUrl && dateForSeq && !order.seqNo) {
-    gasGet({ action: 'getMaxSeqNo', date: dateForSeq })
-      .then(function(d) {
-        order.seqNo = (d && d.success ? (d.maxSeqNo || 0) : 0) + 1;
-        doSave();
-      })
-      .catch(function() {
-        assignOrderSeqNo(order);
-        doSave();
-      });
+  if (gasUrl && dateForSeq) {
+    const t = setTimeout(function() { finalize(null); }, 4000);
+    gasGet({ action: 'getMaxSeqNo', date: dateForSeq }, 0)
+      .then(function(d) { clearTimeout(t); finalize(d && d.success ? (d.maxSeqNo || 0) : null); })
+      .catch(function() { clearTimeout(t); finalize(null); });
   } else {
-    assignOrderSeqNo(order);
-    doSave();
+    finalize(null);
   }
 }
 
@@ -18340,7 +18420,7 @@ function loadWeddingOrdersFromSheet(silent, force, skipLocalSkip) {
   return gasGet(_paramsW)
     .then(data => {
       if (data.success) {
-        weddingOrders = data.orders || [];
+        weddingOrders = applyPendingSync('wedding', data.orders || []);
         _cacheTs.wedding = Date.now();
         localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
         if (!silent) { updateWeddingStats(); renderWeddingList(); }
@@ -18358,7 +18438,7 @@ function loadAllWeddingOrdersFromSheet() {
   return gasGet({ action: 'getOrders', sheet: 'wedding' })  // days 없이 = 전체
     .then(data => {
       if (data.success) {
-        weddingOrders = data.orders || [];
+        weddingOrders = applyPendingSync('wedding', data.orders || []);
         _cacheTs.wedding = Date.now();
         localStorage.setItem('weddingOrders', JSON.stringify(weddingOrders));
         _weddingFullLoaded = true;
@@ -19426,7 +19506,7 @@ function loadAllOtherOrdersFromSheet() {
   return gasGet({ action: 'getOrders', sheet: 'other' })  // days 없이 = 전체
     .then(data => {
       if (data.success && data.orders) {
-        otherOrders = data.orders;
+        otherOrders = applyPendingSync('other', data.orders);
         _otherFullLoaded = true;
       } else {
         showToast('⚠️ 전체 불러오기 실패 - 기존 목록 유지', 'error');
@@ -19443,7 +19523,7 @@ function loadOtherOrdersFromSheet(silent, force) {
   return gasGet(_paramsO)
     .then(data => {
       if (data.success && data.orders) {
-        otherOrders = data.orders;
+        otherOrders = applyPendingSync('other', data.orders);
         updateOtherStats(); renderOtherList();
         // 개인주문 목록 기타업체 섹션도 갱신
         if (document.getElementById('panel-list') && document.getElementById('panel-list').classList.contains('active')) {
@@ -19935,7 +20015,7 @@ function renderPersonalSettlement(ym) {
   const unpaidTotal = totalSales - paid;
 
   // ── 결제수단별 분해 (전체매출 vs 결제완료 실수령) ─────────────
-  const _methods = ['현금','카드','계좌이체','카카오페이','네이버페이','미수금'];
+  const _methods = ['현금','카드','계좌이체','카카오페이','네이버페이','리더기','미수금'];
   const byMethodAll = {};   // 상태 무관 전체
   const byMethodPaid = {};  // 결제완료만
   _methods.forEach(function(m){ byMethodAll[m]=0; byMethodPaid[m]=0; });
@@ -19948,8 +20028,8 @@ function renderPersonalSettlement(ym) {
   });
   const cardCashAll  = byMethodAll['카드'] + byMethodAll['현금'];
   const cardCashPaid = byMethodPaid['카드'] + byMethodPaid['현금'];
-  const realInAll  = byMethodAll['현금'] + byMethodAll['카드'] + byMethodAll['계좌이체'];
-  const realInPaid = byMethodPaid['현금'] + byMethodPaid['카드'] + byMethodPaid['계좌이체'];
+  const realInAll  = byMethodAll['현금'] + byMethodAll['카드'] + byMethodAll['계좌이체'] + byMethodAll['리더기'];
+  const realInPaid = byMethodPaid['현금'] + byMethodPaid['카드'] + byMethodPaid['계좌이체'] + byMethodPaid['리더기'];
 
   const methodBreakdownRows = _methods.concat(['(미지정)'])
     .filter(function(m){ return byMethodAll[m] > 0; })
@@ -19980,7 +20060,7 @@ function renderPersonalSettlement(ym) {
     + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#16a34a;">' + cardCashPaid.toLocaleString() + '원</td>'
     + '</tr>'
     + '<tr style="background:#eff6ff;border-top:1px solid #bfdbfe;">'
-    + '<td style="padding:8px 10px;font-size:12px;font-weight:700;color:#1e40af;">└ 현금+카드+계좌이체 (실입금)</td>'
+    + '<td style="padding:8px 10px;font-size:12px;font-weight:700;color:#1e40af;">└ 현금+카드+계좌이체+리더기 (실입금)</td>'
     + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#1e40af;">' + realInAll.toLocaleString() + '원</td>'
     + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#16a34a;">' + realInPaid.toLocaleString() + '원</td>'
     + '</tr></tfoot></table></div>'
