@@ -15104,6 +15104,35 @@ async function printInvoice(order, orderType) {
     } catch (e) { /* 실패하면 그냥 화면 데이터 기준으로 대체 계산 (예전 방식) */ }
   }
 
+  // 정산탭과 똑같이 3개 시트 전체를 불러와 거래처명(종류 무관) 기준으로 전 납품합계를 직접 계산
+  // (서버 getVenuePrevTotal 값이 어긋나는 경우 대비 — 이 값이 있으면 우선 사용)
+  if (useStatementSlip && gasUrl) {
+    try {
+      const _rs = await Promise.all([
+        gasGet({ action: 'getOrders', sheet: 'funeral' }),
+        gasGet({ action: 'getOrders', sheet: 'wedding' }),
+        gasGet({ action: 'getOrders', sheet: 'other' })
+      ]);
+      if (_rs.every(r => r && r.success !== false)) {
+        const _all = [
+          ...(_rs[0].orders||[]).map(o => ({ n: o.funeralName, o })),
+          ...(_rs[1].orders||[]).map(o => ({ n: o.weddingName||o.hallName, o })),
+          ...(_rs[2].orders||[]).map(o => ({ n: o.venueName, o }))
+        ];
+        const _cur = normalizeDateStr(String(order.deliveryDate||''));
+        let _sum = 0;
+        _all.forEach(x => {
+          if (String(x.n||'').trim() !== String(venueName||'').trim()) return;
+          if (String(x.o.id||'') === String(order.id||'')) return;
+          const d = normalizeDateStr(String(x.o.deliveryDate||''));
+          if (!d || !_cur || !(d < _cur)) return;
+          _sum += Number(x.o.priceTotal)||0;
+        });
+        _accuratePrevTotal = _sum;
+      }
+    } catch (e) { /* 실패 시 기존 값 유지 */ }
+  }
+
   const dividers = copies.map((copy, i) => {
     const borderRight = i < copies.length - 1 ? 'border-right:1px dashed #aaa;' : '';
     const slipContent = useStatementSlip ? makeWeddingSlip(copy) : makeSlip(copy);
