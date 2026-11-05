@@ -14957,6 +14957,7 @@ async function printInvoice(order, orderType) {
   // 값으로 대체함(2026-09-13, 명세서 "전미수금"이 최근분만 반영되던 문제)
   let _accuratePrevTotal = null;
   let _dbg = '';
+  let _paidAdj = false;   // true면 이전 달 입금은 이미 이월계산에 반영됨
   const makeWeddingSlip = (copy) => {
     // 데이터 소스 자동 선택
     //   - 웨딩홀(orderType==='wedding')          : weddingOrders 에서 같은 웨딩홀 주문 누적
@@ -15011,7 +15012,7 @@ async function printInvoice(order, orderType) {
       .reduce((s, k) => s + (paymentRecords[k]||[]).reduce((ss,p) => ss + (Number(p.amount)||0), 0), 0);
 
     // 3) 누적 미수금 = 이전 모든 납품 - 모든 결제
-    const prevCarryover = Math.max(0, prevTotal - prevPaid);
+    const prevCarryover = Math.max(0, prevTotal - (_paidAdj ? 0 : prevPaid));
     _dbg += ' | prevTotal' + prevTotal + ' paid' + prevPaid + ' acc' + _accuratePrevTotal + ' keys' + Object.keys(paymentRecords||{}).filter(k=>k.indexOf(venuePrefix)===0).join(',');
     const todaySales = displayTotal;
     const grandTotal = prevCarryover + todaySales;
@@ -15131,14 +15132,22 @@ async function printInvoice(order, orderType) {
         ];
         const _cur = normalizeDateStr(String(order.deliveryDate||''));
         let _sum = 0;
+        const _mm = {};   // 정산탭과 같은 월별 맵
+        const _curYm = _cur.slice(0,7);
         _all.forEach(x => {
           if (String(x.n||'').trim() !== String(venueName||'').trim()) return;
           if (String(x.o.id||'') === String(order.id||'')) return;
           const d = normalizeDateStr(String(x.o.deliveryDate||''));
           if (!d || !_cur || !(d < _cur)) return;
-          _sum += Number(x.o.priceTotal)||0;
+          const _ym = d.slice(0,7);
+          if (_ym < _curYm) { (_mm[_ym] = _mm[_ym] || []).push(x.o); }
+          else { _sum += Number(x.o.priceTotal)||0; }  // 같은 달, 이 주문보다 앞선 납품
         });
+        // 이전 달들: 정산탭 calcCarryover(월별 미수 이월, 월별 초과입금은 0 처리)와 동일 방식
+        const _carry = calcCarryover(venueName, _curYm, _mm, 0);
+        _sum += _carry;
         _accuratePrevTotal = _sum;
+        _paidAdj = true;
         _dbg = 'full ' + _all.length + '건 이전합계' + _sum;
       } else { _dbg = 'getOrders실패 ' + JSON.stringify(_rs.map(r=>r&&r.error||r&&r.success)); }
     } catch (e) { _dbg = '예외 ' + (e && e.message); }
@@ -15153,7 +15162,7 @@ async function printInvoice(order, orderType) {
   const cutLabel = copies.length === 3 ? '✂ 절취선 — A4 가로 3등분 절취' : '✂ 절취선 — A4 가로 반으로 절취';
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>거래명세표 - ${venueName} (v1105c ${_dbg})</title>
+<html><head><meta charset="UTF-8"><title>거래명세표 - ${venueName} (v1105d)</title>
 <style>
   @page { size: A4 landscape; margin: 5mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
