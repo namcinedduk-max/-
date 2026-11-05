@@ -15104,6 +15104,14 @@ async function printInvoice(order, orderType) {
     } catch (e) { /* 실패하면 그냥 화면 데이터 기준으로 대체 계산 (예전 방식) */ }
   }
 
+  // 입금내역도 서버 최신값으로 갱신 (다른 컴퓨터에서 입력한 입금이 반영되도록)
+  if (useStatementSlip && gasUrl) {
+    try {
+      const _st = await gasGet({ action: 'getTteokSettings' });
+      const _pd = _st && _st.success && _st.data && _st.data.paymentRecords;
+      if (_pd) { paymentRecords = _pd; localStorage.setItem('paymentRecords', JSON.stringify(paymentRecords)); }
+    } catch (e) {}
+  }
   // 정산탭과 똑같이 3개 시트 전체를 불러와 거래처명(종류 무관) 기준으로 전 납품합계를 직접 계산
   // (서버 getVenuePrevTotal 값이 어긋나는 경우 대비 — 이 값이 있으면 우선 사용)
   if (useStatementSlip && gasUrl) {
@@ -15142,7 +15150,7 @@ async function printInvoice(order, orderType) {
   const cutLabel = copies.length === 3 ? '✂ 절취선 — A4 가로 3등분 절취' : '✂ 절취선 — A4 가로 반으로 절취';
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>거래명세표 - ${venueName}</title>
+<html><head><meta charset="UTF-8"><title>거래명세표 - ${venueName} (v1105b)</title>
 <style>
   @page { size: A4 landscape; margin: 5mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
