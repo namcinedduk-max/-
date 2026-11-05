@@ -15004,6 +15004,9 @@ async function printInvoice(order, orderType) {
     const venuePrefix = venueName + '_';
     const prevPaid = Object.keys(paymentRecords||{})
       .filter(k => k.indexOf(venuePrefix) === 0)
+      // 정산탭과 동일 기준: 납품월 "이전 달" 입금만 전 미수금에서 차감
+      // (납품월 이후 달에 기록된 입금은 해당 월 청구분에 쓰이므로 제외)
+      .filter(k => k.slice(venuePrefix.length) < String(order.deliveryDate||'').slice(0,7))
       .reduce((s, k) => s + (paymentRecords[k]||[]).reduce((ss,p) => ss + (Number(p.amount)||0), 0), 0);
 
     // 3) 누적 미수금 = 이전 모든 납품 - 모든 결제
