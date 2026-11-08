@@ -3835,6 +3835,19 @@ async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
   if (updateFn) updateFn();
 }
 
+// ============ 배송비 칸 마이너스 입력 차단 ============
+// 배송비 칸에 -1000 같은 값이 들어가 총액이 깎이는 사고 방지 (할인은 '할인' 칸에 입력)
+document.addEventListener('input', function(e) {
+  const el = e.target;
+  if (!el || el.tagName !== 'INPUT' || el.type !== 'number') return;
+  if (!/delivery|quickfee/i.test(el.id || '')) return;
+  if (el.value !== '' && Number(el.value) < 0) {
+    el.value = 0;
+    if (typeof showToast === 'function') showToast('배송비는 마이너스로 입력할 수 없어요. 깎아주려면 "할인" 칸에 입력하세요.', 'error');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}, true);
+
 // ============ 배송비 자동 할인 계산 ============
 function calcDeliveryDiscount(productPrice, deliveryFee) {
   if (productPrice < 60000) return 0;
@@ -3872,6 +3885,15 @@ function _timePickerUpdate(id, onchangeFn) {
     if (typeof onchangeFn === 'function') onchangeFn();
     else if (typeof onchangeFn === 'string' && window[onchangeFn]) window[onchangeFn]();
   } catch(e){} }
+}
+
+// 시간 선택기를 완전히 초기화 (종류·시/분 선택값·시간지정 영역까지)
+function _timePickerReset(id) {
+  const hidden = document.getElementById(id); if (hidden) hidden.value = '';
+  const t = document.getElementById(id + '-type'); if (t) t.value = '';
+  const r = document.getElementById(id + '-range'); if (r) r.style.display = 'none';
+  ['sh','eh'].forEach(function(k){ const e = document.getElementById(id + '-' + k); if (e) e.value = ''; });
+  ['sm','em'].forEach(function(k){ const e = document.getElementById(id + '-' + k); if (e) e.value = '시'; });
 }
 
 function _timePickerSetValue(id, val) {
@@ -11295,7 +11317,7 @@ function resetGuideForm() {
   gTteokItems = [];
   renderGTteokList();
   document.getElementById('g_deliveryDate').value = getLocalDateStr();
-  document.getElementById('g_deliveryTime').value = ''; if(document.getElementById('g_deliveryTime-type')) document.getElementById('g_deliveryTime-type').value='';
+  _timePickerReset('g_deliveryTime');
   document.getElementById('g_addr1').value = '';
   document.getElementById('g_addr2').value = '';
   document.getElementById('g_deliveryFee').value = '';
@@ -12570,7 +12592,7 @@ function resetForm() {
   if (preview) preview.textContent = '';
   const noteEl = document.getElementById('tteokNote');
   if (noteEl) noteEl.style.display = 'none';
-  document.getElementById('deliveryTimeCustom').value = ''; if(document.getElementById('deliveryTimeCustom-type')) document.getElementById('deliveryTimeCustom-type').value='';
+  _timePickerReset('deliveryTimeCustom');
   document.getElementById('payStatus').value = '결제완료';
   document.getElementById('payMethod').value = '';
   document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('selected'));
