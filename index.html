@@ -8857,7 +8857,13 @@ function openAddrSearch(addrFieldId, detailFieldId) {
           const existingLayer = document.getElementById('addrSearchLayer');
           if (existingLayer) existingLayer.remove();
           const detailEl = document.getElementById(_addrDetailField);
-          if (detailEl) { detailEl.value = ''; detailEl.focus(); }
+          if (detailEl) {
+            // 건물명(학교·아파트 등)이 있으면 상세주소 칸에 미리 채워줌 → 뒤에 동/호수만 이어서 입력
+            const bname = (data.buildingName || '').trim();
+            detailEl.value = bname ? bname + ' ' : '';
+            detailEl.focus();
+            try { const n = detailEl.value.length; detailEl.setSelectionRange(n, n); } catch (e) {}
+          }
           // 퀵비 자동입력
           if (dong) {
             const gu = (data.address || '').match(/(동구|중구|서구|유성구|대덕구)/)?.[1] || '';
