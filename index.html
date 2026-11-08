@@ -1793,7 +1793,7 @@ function forceRefreshApp() {
         <div class="filter-divider"></div>
         <input type="date" id="filterDate" onchange="onFilterDateChange()">
       </div>
-      <input type="text" class="search-input" id="searchInput" placeholder="🔍 이름, 전화번호, 떡 종류 검색..." oninput="onSearchInput()">
+      <input type="text" class="search-input" id="searchInput" placeholder="🔍 이름, 전화번호, 주소, 메모, 떡 종류 검색..." oninput="onSearchInput()">
       <button class="btn-small btn-secondary" onclick="clearFilter()">전체보기</button>
       <button class="btn-small" id="refreshBtn" onclick="manualRefresh()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printOrders()">🖨️ 출력/PDF</button>
@@ -1906,7 +1906,7 @@ function forceRefreshApp() {
         <button type="button" class="venue-cat-btn cat-restaurant" data-cat="restaurant" onclick="setFuneralCategory('restaurant')">충대식당</button>
         <button type="button" class="venue-cat-btn cat-daecheong" data-cat="daecheong" onclick="setFuneralCategory('daecheong')">대청병원</button>
       </div>
-      <input type="text" class="search-input" id="fSearchInput" placeholder="🔍 장례식장, 빈소, 떡 종류 검색..." oninput="renderFuneralList()">
+      <input type="text" class="search-input" id="fSearchInput" placeholder="🔍 장례식장, 빈소, 떡 종류 검색..." oninput="onVenueSearchInput('funeral')">
       <input type="text" class="deceased-search-input" id="fDeceasedSearchInput" placeholder="🕯️ 고인명 검색..." oninput="renderFuneralList()">
       <button class="btn-small btn-secondary" onclick="clearFuneralFilter()">전체보기</button>
       <button class="btn-small" onclick="loadFuneralOrdersFromSheet()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
@@ -2183,7 +2183,7 @@ function forceRefreshApp() {
         <span style="padding:0 2px;color:var(--brown-light);">~</span>
         <input type="date" id="wFilterTo" onchange="onWeddingFilterDateChange()">
       </div>
-      <input type="text" class="search-input" id="wSearchInput" placeholder="🔍 웨딩홀, 층, 떡 종류 검색..." oninput="renderWeddingList()">
+      <input type="text" class="search-input" id="wSearchInput" placeholder="🔍 웨딩홀, 층, 떡 종류 검색..." oninput="onVenueSearchInput('wedding')">
       <button class="btn-small btn-secondary" onclick="clearWeddingFilter()">전체보기</button>
       <button class="btn-small" onclick="loadWeddingOrdersFromSheet()" style="background:#0ea5e9;color:#fff;border:none;">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="printWeddingOrders()">🖨️ 출력/PDF</button>
@@ -2340,7 +2340,7 @@ function forceRefreshApp() {
       <select id="otFilterVenue" onchange="renderOtherList()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
         <option value="">전체 업체</option>
       </select>
-      <input type="text" class="search-input" id="otSearchInput" placeholder="🔍 업체명, 떡 종류 검색..." oninput="renderOtherList()">
+      <input type="text" class="search-input" id="otSearchInput" placeholder="🔍 업체명, 메모, 떡 종류 검색..." oninput="onVenueSearchInput('other')">
       <button class="btn-small btn-secondary" onclick="clearOtherFilter()">전체보기</button>
       <button class="btn-small" onclick="loadOtherOrdersFromSheet()">🔄 새로고침</button>
       <button class="btn-small btn-success" onclick="window.print()">🖨️ 출력/PDF</button>
@@ -12892,7 +12892,11 @@ function renderList() {
       String(o.senderName||'').toLowerCase().includes(search) ||
       String(o.receiverPhone||'').includes(search) ||
       String(o.senderPhone||'').includes(search) ||
-      String(o.tteokType||'').toLowerCase().includes(search);
+      String(o.tteokType||'').toLowerCase().includes(search) ||
+      String(o.deliveryAddr1||'').toLowerCase().includes(search) ||
+      String(o.deliveryAddr2||'').toLowerCase().includes(search) ||
+      String(o.memo||'').toLowerCase().includes(search) ||
+      String(o.labelText||'').toLowerCase().includes(search);
     return matchDate && matchSearch;
   });
 
@@ -19658,6 +19662,20 @@ function renderOtherList() {
         <button class="btn-small btn-danger" onclick="event.stopPropagation();deleteOtherOrder('${o.id}')">삭제</button>
       </td>
     </tr>`).join('');
+}
+
+// 장례식장/웨딩홀/기타업체 검색: 검색어가 있으면 옛날 주문까지 잡히도록 전체를 불러온 뒤 다시 렌더
+let _venueSearchTimer = {};
+function onVenueSearchInput(kind) {
+  const R = { funeral: () => renderFuneralList(), wedding: () => renderWeddingList(), other: () => renderOtherList() };
+  const L = { funeral: () => loadAllFuneralOrdersFromSheet(), wedding: () => loadAllWeddingOrdersFromSheet(), other: () => loadAllOtherOrdersFromSheet() };
+  const F = { funeral: () => _funeralFullLoaded, wedding: () => _weddingFullLoaded, other: () => _otherFullLoaded };
+  const id = { funeral: 'fSearchInput', wedding: 'wSearchInput', other: 'otSearchInput' }[kind];
+  const val = ((document.getElementById(id) || {}).value || '').trim();
+  R[kind]();
+  if (!val || F[kind]()) return;
+  clearTimeout(_venueSearchTimer[kind]);
+  _venueSearchTimer[kind] = setTimeout(() => { L[kind]().then(() => R[kind]()); }, 500);
 }
 
 function onOtherFilterDateChange() {
