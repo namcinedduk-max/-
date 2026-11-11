@@ -3391,8 +3391,10 @@ function forceRefreshApp() {
           <option value="delivery">퀵/배송비</option>
           <option value="etc">기타</option>
         </select>
+        <input type="text" id="pur_filterItem" oninput="renderPurchaseTable()" placeholder="🔍 품목 검색 (예: 땅콩) — 전체 기간" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;min-width:200px;">
         <span style="font-size:13px;color:#888;margin-left:auto;" id="pur_totalLabel"></span>
       </div>
+      <div id="pur_priceBanner" style="display:none;margin-bottom:12px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;padding:10px 14px;font-size:13px;color:#7c2d12;line-height:1.7;"></div>
 
       <!-- 거래처별 월 집계 / 거래처 선택 시 월별 내역 -->
       <div id="vendorSummaryPanel" style="margin-bottom:14px;"></div>
@@ -17980,9 +17982,13 @@ function renderPurchaseTable() {
   const filterMonth = (document.getElementById('pur_filterMonth') || {}).value || '';
   const filterType = (document.getElementById('pur_filterType') || {}).value || '';
   const filterPartner = (document.getElementById('pur_filterPartner') || {}).value || '';
+  const filterItem = ((document.getElementById('pur_filterItem') || {}).value || '').trim().toLowerCase();
   let filtered = purchaseRecords.filter(function(r) {
     const dateStr = String(r.date || '').substring(0, 10); // ISO → YYYY-MM-DD
-    if (filterMonth && !dateStr.startsWith(filterMonth)) return false;
+    // 품목 검색 중에는 월 필터를 무시하고 전체 기간에서 찾음 (단가 비교용)
+    if (filterItem) {
+      if (String(r.item || '').toLowerCase().indexOf(filterItem) < 0) return false;
+    } else if (filterMonth && !dateStr.startsWith(filterMonth)) return false;
     if (filterType && r.type !== filterType) return false;
     if (filterPartner && r.partner !== filterPartner) return false;
     return true;
@@ -17993,6 +17999,23 @@ function renderPurchaseTable() {
   const labelEl = document.getElementById('pur_totalLabel');
   if (labelEl) labelEl.textContent = '합계: ' + (totalSupply + totalVat).toLocaleString() + '원 (공급가 ' + totalSupply.toLocaleString() + ' + 부가세 ' + totalVat.toLocaleString() + ')';
   renderVendorSummaryPanel();
+  // 품목 검색 시 단가 요약 (최근/최저/최고)
+  const banner = document.getElementById('pur_priceBanner');
+  if (banner) {
+    const priced = filterItem ? filtered.filter(function(r) { return Number(r.unitPrice) > 0; }) : [];
+    if (priced.length) {
+      const byDate = priced.slice().sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+      const last = byDate[0];
+      const ups = priced.map(function(r) { return Number(r.unitPrice); });
+      const mn = Math.min.apply(null, ups), mx = Math.max.apply(null, ups);
+      const u = function(r) { return '원/' + (r.unit || 'kg'); };
+      banner.style.display = 'block';
+      banner.innerHTML = '💡 <b>' + last.item + '</b> 최근 단가: <b>' + Number(last.unitPrice).toLocaleString() + u(last) + '</b> (' + String(last.date).substring(0, 10) + ', ' + last.partner + ')'
+        + '<br>최저 ' + mn.toLocaleString() + ' · 최고 ' + mx.toLocaleString() + ' (총 ' + priced.length + '건, 전체 기간) — 단가 미입력 건은 제외';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
   if (filtered.length === 0) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:#aaa;">기록이 없어요.</td></tr>';
     return;
