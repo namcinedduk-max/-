@@ -13430,6 +13430,7 @@ function buildAndCopySms(id, target) {
 
   // 배송지
   const method = o.deliveryMethod || '배송';
+  const dateLabel = method === '택배' ? '출고일시' : '배송일시'; // 택배는 출고일 기준으로 안내
   let addrStr = method === '픽업' ? '매장 픽업' : [o.deliveryAddr1, o.deliveryAddr2].filter(Boolean).join(' ') || '-';
 
   const total = Number(o.priceTotal || 0).toLocaleString();
@@ -13447,7 +13448,7 @@ ${tteokStr}
 받는 분
 ${o.receiverName||'-'}
 
-배송일시
+${dateLabel}
 ${dateStr}${timeStr}
 
 배송지
@@ -13479,7 +13480,7 @@ ${o.senderName||''} 고객님께서 보내신 선물이 배송될 예정입니�
 주문 내역
 ${tteokStr}
 
-배송일시
+${dateLabel}
 ${dateStr}${timeStr}
 
 배송지
@@ -13495,7 +13496,7 @@ ${o.receiverName||''} 고객님, 주문 감사합니다.
 주문 내역
 ${tteokStr}
 
-배송일시
+${dateLabel}
 ${dateStr}${timeStr}
 
 배송지
