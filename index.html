@@ -4826,8 +4826,8 @@ function csOrderInitAdvanced(s) {
     return;
   }
   if (area) area.style.display = 'block';
-  // 세트 수량을 검색행 바로 밑으로 옮김
-  if (qtyWrap && searchRow) searchRow.insertAdjacentElement('afterend', qtyWrap);
+  // 세트 수량을 맨 아래(저장된 구성·담긴 구성 다음, 담기 버튼 바로 위)로 옮김 → 구성 고르고 수량 입력 순서
+  if (qtyWrap && area) area.appendChild(qtyWrap);
   csRefreshDatalist();
   window._csOrderItems = []; // 덕6구세트처럼 빈 상태로 시작 (직접 검색해서 담거나 프리셋 선택)
   window._csOrderPresetPrice = null;
@@ -6172,7 +6172,7 @@ function editCsOrderInitAdvanced(s) {
     return;
   }
   if (area) area.style.display = 'block';
-  if (qtyWrap && searchRow) searchRow.insertAdjacentElement('afterend', qtyWrap);
+  if (qtyWrap && area) area.appendChild(qtyWrap);
   csRefreshDatalist();
   window._editCsOrderItems = []; // 덕6구세트처럼 빈 상태로 시작
   window._editCsOrderPresetPrice = null;
