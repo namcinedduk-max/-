@@ -3075,6 +3075,11 @@ function forceRefreshApp() {
                   <input type="text" id="cs-preset-label" placeholder="구성 이름 (예: 기본상차림)" style="flex:1;min-width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                   <input type="number" id="cs-preset-price" placeholder="가격 (예: 50000)" style="width:120px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
                 </div>
+                <div id="cs-preset-addstd-wrap" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                  <label style="font-size:11px;color:var(--brown-light);">접수 때 추가로 담는 떡 기준단가</label>
+                  <input type="number" id="cs-preset-addstd" placeholder="0" style="width:90px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;">
+                  <span style="font-size:11px;color:#94a3b8;">원 — 비우거나 0이면 추가 떡은 떡단가 전액, 1000이면 (단가−1000)만 추가 (고정가격 세트만)</span>
+                </div>
                 <div id="cs-preset-price-auto" style="display:none;font-size:12px;color:#15803d;background:#f0fdf4;border-radius:8px;padding:6px 10px;margin-bottom:6px;">구성 떡을 담으면 가격이 자동 계산돼요.</div>
                 <div style="font-size:11px;color:var(--brown-light);margin-bottom:4px;">이 구성에 들어갈 떡 — 단가에 등록된 떡만 검색해서 담을 수 있어요 (오타 방지)</div>
                 <div id="cs-preset-build-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
@@ -4785,6 +4790,39 @@ window._orderCustomSet = null; // 현재 담으려는 커스텀 세트
 window._csOrderItems = []; // 프리셋/커스텀 구성 세트에서 현재 담긴 구성 [{name,qty,unit}]
 window._csOrderPresetPrice = null; // 프리셋을 선택했을 때 그 프리셋의 고정가격 (직접 편집하면 null로 풀림)
 
+// 접수 때 검색으로 추가한 떡(added 표시)의 세트당 추가금: (떡단가 − 기준단가) × 수량, 음수는 0
+function csAddedExtra(items, addStd) {
+  return (items || []).reduce(function(acc, it) {
+    if (!it.added) return acc;
+    const up = TTEOK_DB[it.name] ? (TTEOK_DB[it.name].unitPrice || 0) : 0;
+    return acc + Math.max(0, up - (addStd || 0)) * (parseFloat(it.qty) || 0);
+  }, 0);
+}
+// 커스텀 세트 1세트 금액 → { base, extra, unit }
+function csOrderUnitInfo(s, items, presetPrice, addStd) {
+  if (!s.advancedMode) { const u = csTotalForSet(s); return { base: u, extra: 0, unit: u }; }
+  if (s.priceMode === 'fixed') {
+    // 고정가격: 프리셋 가격 + 접수 때 추가로 담은 떡 추가금 (프리셋 안 고르면 추가 떡 단가 전액)
+    const base = (presetPrice != null) ? presetPrice : (s.fixedPrice || 0);
+    const extra = csAddedExtra(items, presetPrice != null ? addStd : 0);
+    return { base: base, extra: extra, unit: base + extra };
+  }
+  const u = (presetPrice != null) ? presetPrice : csComputeUnitFromItems(s, items);
+  return { base: u, extra: 0, unit: u };
+}
+// 담긴 떡 목록에서 '추가' 떡 옆에 붙는 표시 (고정가격 세트만)
+function csAddedTagHtml(item, s, presetPrice, addStd) {
+  if (!item.added || !s || s.priceMode !== 'fixed') return '';
+  const extra = csAddedExtra([item], presetPrice != null ? addStd : 0);
+  return ' <span style="font-size:11px;color:#b45309;background:#fef3c7;padding:1px 6px;border-radius:4px;">추가 +' + extra.toLocaleString() + '원</span>';
+}
+function csPreviewHtml(info, qty) {
+  const head = info.extra > 0
+    ? '1세트 ' + info.base.toLocaleString() + '원 + 추가 ' + info.extra.toLocaleString() + '원 = ' + info.unit.toLocaleString() + '원'
+    : '1세트 ' + info.unit.toLocaleString() + '원';
+  return head + ' × ' + qty + ' = <strong>' + (info.unit * qty).toLocaleString() + '원</strong>';
+}
+
 // 카테고리 안에 버튼 방식 커스텀 세트 하나만 있으면 그 id, 아니면 null
 function getOnlyCustomSetIdInCat(catItems) {
   if (!catItems || catItems.length !== 1) return null;
@@ -4832,6 +4870,7 @@ function csOrderInitAdvanced(s) {
   csRefreshDatalist();
   window._csOrderItems = []; // 덕6구세트처럼 빈 상태로 시작 (직접 검색해서 담거나 프리셋 선택)
   window._csOrderPresetPrice = null;
+  window._csOrderPresetAddStd = 0;
   renderCsOrderItemList();
   if (presetArea) {
     if (s.presets && s.presets.length) {
@@ -4856,7 +4895,7 @@ function renderCsOrderItemList() {
   if (!box) return;
   box.innerHTML = window._csOrderItems.map(function(item, i) {
     return '<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 8px;">' +
-      '<span style="flex:1;font-size:13px;">🍡 ' + item.name + ' ' + item.qty + (item.unit||'개') + '</span>' +
+      '<span style="flex:1;font-size:13px;">🍡 ' + item.name + ' ' + item.qty + (item.unit||'개') + csAddedTagHtml(item, window._orderCustomSet, window._csOrderPresetPrice, window._csOrderPresetAddStd) + '</span>' +
       '<button type="button" onclick="csOrderRemoveTteok(' + i + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:4px;padding:2px 6px;cursor:pointer;">✕</button>' +
       '</div>';
   }).join('');
@@ -4873,7 +4912,7 @@ function csOrderAddTteok() {
   const name = (document.getElementById('csOrderTteokSearch').value || '').trim();
   const qty = parseFloat(document.getElementById('csOrderTteokQty').value) || 1;
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
-  window._csOrderItems.push({ name: name, qty: qty, unit: '개' });
+  window._csOrderItems.push({ name: name, qty: qty, unit: '개', added: true }); // added: 접수 때 추가한 떡 → 추가금 계산 대상
   // 고정가격 세트는 프리셋 가격 유지 (예: 트리설기10 + 찹쌀떡 2종 직접 골라 담기). 그 외 방식은 계산식으로 전환
   if (!window._orderCustomSet || window._orderCustomSet.priceMode !== 'fixed') window._csOrderPresetPrice = null;
   renderCsOrderItemList();
@@ -4897,6 +4936,7 @@ function applyCsOrderPreset(setId, presetId) {
   window._csOrderItems = (preset.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
   // 고정가격 세트만 프리셋에 저장된 가격을 그대로 씀. 그 외 방식은 항상 현재 단가로 다시 계산(떡 단가 바뀌면 자동 반영).
   window._csOrderPresetPrice = (s.priceMode === 'fixed') ? preset.price : null;
+  window._csOrderPresetAddStd = preset.addStd || 0;
   renderCsOrderItemList();
   csOrderUpdatePreview();
   showToast('✅ ' + preset.label + ' 구성 적용!', 'success');
@@ -4964,10 +5004,9 @@ function csOrderUpdatePreview() {
   const s = window._orderCustomSet;
   if (!s) return;
   const qty = parseInt(document.getElementById('csOrderQty').value) || 1;
-  const unit = s.advancedMode ? (window._csOrderPresetPrice != null ? window._csOrderPresetPrice : csComputeUnitFromItems(s, window._csOrderItems)) : csTotalForSet(s);
-  const total = unit * qty;
+  const info = csOrderUnitInfo(s, window._csOrderItems, window._csOrderPresetPrice, window._csOrderPresetAddStd);
   const prev = document.getElementById('csOrderPricePreview');
-  if (prev) prev.innerHTML = '1세트 ' + unit.toLocaleString() + '원 × ' + qty + ' = <strong>' + total.toLocaleString() + '원</strong>';
+  if (prev) prev.innerHTML = csPreviewHtml(info, qty);
 }
 
 // 커스텀 세트를 주문에 담기
@@ -4976,7 +5015,7 @@ function addCustomSetToOrder() {
   if (!s) return;
   const qty = parseInt(document.getElementById('csOrderQty').value) || 1;
   const items = s.advancedMode ? window._csOrderItems : (s.items||[]);
-  const unit = s.advancedMode ? (window._csOrderPresetPrice != null ? window._csOrderPresetPrice : csComputeUnitFromItems(s, items)) : csTotalForSet(s);
+  const unit = csOrderUnitInfo(s, items, window._csOrderPresetPrice, window._csOrderPresetAddStd).unit;
   const price = unit * qty;
   // 저장 이름: "세트명(떡 N개, 떡 Mkg)" — 표시·정산용
   // csId를 함께 저장 → 생산계획 분해 시 이름 파싱 대신 id로 정확히 조회(세트명에 괄호 있어도 안전)
@@ -4994,6 +5033,7 @@ function addCustomSetToOrder() {
   window._orderCustomSet = null;
   window._csOrderItems = [];
   window._csOrderPresetPrice = null;
+  window._csOrderPresetAddStd = 0;
   (window.CUSTOM_SETS||[]).forEach(function(x){
     const b = document.getElementById('csbtn-' + x.id);
     if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
@@ -6178,6 +6218,7 @@ function editCsOrderInitAdvanced(s) {
   csRefreshDatalist();
   window._editCsOrderItems = []; // 덕6구세트처럼 빈 상태로 시작
   window._editCsOrderPresetPrice = null;
+  window._editCsOrderPresetAddStd = 0;
   renderEditCsOrderItemList();
   if (presetArea) {
     if (s.presets && s.presets.length) {
@@ -6202,7 +6243,7 @@ function renderEditCsOrderItemList() {
   if (!box) return;
   box.innerHTML = window._editCsOrderItems.map(function(item, i) {
     return '<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 8px;">' +
-      '<span style="flex:1;font-size:13px;">🍡 ' + item.name + ' ' + item.qty + (item.unit||'개') + '</span>' +
+      '<span style="flex:1;font-size:13px;">🍡 ' + item.name + ' ' + item.qty + (item.unit||'개') + csAddedTagHtml(item, window._editOrderCustomSet, window._editCsOrderPresetPrice, window._editCsOrderPresetAddStd) + '</span>' +
       '<button type="button" onclick="editCsOrderRemoveTteok(' + i + ')" style="background:#fee2e2;color:var(--accent-red);border:none;border-radius:4px;padding:2px 6px;cursor:pointer;">✕</button>' +
       '</div>';
   }).join('');
@@ -6212,7 +6253,7 @@ function editCsOrderAddTteok() {
   const name = (document.getElementById('edit-csOrderTteokSearch').value || '').trim();
   const qty = parseFloat(document.getElementById('edit-csOrderTteokQty').value) || 1;
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
-  window._editCsOrderItems.push({ name: name, qty: qty, unit: '개' });
+  window._editCsOrderItems.push({ name: name, qty: qty, unit: '개', added: true });
   if (!window._editOrderCustomSet || window._editOrderCustomSet.priceMode !== 'fixed') window._editCsOrderPresetPrice = null;
   renderEditCsOrderItemList();
   document.getElementById('edit-csOrderTteokSearch').value = '';
@@ -6234,6 +6275,7 @@ function applyEditCsOrderPreset(setId, presetId) {
   if (!preset) return;
   window._editCsOrderItems = (preset.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
   window._editCsOrderPresetPrice = (s.priceMode === 'fixed') ? preset.price : null;
+  window._editCsOrderPresetAddStd = preset.addStd || 0;
   renderEditCsOrderItemList();
   editCsOrderUpdatePreview();
   showToast('✅ ' + preset.label + ' 구성 적용!', 'success');
@@ -6289,10 +6331,9 @@ function editCsOrderUpdatePreview() {
   const s = window._editOrderCustomSet;
   if (!s) return;
   const qty = parseInt(document.getElementById('edit-csOrderQty').value) || 1;
-  const unit = s.advancedMode ? (window._editCsOrderPresetPrice != null ? window._editCsOrderPresetPrice : csComputeUnitFromItems(s, window._editCsOrderItems)) : csTotalForSet(s);
-  const total = unit * qty;
+  const info = csOrderUnitInfo(s, window._editCsOrderItems, window._editCsOrderPresetPrice, window._editCsOrderPresetAddStd);
   const prev = document.getElementById('edit-csOrderPricePreview');
-  if (prev) prev.innerHTML = '1세트 ' + unit.toLocaleString() + '원 × ' + qty + ' = <strong>' + total.toLocaleString() + '원</strong>';
+  if (prev) prev.innerHTML = csPreviewHtml(info, qty);
 }
 
 function editAddCustomSetToOrder() {
@@ -6300,7 +6341,7 @@ function editAddCustomSetToOrder() {
   if (!s) return;
   const qty = parseInt(document.getElementById('edit-csOrderQty').value) || 1;
   const items = s.advancedMode ? window._editCsOrderItems : (s.items||[]);
-  const unit = s.advancedMode ? (window._editCsOrderPresetPrice != null ? window._editCsOrderPresetPrice : csComputeUnitFromItems(s, items)) : csTotalForSet(s);
+  const unit = csOrderUnitInfo(s, items, window._editCsOrderPresetPrice, window._editCsOrderPresetAddStd).unit;
   const price = unit * qty;
   const compo = items.map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
   const saveName = s.name + '(' + compo + ')';
@@ -6315,6 +6356,7 @@ function editAddCustomSetToOrder() {
   window._editOrderCustomSet = null;
   window._editCsOrderItems = [];
   window._editCsOrderPresetPrice = null;
+  window._editCsOrderPresetAddStd = 0;
   (window.CUSTOM_SETS||[]).forEach(function(x){
     const b = document.getElementById('edit-csbtn-' + x.id);
     if (b) { b.style.background = '#fff'; b.style.color = 'var(--brown-mid)'; }
@@ -8213,13 +8255,15 @@ function addSetPreset() {
     price = parseInt(document.getElementById('cs-preset-price').value) || 0;
     if (!price) { showToast('가격을 입력해주세요.', 'error'); return; }
   }
+  const addStdEl = document.getElementById('cs-preset-addstd');
+  const addStd = addStdEl ? (parseInt(addStdEl.value) || 0) : 0;
   const editingId = window._csEditingPresetId;
   const target = editingId ? window._csPresets.find(function(x){ return x.id === editingId; }) : null;
   if (target) {
     // 수정: 같은 자리에서 내용만 바꿈 (순서·id 유지)
-    target.label = label; target.price = price; target.items = window._csPresetBuildItems.slice();
+    target.label = label; target.price = price; target.addStd = addStd; target.items = window._csPresetBuildItems.slice();
   } else {
-    window._csPresets.push({ id: 'preset_' + Date.now(), label: label, price: price, items: window._csPresetBuildItems.slice() });
+    window._csPresets.push({ id: 'preset_' + Date.now(), label: label, price: price, addStd: addStd, items: window._csPresetBuildItems.slice() });
   }
   csResetPresetBuilder();
   showToast(target ? '✅ 구성 수정됐어요! (세트 저장을 눌러야 반영돼요)' : '✅ 프리셋 추가됐어요!', 'success');
@@ -8232,6 +8276,7 @@ function editSetPreset(id) {
   window._csEditingPresetId = id;
   document.getElementById('cs-preset-label').value = p.label || '';
   document.getElementById('cs-preset-price').value = (p.price != null ? p.price : '');
+  const asEl = document.getElementById('cs-preset-addstd'); if (asEl) asEl.value = p.addStd ? p.addStd : '';
   window._csPresetBuildItems = (p.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
   const addBtn = document.getElementById('cs-preset-add-btn');
   if (addBtn) { addBtn.textContent = '✔ 구성 수정 완료'; addBtn.style.background = '#f59e0b'; }
@@ -8253,6 +8298,7 @@ function csResetPresetBuilder() {
   window._csEditingPresetId = null;
   const l = document.getElementById('cs-preset-label'); if (l) l.value = '';
   const pr = document.getElementById('cs-preset-price'); if (pr) pr.value = '';
+  const asEl = document.getElementById('cs-preset-addstd'); if (asEl) asEl.value = '';
   window._csPresetBuildItems = [];
   const addBtn = document.getElementById('cs-preset-add-btn');
   if (addBtn) { addBtn.textContent = '+ 프리셋 추가'; addBtn.style.background = 'var(--brown-mid)'; }
@@ -8286,7 +8332,7 @@ function renderSetPresetList() {
     const isEditing = window._csEditingPresetId === p.id;
     return '<div style="display:flex;align-items:center;gap:8px;background:' + (isEditing ? '#fff7ed' : '#fff') + ';border:' + (isEditing ? '2px solid #f59e0b' : '1px solid var(--border)') + ';border-radius:6px;padding:6px 8px;">' +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:12px;font-weight:700;">' + (isEditing ? '✏️ 수정 중: ' : '') + p.label + '</div>' +
+        '<div style="font-size:12px;font-weight:700;">' + (isEditing ? '✏️ 수정 중: ' : '') + p.label + (p.addStd ? ' <span style="font-size:10px;font-weight:400;color:#b45309;background:#fef3c7;padding:1px 5px;border-radius:4px;">추가떡 기준 ' + Number(p.addStd).toLocaleString() + '원</span>' : '') + '</div>' +
         (compo ? '<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + compo + '</div>' : '') +
       '</div>' +
       '<div style="font-size:12px;font-weight:700;white-space:nowrap;">' + displayPrice.toLocaleString() + '원' + (mode !== 'fixed' ? ' <span style="font-weight:400;color:#94a3b8;">(자동)</span>' : '') + '</div>' +
@@ -8521,7 +8567,7 @@ function editCustomSet(id) {
 
   if (s.advancedMode && s.presets && s.presets.length) {
     // 이미 프리셋 방식인 세트 → 그대로 불러오기
-    window._csPresets = s.presets.map(function(p){ return { id: p.id, label: p.label, price: p.price, items: (p.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; }) }; });
+    window._csPresets = s.presets.map(function(p){ return { id: p.id, label: p.label, price: p.price, addStd: p.addStd || 0, items: (p.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; }) }; });
   } else {
     // 예전 방식(단일 구성) 세트를 처음 수정하는 경우 → 프리셋 1개로 자동 변환해서 보여줌
     const migratedPrice = csTotalForSet(s);
