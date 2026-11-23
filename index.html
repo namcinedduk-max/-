@@ -4873,7 +4873,8 @@ function csOrderAddTteok() {
   const qty = parseFloat(document.getElementById('csOrderTteokQty').value) || 1;
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
   window._csOrderItems.push({ name: name, qty: qty, unit: '개' });
-  window._csOrderPresetPrice = null; // 직접 수정하면 프리셋 고정가 해제, 계산식으로 전환
+  // 고정가격 세트는 프리셋 가격 유지 (예: 트리설기10 + 찹쌀떡 2종 직접 골라 담기). 그 외 방식은 계산식으로 전환
+  if (!window._orderCustomSet || window._orderCustomSet.priceMode !== 'fixed') window._csOrderPresetPrice = null;
   renderCsOrderItemList();
   document.getElementById('csOrderTteokSearch').value = '';
   document.getElementById('csOrderTteokQty').value = '';
@@ -4882,7 +4883,7 @@ function csOrderAddTteok() {
 
 function csOrderRemoveTteok(idx) {
   window._csOrderItems.splice(idx, 1);
-  window._csOrderPresetPrice = null;
+  if (!window._orderCustomSet || window._orderCustomSet.priceMode !== 'fixed') window._csOrderPresetPrice = null;
   renderCsOrderItemList();
   csOrderUpdatePreview();
 }
@@ -6211,7 +6212,7 @@ function editCsOrderAddTteok() {
   const qty = parseFloat(document.getElementById('edit-csOrderTteokQty').value) || 1;
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
   window._editCsOrderItems.push({ name: name, qty: qty, unit: '개' });
-  window._editCsOrderPresetPrice = null;
+  if (!window._editOrderCustomSet || window._editOrderCustomSet.priceMode !== 'fixed') window._editCsOrderPresetPrice = null;
   renderEditCsOrderItemList();
   document.getElementById('edit-csOrderTteokSearch').value = '';
   document.getElementById('edit-csOrderTteokQty').value = '';
@@ -6220,7 +6221,7 @@ function editCsOrderAddTteok() {
 
 function editCsOrderRemoveTteok(idx) {
   window._editCsOrderItems.splice(idx, 1);
-  window._editCsOrderPresetPrice = null;
+  if (!window._editOrderCustomSet || window._editOrderCustomSet.priceMode !== 'fixed') window._editCsOrderPresetPrice = null;
   renderEditCsOrderItemList();
   editCsOrderUpdatePreview();
 }
