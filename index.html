@@ -3087,7 +3087,8 @@ function forceRefreshApp() {
                   </select>
                   <button type="button" onclick="csAddPresetBuildItem()" style="padding:7px 14px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">담기</button>
                 </div>
-                <button type="button" onclick="addSetPreset()" style="width:100%;padding:7px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">+ 프리셋 추가</button>
+                <button type="button" id="cs-preset-add-btn" onclick="addSetPreset()" style="width:100%;padding:7px;background:var(--brown-mid);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">+ 프리셋 추가</button>
+                <button type="button" id="cs-preset-cancel-btn" onclick="cancelEditSetPreset()" style="display:none;width:100%;margin-top:6px;padding:7px;background:#eee;color:#555;border:none;border-radius:8px;font-size:12px;cursor:pointer;">수정 취소</button>
                 <div style="font-size:11px;color:#94a3b8;margin-top:6px;">접수 화면엔 '검색해서 직접 담기'도 항상 같이 뜨니, 프리셋은 자주 나가는 구성만 등록해두면 돼요.</div>
               </div>
 
@@ -4873,7 +4874,8 @@ function csOrderAddTteok() {
   const qty = parseFloat(document.getElementById('csOrderTteokQty').value) || 1;
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
   window._csOrderItems.push({ name: name, qty: qty, unit: '개' });
-  window._csOrderPresetPrice = null; // 직접 수정하면 프리셋 고정가 해제, 계산식으로 전환
+  // 고정가격 세트는 프리셋 가격 유지 (예: 트리설기10 + 찹쌀떡 2종 직접 골라 담기). 그 외 방식은 계산식으로 전환
+  if (!window._orderCustomSet || window._orderCustomSet.priceMode !== 'fixed') window._csOrderPresetPrice = null;
   renderCsOrderItemList();
   document.getElementById('csOrderTteokSearch').value = '';
   document.getElementById('csOrderTteokQty').value = '';
@@ -4882,7 +4884,7 @@ function csOrderAddTteok() {
 
 function csOrderRemoveTteok(idx) {
   window._csOrderItems.splice(idx, 1);
-  window._csOrderPresetPrice = null;
+  if (!window._orderCustomSet || window._orderCustomSet.priceMode !== 'fixed') window._csOrderPresetPrice = null;
   renderCsOrderItemList();
   csOrderUpdatePreview();
 }
@@ -6211,7 +6213,7 @@ function editCsOrderAddTteok() {
   const qty = parseFloat(document.getElementById('edit-csOrderTteokQty').value) || 1;
   if (!name) { showToast('떡 이름을 입력해주세요.', 'error'); return; }
   window._editCsOrderItems.push({ name: name, qty: qty, unit: '개' });
-  window._editCsOrderPresetPrice = null;
+  if (!window._editOrderCustomSet || window._editOrderCustomSet.priceMode !== 'fixed') window._editCsOrderPresetPrice = null;
   renderEditCsOrderItemList();
   document.getElementById('edit-csOrderTteokSearch').value = '';
   document.getElementById('edit-csOrderTteokQty').value = '';
@@ -6220,7 +6222,7 @@ function editCsOrderAddTteok() {
 
 function editCsOrderRemoveTteok(idx) {
   window._editCsOrderItems.splice(idx, 1);
-  window._editCsOrderPresetPrice = null;
+  if (!window._editOrderCustomSet || window._editOrderCustomSet.priceMode !== 'fixed') window._editCsOrderPresetPrice = null;
   renderEditCsOrderItemList();
   editCsOrderUpdatePreview();
 }
@@ -8149,9 +8151,9 @@ function toggleCustomSetForm(show) {
     }
     csRefreshDatalist();
     csRenderItems();
-    renderSetPresetList();
-    renderCsPresetBuildItems();
+    csResetPresetBuilder();
   } else {
+    window._csEditingPresetId = null;
     document.getElementById('cs-edit-id').value = '';
     window._csItems = [];
     window._csPresets = [];
@@ -8211,14 +8213,54 @@ function addSetPreset() {
     price = parseInt(document.getElementById('cs-preset-price').value) || 0;
     if (!price) { showToast('가격을 입력해주세요.', 'error'); return; }
   }
-  window._csPresets.push({ id: 'preset_' + Date.now(), label: label, price: price, items: window._csPresetBuildItems.slice() });
-  document.getElementById('cs-preset-label').value = '';
-  document.getElementById('cs-preset-price').value = '';
-  window._csPresetBuildItems = [];
+  const editingId = window._csEditingPresetId;
+  const target = editingId ? window._csPresets.find(function(x){ return x.id === editingId; }) : null;
+  if (target) {
+    // 수정: 같은 자리에서 내용만 바꿈 (순서·id 유지)
+    target.label = label; target.price = price; target.items = window._csPresetBuildItems.slice();
+  } else {
+    window._csPresets.push({ id: 'preset_' + Date.now(), label: label, price: price, items: window._csPresetBuildItems.slice() });
+  }
+  csResetPresetBuilder();
+  showToast(target ? '✅ 구성 수정됐어요! (세트 저장을 눌러야 반영돼요)' : '✅ 프리셋 추가됐어요!', 'success');
+}
+
+// 프리셋 수정: 선택한 구성을 아래 입력칸으로 불러옴
+function editSetPreset(id) {
+  const p = window._csPresets.find(function(x){ return x.id === id; });
+  if (!p) return;
+  window._csEditingPresetId = id;
+  document.getElementById('cs-preset-label').value = p.label || '';
+  document.getElementById('cs-preset-price').value = (p.price != null ? p.price : '');
+  window._csPresetBuildItems = (p.items||[]).map(function(i){ return { name: i.name, qty: i.qty, unit: i.unit || '개' }; });
+  const addBtn = document.getElementById('cs-preset-add-btn');
+  if (addBtn) { addBtn.textContent = '✔ 구성 수정 완료'; addBtn.style.background = '#f59e0b'; }
+  const cancelBtn = document.getElementById('cs-preset-cancel-btn');
+  if (cancelBtn) cancelBtn.style.display = 'block';
   renderCsPresetBuildItems();
   renderSetPresetList();
   csUpdatePresetBuildPreview();
-  showToast('✅ 프리셋 추가됐어요!', 'success');
+  const labelInput = document.getElementById('cs-preset-label');
+  if (labelInput) { labelInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); labelInput.focus(); }
+}
+
+function cancelEditSetPreset() {
+  csResetPresetBuilder();
+}
+
+// 프리셋 입력칸 비우고 '추가' 모드로 되돌림
+function csResetPresetBuilder() {
+  window._csEditingPresetId = null;
+  const l = document.getElementById('cs-preset-label'); if (l) l.value = '';
+  const pr = document.getElementById('cs-preset-price'); if (pr) pr.value = '';
+  window._csPresetBuildItems = [];
+  const addBtn = document.getElementById('cs-preset-add-btn');
+  if (addBtn) { addBtn.textContent = '+ 프리셋 추가'; addBtn.style.background = 'var(--brown-mid)'; }
+  const cancelBtn = document.getElementById('cs-preset-cancel-btn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  renderCsPresetBuildItems();
+  renderSetPresetList();
+  csUpdatePresetBuildPreview();
 }
 
 function deleteSetPreset(id) {
@@ -8241,12 +8283,14 @@ function renderSetPresetList() {
   box.innerHTML = window._csPresets.map(function(p) {
     const compo = (p.items||[]).map(function(i){ return i.name + ' ' + i.qty + i.unit; }).join(', ');
     const displayPrice = mode === 'fixed' ? (p.price || 0) : csComputeUnitFromItems(cfg, p.items);
-    return '<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;">' +
+    const isEditing = window._csEditingPresetId === p.id;
+    return '<div style="display:flex;align-items:center;gap:8px;background:' + (isEditing ? '#fff7ed' : '#fff') + ';border:' + (isEditing ? '2px solid #f59e0b' : '1px solid var(--border)') + ';border-radius:6px;padding:6px 8px;">' +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:12px;font-weight:700;">' + p.label + '</div>' +
+        '<div style="font-size:12px;font-weight:700;">' + (isEditing ? '✏️ 수정 중: ' : '') + p.label + '</div>' +
         (compo ? '<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + compo + '</div>' : '') +
       '</div>' +
       '<div style="font-size:12px;font-weight:700;white-space:nowrap;">' + displayPrice.toLocaleString() + '원' + (mode !== 'fixed' ? ' <span style="font-weight:400;color:#94a3b8;">(자동)</span>' : '') + '</div>' +
+      '<button type="button" onclick="editSetPreset(\'' + p.id + '\')" style="background:#e0f2fe;color:#0369a1;border:none;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:11px;">수정</button>' +
       '<button type="button" onclick="deleteSetPreset(\'' + p.id + '\')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:11px;">삭제</button>' +
     '</div>';
   }).join('');
@@ -8490,8 +8534,7 @@ function editCustomSet(id) {
   csApplyPriceMode();
   csRefreshDatalist();
   csRenderItems();
-  renderSetPresetList();
-  renderCsPresetBuildItems();
+  csResetPresetBuilder(); // 다른 구성 수정 중이던 상태 초기화
 }
 
 function deleteCustomSet(id) {
