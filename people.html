@@ -450,6 +450,7 @@ function initQuality(){
   }
 }
 try{ var _i=JSON.parse(localStorage.getItem("tteok_ins")||"null"); if(_i) S.ins=_i; }catch(e){}
+try{ S.empDirty=JSON.parse(localStorage.getItem("tteok_empdirty")||"{}")||{}; }catch(e){ S.empDirty={}; }
 // 2026년 요율 마이그레이션: 구버전 값(care<=1, health<=3.55, pension<=4.5)이면 자동 업데이트
 if(S.ins.care<=1){ S.ins.care=13.14; }
 if(S.ins.health<=3.545){ S.ins.health=3.595; }
@@ -501,6 +502,23 @@ function apiPost(d){
     body:JSON.stringify(d)
   });
 }
+// ── 직원 정보 수정 보호 ──
+// 문제: 정보 수정 → 시트 저장(no-cors라 성공 여부 모름) → 새로고침 시 "시트값 우선" 병합으로
+//       시트에 반영 안 된(또는 아직 반영 전인) 옛 값이 수정값을 덮어씀.
+// 해결: 이 기기에서 수정한 직원은 '수정 대기'로 표시하고, 시트가 같은 값을 돌려줄 때까지 로컬값을 지킴.
+//       시트값이 다르면 다시 저장을 보내고, 3번 넘게 안 맞으면 어떤 항목이 시트에 저장 안 되는지 알려줌.
+var EMP_SYNC_FIELDS=["name","role","joinDate","probEnd","base","meal","carAllow","totalPay","hourlyRate","contractType","workType","flexPartTime","contractEnd","payDay"];
+var EMP_FIELD_LABEL={name:"이름",role:"직책",joinDate:"입사일",probEnd:"수습종료일",base:"기본급",meal:"식대",carAllow:"자가운전보조금",totalPay:"포괄임금",hourlyRate:"시급",contractType:"계약유형",workType:"근무유형",flexPartTime:"호출형알바",contractEnd:"계약종료일",payDay:"급여일"};
+function loadEmpDirty(){ try{ return JSON.parse(localStorage.getItem("tteok_empdirty")||"{}")||{}; }catch(e){ return {}; } }
+function saveEmpDirty(){ try{ localStorage.setItem("tteok_empdirty",JSON.stringify(S.empDirty||{})); }catch(e){} }
+function normEmpVal(f,v){
+  if(f==="flexPartTime") return (v===true||v==="TRUE"||v==="true")?"1":"0";
+  if(f==="joinDate"||f==="probEnd"||f==="contractEnd") return toDateInput(v);
+  if(f==="base"||f==="meal"||f==="carAllow"||f==="totalPay"||f==="hourlyRate"||f==="payDay") return String(Number(v)||0);
+  return v==null?"":String(v).trim();
+}
+function empDiffFields(se,local){ return EMP_SYNC_FIELDS.filter(function(f){ return normEmpVal(f,se[f])!==normEmpVal(f,local[f]); }); }
+function markEmpDirty(e){ if(!S.empDirty) S.empDirty={}; S.empDirty[e.id]={ts:Date.now(),tries:0}; saveEmpDirty(); }
 function apiSaveEmp(e){ toast("저장 중..."); apiPost({type:"saveEmployee",employee:e}).then(function(){ toast("✓ 저장됨"); setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); toast("⚠ 네트워크 오류 (로컬 보관됨)"); }); }
 function apiDelEmp(id){ apiPost({type:"deleteEmployee",id:id}).then(function(){ setSyncSt("ok"); }).catch(function(){ setSyncSt("err"); }); }
 function apiSaveOT(eid,mo,day,v){ apiPost({type:"saveOT",empId:eid,month:mo,day:day,values:v}).then(function(){ setSyncSt("ok"); saveCache(); }).catch(function(){ setSyncSt("err"); }); }
@@ -566,12 +584,39 @@ function loadAll(){
       // 서버에서 받은 직원 데이터와 로컬 캐시 병합
       // 서버가 특정 필드를 누락 반환할 경우 로컬값으로 보완
       var serverEmps=d.employees||[];
+      var _resend=[], _stuck=[];
       var merged=serverEmps.map(function(se){
         var local=null;
         for(var i=0;i<S.emps.length;i++){
           if(S.emps[i].id===se.id){local=S.emps[i];break;}
         }
         if(!local) return se;
+        var m=mergeEmp(se,local);
+        // 이 기기에서 수정한 직원: 시트값이 수정값과 같아질 때까지 로컬값 유지
+        var dt=S.empDirty&&S.empDirty[se.id];
+        if(dt){
+          var diff=empDiffFields(se,local);
+          if(!diff.length){ delete S.empDirty[se.id]; }
+          else {
+            EMP_SYNC_FIELDS.forEach(function(f){ m[f]=local[f]; });
+            m.schedule=local.schedule||m.schedule; m.workDays=local.workDays||m.workDays;
+            m.weeklyHours=local.weeklyHours||m.weeklyHours; m.monthlyPayHours=local.monthlyPayHours||m.monthlyPayHours;
+            m.ins4=local.ins4||m.ins4; m.dependents=local.dependents!=null?local.dependents:m.dependents;
+            dt.tries=(dt.tries||0)+1;
+            _resend.push(m);
+            if(dt.tries>=3) _stuck.push(m.name+": "+diff.map(function(f){return EMP_FIELD_LABEL[f]||f;}).join("·"));
+          }
+        }
+        return m;
+      });
+      saveEmpDirty();
+      if(_resend.length){
+        setTimeout(function(){ _resend.forEach(function(x){ apiPost({type:"saveEmployee",employee:x}).catch(function(){}); }); },800);
+      }
+      if(_stuck.length){
+        setTimeout(function(){ toast("⚠ 시트에 저장이 안 되는 항목이 있어요 (이 기기 값 유지 중) — "+_stuck.join(" / "),7000); },1200);
+      }
+      function mergeEmp(se,local){
         // 서버값 우선, 없으면 로컬값으로 보완
         return {
           id:se.id,
@@ -610,7 +655,7 @@ function loadAll(){
           flexPartTime:se.flexPartTime!=null?se.flexPartTime:(local.flexPartTime||false),
           excelExclude:se.excelExclude!=null?se.excelExclude:(local.excelExclude||false)
         };
-      });
+      }
       S.emps=merged;
       // OT: 서버 데이터 기준으로 하되, 서버에 없는 월은 로컬 유지 (병합)
       var serverOT=d.otAll||{};
@@ -942,6 +987,7 @@ function handleAction(action, id, val, el, ev){
     if(!confirm(e.name+" 직원을 삭제할까요?")) return;
     S.emps=S.emps.filter(function(x){return x.id!==id;});
     delete S.done[id]; delete S.ot[id]; delete S.ct[id]; delete S.leave[id]; delete S.absence[id];
+    if(S.empDirty&&S.empDirty[id]){ delete S.empDirty[id]; saveEmpDirty(); }
     if(S.otEmp===id) S.otEmp=S.emps.length?S.emps[0].id:null;
     S.sel=null; saveCache(); render(); apiDelEmp(id); toast("직원 삭제됨");
   }
@@ -3116,6 +3162,7 @@ function saveAdd(){
   S.emps.push(emp); if(!S.otEmp) S.otEmp=emp.id;
   // 기능1: 근로계약서 signed 상태만 관리 (내용은 직원 데이터에서 자동)
   if(!S.ct[emp.id]) S.ct[emp.id]={empId:emp.id,signed:false,date:""};
+  markEmpDirty(emp);
   saveCache(); // 서버 저장 전 로컬 캐시 먼저 확정
   S.mod=null; render(); apiSaveEmp(emp);
   apiSaveCT(emp.id,S.ct[emp.id]);
@@ -3133,10 +3180,11 @@ function saveEdit(id){
   var juhyu=weekH>=15?Math.round(weekH/Math.max(schedDays.length,1)):0;
   e.schedule=sched; e.workDays=schedDays; e.weeklyHours=weekH; e.monthlyPayHours=Math.round((weekH+juhyu)*4.345)||209;
   if(schedDays.length){var fs=sched[schedDays[0]];e.startTime=fs.s;e.endTime=fs.e;e.breakHour=fs.b;e.workHours=(parseInt(fs.e)-parseInt(fs.s)-fs.b)||8;e.isNight=parseInt(fs.s)<6;}
+  e.totalPay=parseInt(document.getElementById("ftotal")?document.getElementById("ftotal").value:0)||0;
+  // 새 포괄임금 값 기준으로 판단 (예전엔 수정 전 값으로 판단해서, 포괄임금을 0으로 지우고 기본급을 넣어도 반영 안 됐음)
   var fb2v=document.getElementById("fb2"); if(fb2v&&!e.totalPay) e.base=parseInt(fb2v.value)||e.base;
   e.meal=getMealFromForm();
   e.carAllow=getCarFromForm();
-  e.totalPay=parseInt(document.getElementById("ftotal")?document.getElementById("ftotal").value:0)||0;
   e.hourlyRate=parseInt(document.getElementById("fhourly")?document.getElementById("fhourly").value:0)||0;
   e.healthCert=document.getElementById("fhc").value;
   e.healthCertExpiry=document.getElementById("fhe").value;
@@ -3149,6 +3197,7 @@ function saveEdit(id){
   e.dependents=parseInt(document.getElementById("fdep")?document.getElementById("fdep").value:1)||1;
   e.ins4=getIns4FromForm();
   e.memo=document.getElementById("fmemo")?document.getElementById("fmemo").value.trim():"";
+  markEmpDirty(e); // 시트에 반영 확인될 때까지 이 값을 지킴
   saveCache(); // 서버 저장 전에 로컬 캐시 먼저 확정
   S.mod=null; render(); apiSaveEmp(e);
 }
