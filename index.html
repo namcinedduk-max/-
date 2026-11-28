@@ -1145,6 +1145,7 @@ function forceRefreshApp() {
               <option value="카카오페이">카카오페이</option>
               <option value="네이버페이">네이버페이</option>
               <option value="리더기">리더기</option>
+              <option value="온라인결제">온라인결제</option>
               <option value="미수금">미수금</option>
             </select>
           </div>
@@ -1580,6 +1581,7 @@ function forceRefreshApp() {
             <button class="pay-btn" onclick="selectPay(this,'카카오페이')">💛 카카오페이</button>
             <button class="pay-btn" onclick="selectPay(this,'네이버페이')">💚 네이버페이</button>
             <button class="pay-btn" onclick="selectPay(this,'리더기')">📟 리더기</button>
+            <button class="pay-btn" onclick="selectPay(this,'온라인결제')">🌐 온라인결제</button>
             <button class="pay-btn" onclick="selectPay(this,'미수금')">⏳ 미수금</button>
           </div>
           <input type="hidden" id="payMethod">
@@ -3771,7 +3773,8 @@ async function initEditBaseFee(dateFieldId, timeFieldId, feeFieldId) {
   const currentVal = parseInt(feeEl.value) || 0;
   const deliveryTime = timeEl ? timeEl.value : '';
   const originalExtra = await calcExtraDeliveryFee(dateEl.value, deliveryTime);
-  feeEl.dataset.baseFee = currentVal - originalExtra;
+  // 원래 배송비가 0원(픽업·택배·무료)인데 주말/오후3시 추가요금을 빼면 -1000이 되던 문제 → 0 아래로 안 내려가게
+  feeEl.dataset.baseFee = Math.max(0, currentVal - originalExtra);
 }
 
 async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
@@ -3792,7 +3795,7 @@ async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
   }
   if (currentMethod === '픽업' || currentMethod === '택배') {
     // 추가요금 0으로 초기화
-    const baseFee0 = parseInt(feeEl.dataset.baseFee !== undefined ? feeEl.dataset.baseFee : feeEl.value) || 0;
+    const baseFee0 = Math.max(0, parseInt(feeEl.dataset.baseFee !== undefined ? feeEl.dataset.baseFee : feeEl.value) || 0);
     feeEl.dataset.baseFee = baseFee0;
     feeEl.value = baseFee0;
     const noteEl0 = document.getElementById(feeFieldId + '_note');
@@ -3825,7 +3828,7 @@ async function applyExtraFee(dateFieldId, timeFieldId, feeFieldId, updateFn) {
     }
   }
 
-  const baseFee = parseInt(feeEl.dataset.baseFee !== undefined ? feeEl.dataset.baseFee : feeEl.value) || 0;
+  const baseFee = Math.max(0, parseInt(feeEl.dataset.baseFee !== undefined ? feeEl.dataset.baseFee : feeEl.value) || 0);
   feeEl.dataset.baseFee = baseFee;
   feeEl.value = baseFee + extra;
 
@@ -11428,6 +11431,7 @@ function resetGuideForm() {
   document.getElementById('g_addr1').value = '';
   document.getElementById('g_addr2').value = '';
   document.getElementById('g_deliveryFee').value = '';
+  delete document.getElementById('g_deliveryFee').dataset.baseFee;
   document.getElementById('g_senderName').value = '';
   document.getElementById('g_senderPhone').value = '';
   document.getElementById('g_receiverName').value = '';
@@ -12668,6 +12672,8 @@ function resetForm() {
   ['receiverName','receiverPhone','senderName','senderPhone','deliveryAddr1','deliveryAddr2','memo','labelText','priceProduct','priceDelivery','priceDiscount'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  // 이전 주문의 기본 배송비 기억도 지움 (다음 주문에 남아서 이상한 금액이 들어가는 것 방지)
+  delete document.getElementById('priceDelivery').dataset.baseFee;
   document.querySelector('input[name="deliveryMethod"][value="배송"]').checked = true;
   toggleDeliveryMethod('배송');
   const sameCb = document.getElementById('sameAsSender');
@@ -13297,7 +13303,7 @@ function quickSetPayStatus(id, newStatus) {
 function getMethodBadge(method) {
   const map = {
     '현금':'badge-green','카드':'badge-blue','계좌이체':'badge-purple',
-    '카카오페이':'badge-orange','네이버페이':'badge-green','리더기':'badge-blue','미수금':'badge-gray'
+    '카카오페이':'badge-orange','네이버페이':'badge-green','리더기':'badge-blue','온라인결제':'badge-purple','미수금':'badge-gray'
   };
   return `<span class="badge ${map[method]||'badge-gray'}">${method||'-'}</span>`;
 }
@@ -13980,7 +13986,7 @@ function renderModalEdit(o) {
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">결제 방법</span>
         <select id="e_payMethod" style="flex:1;padding:6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;">
-          ${['현금','카드','계좌이체','카카오페이','네이버페이','리더기','미수금'].map(m=>`<option ${o.payMethod===m?'selected':''}>${m}</option>`).join('')}
+          ${['현금','카드','계좌이체','카카오페이','네이버페이','리더기','온라인결제','미수금'].map(m=>`<option ${o.payMethod===m?'selected':''}>${m}</option>`).join('')}
         </select>
       </div>
       <div class="modal-detail-row"><span class="modal-detail-label">결제 상태</span>
@@ -20242,7 +20248,7 @@ function renderPersonalSettlement(ym) {
   const unpaidTotal = totalSales - paid;
 
   // ── 결제수단별 분해 (전체매출 vs 결제완료 실수령) ─────────────
-  const _methods = ['현금','카드','계좌이체','카카오페이','네이버페이','리더기','미수금'];
+  const _methods = ['현금','카드','계좌이체','카카오페이','네이버페이','리더기','온라인결제','미수금'];
   const byMethodAll = {};   // 상태 무관 전체
   const byMethodPaid = {};  // 결제완료만
   _methods.forEach(function(m){ byMethodAll[m]=0; byMethodPaid[m]=0; });
